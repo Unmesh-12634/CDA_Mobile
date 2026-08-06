@@ -1,16 +1,9 @@
-# Environment variables (contains private credentials)
-.env
-.env.local
-.env.*.local
 
-# Node modules & dependencies
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Temporary files & schema dumps
-schema_dump.json
-scratch/
-.DS_Store
-Thumbs.db
+# Flutter build artifacts
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.idea/
+.vscode/
+AI-Interview/
