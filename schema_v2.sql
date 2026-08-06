@@ -46,7 +46,24 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. Companies Table
+-- 3. User Auth Table (Authentication & Security Credentials)
+CREATE TABLE IF NOT EXISTS user_auth (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255),
+    auth_provider VARCHAR(50) DEFAULT 'email', -- 'email', 'google', 'github', 'phone'
+    provider_id VARCHAR(255),
+    is_mfa_enabled BOOLEAN DEFAULT false,
+    last_login_at TIMESTAMP WITH TIME ZONE,
+    last_login_ip VARCHAR(45),
+    password_reset_token VARCHAR(255),
+    password_reset_expires_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 4. Companies Table
 CREATE TABLE IF NOT EXISTS companies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
@@ -60,7 +77,7 @@ CREATE TABLE IF NOT EXISTS companies (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 4. Jobs Table
+-- 5. Jobs Table
 CREATE TABLE IF NOT EXISTS jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id UUID REFERENCES companies(id) ON DELETE SET NULL,
@@ -83,7 +100,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. Saved Jobs Table
+-- 6. Saved Jobs Table
 CREATE TABLE IF NOT EXISTS saved_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -91,7 +108,7 @@ CREATE TABLE IF NOT EXISTS saved_jobs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6. Job Applications Table
+-- 7. Job Applications Table
 CREATE TABLE IF NOT EXISTS job_applications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -104,7 +121,7 @@ CREATE TABLE IF NOT EXISTS job_applications (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 7. Reels / Short Videos Table
+-- 8. Reels / Short Videos Table
 CREATE TABLE IF NOT EXISTS reels (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL,
@@ -123,7 +140,7 @@ CREATE TABLE IF NOT EXISTS reels (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 8. Saved Reels Table
+-- 9. Saved Reels Table
 CREATE TABLE IF NOT EXISTS saved_reels (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -131,7 +148,7 @@ CREATE TABLE IF NOT EXISTS saved_reels (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 9. Daily Questions & Quizzes
+-- 10. Daily Questions & Quizzes
 CREATE TABLE IF NOT EXISTS daily_questions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     question_text TEXT NOT NULL,
@@ -156,7 +173,7 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
     attempted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 10. User Settings Table
+-- 11. User Settings Table
 CREATE TABLE IF NOT EXISTS user_settings (
     user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     theme VARCHAR(20) DEFAULT 'system',
@@ -168,7 +185,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 11. AI Interview Reports
+-- 12. AI Interview Reports
 CREATE TABLE IF NOT EXISTS ai_interview_reports (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -183,7 +200,7 @@ CREATE TABLE IF NOT EXISTS ai_interview_reports (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 12. User Progress
+-- 13. User Progress
 CREATE TABLE IF NOT EXISTS user_progress (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -194,7 +211,11 @@ CREATE TABLE IF NOT EXISTS user_progress (
     last_accessed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 13. Idempotent Unique Indexes & Performance Indexes
+-- 14. Idempotent Unique Indexes & Performance Indexes
+CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_user_auth_user ON user_auth(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_user_auth_email ON user_auth(email);
+CREATE INDEX IF NOT EXISTS idx_user_auth_provider ON user_auth(auth_provider, provider_id);
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_saved_jobs_user_job ON saved_jobs(user_id, job_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_job_applications_user_job ON job_applications(user_id, job_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_saved_reels_user_reel ON saved_reels(user_id, reel_id);
