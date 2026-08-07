@@ -233,7 +233,20 @@ CREATE TABLE IF NOT EXISTS user_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 13. AI Interview Reports & Voice Sessions
+-- 13. User Interview Settings Table (AI Voice & Preferences)
+CREATE TABLE IF NOT EXISTS user_interview_settings (
+    id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    interviewer_voice VARCHAR(50) DEFAULT 'guy' NOT NULL,
+    speech_rate_multiplier NUMERIC(3,2) DEFAULT 1.00 NOT NULL,
+    preferred_mode VARCHAR(50) DEFAULT 'Technical' NOT NULL,
+    preferred_difficulty VARCHAR(50) DEFAULT 'Medium' NOT NULL,
+    auto_submit_mic BOOLEAN DEFAULT true NOT NULL,
+    show_live_transcript BOOLEAN DEFAULT true NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+);
+
+-- 14. AI Interview Reports & Voice Sessions
 CREATE TABLE IF NOT EXISTS ai_interview_reports (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -271,7 +284,7 @@ CREATE TABLE IF NOT EXISTS ai_interview_session (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 14. User Weekly Report (Weekly Performance Screen)
+-- 15. User Weekly Report (Weekly Performance Screen)
 CREATE TABLE IF NOT EXISTS user_weekly_report (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -290,7 +303,7 @@ CREATE TABLE IF NOT EXISTS user_weekly_report (
     CONSTRAINT unique_user_week UNIQUE (user_id, week_start_date)
 );
 
--- 15. User Subscription (CDA Paywall & Pro Unlocks)
+-- 16. User Subscription (CDA Paywall & Pro Unlocks)
 CREATE TABLE IF NOT EXISTS user_subscription (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -302,7 +315,7 @@ CREATE TABLE IF NOT EXISTS user_subscription (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 16. User Progress
+-- 17. User Progress
 CREATE TABLE IF NOT EXISTS user_progress (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -313,9 +326,10 @@ CREATE TABLE IF NOT EXISTS user_progress (
     last_accessed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 17. Idempotent Unique Indexes & Performance Indexes
+-- 18. Idempotent Unique Indexes & Performance Indexes
 CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_user_auth_user ON user_auth(user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_user_auth_email ON user_auth(email);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_user_interview_settings ON user_interview_settings(user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_saved_jobs_user_job ON saved_jobs(user_id, job_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_job_applications_user_job ON job_applications(user_id, job_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_user_job_app_user_job ON user_job_application(user_id, job_opening_id);

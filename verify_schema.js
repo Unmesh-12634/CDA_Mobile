@@ -4,6 +4,7 @@ const supabase = require('./supabaseClient');
 const expectedTables = [
   'users',
   'user_auth',
+  'user_interview_settings',
   'companies',
   'jobs',
   'saved_jobs',
