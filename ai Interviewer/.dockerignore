@@ -1,0 +1,12 @@
+.venv/
+.git/
+.gitignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+data/temp/*
+!data/temp/.gitkeep
+data/reports/*
+!data/reports/.gitkeep

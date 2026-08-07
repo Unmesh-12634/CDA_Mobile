@@ -1,0 +1,12 @@
+# Environment & Dependencies
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Audio temp & report files
+data/temp/*.wav
+data/temp/*.mp3
+data/reports/*.json
+data/reports/*.txt
