@@ -1,6 +1,7 @@
 -- =========================================================
 -- Complete App Database Schema (Supabase PostgreSQL)
 -- Target Project: jbauuvxeybakihedeskj
+-- Includes RLS Policies & Clean Performance Indexes
 -- =========================================================
 
 -- Enable UUID extension if not already enabled
@@ -10,45 +11,31 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- 1. Custom ENUM Types
 DO $$ BEGIN
     CREATE TYPE user_role_enum AS ENUM ('User', 'Admin', 'Recruiter');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
     CREATE TYPE work_mode_enum AS ENUM ('Remote', 'Onsite', 'Hybrid');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
     CREATE TYPE application_status_enum AS ENUM ('Applied', 'Under Review', 'Interview Scheduled', 'Offered', 'Rejected');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
     CREATE TYPE hire_recommendation_enum AS ENUM ('Strong Hire', 'Hire', 'Borderline', 'No Hire');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
     CREATE TYPE job_stage_enum AS ENUM ('Saved', 'Applied', 'Screening', 'Interviewing', 'Offered', 'Rejected');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
     CREATE TYPE plan_tier_enum AS ENUM ('Free', 'Pro', 'FAANG Pass');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
     CREATE TYPE subscription_status_enum AS ENUM ('Active', 'Cancelled', 'Expired');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
+EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 
 -- 2. Users Table
@@ -81,7 +68,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. User Auth Table (Authentication & Security Credentials)
+-- 3. User Auth Table
 CREATE TABLE IF NOT EXISTS user_auth (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -233,7 +220,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 13. User Interview Settings Table (AI Voice & Preferences)
+-- 13. User Interview Settings Table
 CREATE TABLE IF NOT EXISTS user_interview_settings (
     id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
@@ -284,7 +271,7 @@ CREATE TABLE IF NOT EXISTS ai_interview_session (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 15. User Weekly Report (Weekly Performance Screen)
+-- 15. User Weekly Report
 CREATE TABLE IF NOT EXISTS user_weekly_report (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -303,7 +290,7 @@ CREATE TABLE IF NOT EXISTS user_weekly_report (
     CONSTRAINT unique_user_week UNIQUE (user_id, week_start_date)
 );
 
--- 16. User Subscription (CDA Paywall & Pro Unlocks)
+-- 16. User Subscription
 CREATE TABLE IF NOT EXISTS user_subscription (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -326,16 +313,12 @@ CREATE TABLE IF NOT EXISTS user_progress (
     last_accessed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 18. Idempotent Unique Indexes & Performance Indexes
-CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_user_auth_user ON user_auth(user_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_user_auth_email ON user_auth(email);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_user_interview_settings ON user_interview_settings(user_id);
+-- 18. Clean Performance Indexes (No Duplicate Unique Constraint Indexes)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_saved_jobs_user_job ON saved_jobs(user_id, job_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_job_applications_user_job ON job_applications(user_id, job_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_user_job_app_user_job ON user_job_application(user_id, job_opening_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_saved_reels_user_reel ON saved_reels(user_id, reel_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_user_progress_item ON user_progress(user_id, item_type, item_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_uniq_user_subscription_user ON user_subscription(user_id);
 
 CREATE INDEX IF NOT EXISTS idx_user_auth_provider ON user_auth(auth_provider, provider_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_active ON jobs(is_active);
@@ -349,3 +332,24 @@ CREATE INDEX IF NOT EXISTS idx_ai_interview_reports_user ON ai_interview_reports
 CREATE INDEX IF NOT EXISTS idx_ai_interview_session_user ON ai_interview_session(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_weekly_report_user ON user_weekly_report(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_progress_user ON user_progress(user_id);
+
+-- 19. Enable RLS and Universal Access Policies for App
+DO $$ 
+DECLARE 
+    tbl_name text;
+    app_tables text[] := ARRAY[
+        'users', 'user_auth', 'user_interview_settings', 'companies', 'jobs', 
+        'saved_jobs', 'job_applications', 'user_job_application', 'reels', 
+        'saved_reels', 'daily_questions', 'quiz_attempts', 'user_settings', 
+        'ai_interview_reports', 'ai_interview_session', 'user_weekly_report', 
+        'user_subscription', 'user_progress'
+    ];
+BEGIN
+    FOREACH tbl_name IN ARRAY app_tables LOOP
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = tbl_name) THEN
+            EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl_name);
+            EXECUTE format('DROP POLICY IF EXISTS "Public Full Access Policy" ON public.%I;', tbl_name);
+            EXECUTE format('CREATE POLICY "Public Full Access Policy" ON public.%I FOR ALL USING (true) WITH CHECK (true);', tbl_name);
+        END IF;
+    END LOOP;
+END $$;
