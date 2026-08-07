@@ -299,20 +299,9 @@ def run_interview():
                     voice_service.speak(resp.closing_statement)
 
             rep = resp.report
-            print(f"{BOLD}Candidate:{RESET} {rep.candidate_name}")
-            print(f"{BOLD}Role:{RESET} {rep.job_role}")
-            print(f"{BOLD}Overall Score:{RESET} {CYAN}{BOLD}{rep.overall_score:.1f}/100{RESET}")
-            print(f"{BOLD}Hiring Status:{RESET} {GREEN}{BOLD}{rep.hiring_readiness}{RESET}\n")
-
-            print(f"{BOLD}Category Scores:{RESET}")
-            print(f" • Technical Knowledge: {rep.technical_score:.1f}/100")
-            print(f" • Communication:       {rep.communication_score:.1f}/100")
-            print(f" • Problem Solving:     {rep.problem_solving_score:.1f}/100")
-            print(f" • Resume Knowledge:    {rep.resume_knowledge_score:.1f}/100")
-            print(f" • Answer Clarity:      {rep.clarity_score:.1f}/100")
-            print(f" • Role Readiness:      {rep.role_readiness_score:.1f}/100")
-
-            print(f"\n{BOLD}Executive Summary:{RESET}\n{rep.summary}\n")
+            if rep:
+                formatted_txt = interview_service.report_agent.generate_formatted_text_report(rep)
+                print(f"\n{CYAN}{BOLD}{formatted_txt}{RESET}\n")
 
             if resp.report_txt_path:
                 print(f"{GREEN}✓ Full Text Report Saved:{RESET} {resp.report_txt_path}")
