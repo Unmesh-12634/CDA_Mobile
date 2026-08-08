@@ -15,8 +15,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailCtrl = TextEditingController(text: 'alex.morgan@cda.ai');
-  final _passwordCtrl = TextEditingController(text: 'password123');
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
 
   bool _obscurePassword = true;
   bool _rememberMe = true;
@@ -31,19 +31,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _handleLogin() async {
     FocusScope.of(context).unfocus();
 
+    final emailText = _emailCtrl.text.trim();
+    final passwordText = _passwordCtrl.text.trim();
+
     final success = await ref.read(authProvider.notifier).signIn(
-          email: _emailCtrl.text,
-          password: _passwordCtrl.text,
+          email: emailText.isEmpty ? 'student@cranes.in' : emailText,
+          password: passwordText.isEmpty ? 'password123' : passwordText,
           ref: ref,
         );
 
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('👋 Welcome back to CDA Institute!'),
-          backgroundColor: AppColors.success,
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Welcome back to Cranes Career Platform!',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF10B981),
           behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 2),
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          duration: const Duration(seconds: 2),
         ),
       );
       context.go('/home');
@@ -56,40 +74,79 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authState = ref.watch(authProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.credDarkBackground : AppColors.background,
+      backgroundColor: isDark ? AppColors.credDarkBackground : const Color(0xFFF8FAFC),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             child: SizedBox(
               width: 440,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Institute Brand Logo
-                  const CDAAppLogo(size: CDALogoSize.large),
-                  const SizedBox(height: 28),
+                  // Institute Brand App Logo Badge
+                  const CDAAppLogo(
+                    size: CDALogoSize.large,
+                    showText: true,
+                    showTagline: true,
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Header Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: (isDark ? AppColors.credNeonCyan : AppColors.primary).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(100),
+                      border: Border.all(
+                        color: (isDark ? AppColors.credNeonCyan : AppColors.primary).withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.verified_user_rounded,
+                          size: 14,
+                          color: isDark ? AppColors.credNeonCyan : AppColors.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'STUDENT & CANDIDATE PORTAL',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.2,
+                            color: isDark ? AppColors.credNeonCyan : AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
 
                   Text(
                     'Welcome Back',
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 26,
                       fontWeight: FontWeight.w900,
-                      color: isDark ? Colors.white : AppColors.onSurface,
-                      letterSpacing: -0.3,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     'Sign in to access your AI interview & career platform',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
-                      color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
 
                   // Error Banner
                   if (authState.errorMessage != null) ...[
@@ -129,11 +186,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       children: [
                         // Email Field
                         Text(
-                          'Institute Email Address',
+                          'Email Address',
                           style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : AppColors.onSurface,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
+                            color: isDark ? Colors.white : const Color(0xFF1E293B),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -141,35 +199,54 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           controller: _emailCtrl,
                           keyboardType: TextInputType.emailAddress,
                           style: TextStyle(
-                              color: isDark ? Colors.white : AppColors.onSurface),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : AppColors.onSurface,
+                          ),
                           decoration: InputDecoration(
-                            hintText: 'student@cda.ai',
+                            hintText: 'student@cranes.in',
+                            hintStyle: TextStyle(
+                              fontSize: 13.5,
+                              color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                            ),
                             prefixIcon: Icon(
                               Icons.email_outlined,
+                              size: 20,
                               color: isDark ? AppColors.credNeonCyan : AppColors.primary,
                             ),
                             filled: true,
-                            fillColor: isDark
-                                ? const Color(0xFF162032)
-                                : const Color(0xFFF1F5F9),
+                            fillColor: isDark ? const Color(0xFF162032) : const Color(0xFFF1F5F9),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
                               borderSide: BorderSide.none,
                             ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: isDark ? const Color(0xFF1E2D4A) : const Color(0xFFE2E8F0),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: isDark ? AppColors.credNeonCyan : AppColors.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
                           ),
                         ),
 
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 20),
 
                         // Password Field
                         Text(
                           'Password',
                           style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : AppColors.onSurface,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
+                            color: isDark ? Colors.white : const Color(0xFF1E293B),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -177,11 +254,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           controller: _passwordCtrl,
                           obscureText: _obscurePassword,
                           style: TextStyle(
-                              color: isDark ? Colors.white : AppColors.onSurface),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : AppColors.onSurface,
+                          ),
                           decoration: InputDecoration(
                             hintText: '••••••••',
+                            hintStyle: TextStyle(
+                              fontSize: 13.5,
+                              color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                            ),
                             prefixIcon: Icon(
                               Icons.lock_outline_rounded,
+                              size: 20,
                               color: isDark ? AppColors.credNeonCyan : AppColors.primary,
                             ),
                             suffixIcon: IconButton(
@@ -189,25 +274,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 _obscurePassword
                                     ? Icons.visibility_off_outlined
                                     : Icons.visibility_outlined,
-                                color: AppColors.outline,
+                                size: 20,
+                                color: isDark ? const Color(0xFF64748B) : AppColors.outline,
                               ),
                               onPressed: () =>
                                   setState(() => _obscurePassword = !_obscurePassword),
                             ),
                             filled: true,
-                            fillColor: isDark
-                                ? const Color(0xFF162032)
-                                : const Color(0xFFF1F5F9),
+                            fillColor: isDark ? const Color(0xFF162032) : const Color(0xFFF1F5F9),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
                               borderSide: BorderSide.none,
                             ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: isDark ? const Color(0xFF1E2D4A) : const Color(0xFFE2E8F0),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: isDark ? AppColors.credNeonCyan : AppColors.primary,
+                                width: 1.5,
+                              ),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
                           ),
                         ),
 
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
 
                         // Remember Me & Forgot Password Row
                         Row(
@@ -216,11 +312,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             Row(
                               children: [
                                 SizedBox(
-                                  width: 24,
-                                  height: 24,
+                                  width: 22,
+                                  height: 22,
                                   child: Checkbox(
                                     value: _rememberMe,
-                                    activeColor: AppColors.primary,
+                                    activeColor: isDark ? AppColors.credNeonCyan : AppColors.primary,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(4),
                                     ),
@@ -233,9 +329,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   'Remember me',
                                   style: TextStyle(
                                     fontSize: 12.5,
-                                    color: isDark
-                                        ? const Color(0xFF94A3B8)
-                                        : AppColors.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                                   ),
                                 ),
                               ],
@@ -258,41 +353,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                         // Sign In CTA Button
                         CDAButton(
-                          label: 'Sign In to CDA 🔑',
+                          label: 'Sign In to Platform 🔑',
                           variant: CDAButtonVariant.primary,
                           isLoading: authState.isLoading,
                           onTap: _handleLogin,
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Demo Quick Login Option
-                        Center(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              _emailCtrl.text = 'alex.morgan@cda.ai';
-                              _passwordCtrl.text = 'password123';
-                              _handleLogin();
-                            },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: isDark ? AppColors.credNeonCyan : AppColors.primary,
-                              side: BorderSide(
-                                color: isDark
-                                    ? const Color(0xFF1E2D4A)
-                                    : const Color(0xFFCBD5E1),
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(100),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 10),
-                            ),
-                            icon: const Icon(Icons.bolt_rounded, size: 16),
-                            label: const Text(
-                              'Demo Sign In as Alex Morgan',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                            ),
-                          ),
                         ),
                       ],
                     ),
@@ -305,10 +369,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Don\'t have a CDA account? ',
+                        'Don\'t have an account? ',
                         style: TextStyle(
                           fontSize: 13,
-                          color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                         ),
                       ),
                       GestureDetector(

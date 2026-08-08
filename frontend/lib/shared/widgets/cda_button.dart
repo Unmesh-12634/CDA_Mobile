@@ -477,13 +477,17 @@ class _ButtonContent extends StatelessWidget {
                     Icon(leadingIcon, color: textColor, size: 16),
                     const SizedBox(width: 7),
                   ],
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: fontSize,
-                      fontWeight: fontWeight,
-                      letterSpacing: letterSpacing,
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: fontSize,
+                        fontWeight: fontWeight,
+                        letterSpacing: letterSpacing,
+                      ),
                     ),
                   ),
                   if (trailingIcon != null) ...[

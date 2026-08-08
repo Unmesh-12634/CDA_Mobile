@@ -10,6 +10,8 @@ import '../../../../shared/widgets/glass_card.dart';
 import '../../../../shared/widgets/gradient_button.dart';
 import '../../../subscription/data/subscription_provider.dart';
 import '../../../subscription/presentation/widgets/cda_paywall_sheet.dart';
+import '../../data/interview_setup_provider.dart';
+import '../../data/ai_interview_service.dart';
 
 // ─────────────────────────────────────────────────
 // Models
@@ -71,6 +73,10 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
             CurvedAnimation(
                 parent: _progressAnim, curve: Curves.easeOutCubic));
     _progressAnim.forward();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(aiInterviewServiceProvider).preWarmBackend();
+    });
   }
 
   @override
@@ -1090,6 +1096,16 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
             text: 'Start AI Interview',
             icon: Icons.bolt_rounded,
             onPressed: () {
+              ref.read(interviewSetupProvider.notifier).updateConfig(
+                    candidateName: 'Arjun Verma',
+                    jobRole: _roleLabel,
+                    difficulty: _difficultyLabel,
+                    interviewType: _typeLabel,
+                    targetQuestionCount: _durationLabel == '10' ? 3 : (_durationLabel == '25' ? 5 : 8),
+                    resumePath: _resumeFileName ?? _profileResume,
+                    enrolledCourses: const ['Full-Stack Web Development', 'System Design & Microservices'],
+                    skills: const ['Java', 'Flutter', 'Python', 'Dart', 'FastAPI'],
+                  );
               final success =
                   ref.read(subscriptionProvider.notifier).consumeTrial();
               if (success) {

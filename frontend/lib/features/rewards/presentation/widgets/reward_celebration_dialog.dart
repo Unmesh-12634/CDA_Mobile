@@ -115,7 +115,7 @@ class _RewardCelebrationContent extends ConsumerWidget {
                 border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
               ),
               child: const Text(
-                'REWARD UNLOCKED',
+                'ACHIEVEMENT UNLOCKED',
                 style: TextStyle(
                   color: Color(0xFFF59E0B),
                   fontSize: 11,
@@ -127,12 +127,12 @@ class _RewardCelebrationContent extends ConsumerWidget {
 
             const SizedBox(height: 12),
 
-            // Animated Coin Counter
+            // Animated XP Counter
             TweenAnimationBuilder<int>(
               duration: const Duration(milliseconds: 1000),
               tween: IntTween(begin: 0, end: coinsEarned),
               builder: (context, val, _) => Text(
-                '+$val CDA COINS',
+                '+$val XP POINTS',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w900,

@@ -14,6 +14,9 @@ class UserProfile {
   final bool isCvVerified;
   final List<String> skills;
   final Map<String, double> domainScores;
+  final String? resumeFileName;
+  final String? resumeFilePath;
+  final String? resumeUploadedAt;
 
   const UserProfile({
     required this.name,
@@ -27,6 +30,9 @@ class UserProfile {
     required this.isCvVerified,
     required this.skills,
     required this.domainScores,
+    this.resumeFileName,
+    this.resumeFilePath,
+    this.resumeUploadedAt,
   });
 
   UserProfile copyWith({
@@ -36,11 +42,16 @@ class UserProfile {
     String? targetRole,
     String? avatarInitials,
     String? avatarImagePath,
+    bool clearAvatarImagePath = false,
     String? cgpa,
     int? streakDays,
     bool? isCvVerified,
     List<String>? skills,
     Map<String, double>? domainScores,
+    String? resumeFileName,
+    String? resumeFilePath,
+    String? resumeUploadedAt,
+    bool clearResume = false,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -48,12 +59,15 @@ class UserProfile {
       college: college ?? this.college,
       targetRole: targetRole ?? this.targetRole,
       avatarInitials: avatarInitials ?? this.avatarInitials,
-      avatarImagePath: avatarImagePath ?? this.avatarImagePath,
+      avatarImagePath: clearAvatarImagePath ? null : (avatarImagePath ?? this.avatarImagePath),
       cgpa: cgpa ?? this.cgpa,
       streakDays: streakDays ?? this.streakDays,
       isCvVerified: isCvVerified ?? this.isCvVerified,
       skills: skills ?? this.skills,
       domainScores: domainScores ?? this.domainScores,
+      resumeFileName: clearResume ? null : (resumeFileName ?? this.resumeFileName),
+      resumeFilePath: clearResume ? null : (resumeFilePath ?? this.resumeFilePath),
+      resumeUploadedAt: clearResume ? null : (resumeUploadedAt ?? this.resumeUploadedAt),
     );
   }
 
@@ -70,28 +84,46 @@ class UserProfile {
       'isCvVerified': isCvVerified,
       'skills': skills,
       'domainScores': domainScores,
+      'resumeFileName': resumeFileName,
+      'resumeFilePath': resumeFilePath,
+      'resumeUploadedAt': resumeUploadedAt,
     };
   }
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
+    List<String> parsedSkills = ['Python', 'Flutter', 'React', 'System Design', 'AI/ML', 'PostgreSQL'];
+    if (json['skills'] is List) {
+      parsedSkills = (json['skills'] as List).map((e) => e.toString()).toList();
+    }
+
+    Map<String, double> parsedScores = {
+      'AI / ML Engineering': 0.92,
+      'Full-Stack Tech': 0.85,
+      'System Architecture': 0.78,
+    };
+    if (json['domainScores'] is Map) {
+      try {
+        parsedScores = (json['domainScores'] as Map).map(
+          (k, v) => MapEntry(k.toString(), double.tryParse(v.toString()) ?? 0.8),
+        );
+      } catch (_) {}
+    }
+
     return UserProfile(
-      name: json['name'] as String? ?? 'Arjun Verma',
-      degree: json['degree'] as String? ?? 'B.Tech CS',
-      college: json['college'] as String? ?? 'IIT Delhi (2021-2025)',
-      targetRole: json['targetRole'] as String? ?? 'Senior AI & Full-Stack Engineer',
-      avatarInitials: json['avatarInitials'] as String? ?? 'AV',
-      avatarImagePath: json['avatarImagePath'] as String?,
-      cgpa: json['cgpa'] as String? ?? '8.9',
-      streakDays: json['streakDays'] as int? ?? 12,
-      isCvVerified: json['isCvVerified'] as bool? ?? true,
-      skills: List<String>.from(json['skills'] as List? ?? ['Python', 'Flutter', 'React', 'System Design', 'AI/ML', 'PostgreSQL']),
-      domainScores: Map<String, double>.from(
-        (json['domainScores'] as Map? ?? {
-          'AI / ML Engineering': 0.92,
-          'Full-Stack Tech': 0.85,
-          'System Architecture': 0.78,
-        }).map((k, v) => MapEntry(k as String, (v as num).toDouble())),
-      ),
+      name: json['name']?.toString() ?? 'Arjun Verma',
+      degree: json['degree']?.toString() ?? 'B.Tech CS',
+      college: json['college']?.toString() ?? 'IIT Delhi (2021-2025)',
+      targetRole: json['targetRole']?.toString() ?? 'Senior AI & Full-Stack Engineer',
+      avatarInitials: json['avatarInitials']?.toString() ?? 'AV',
+      avatarImagePath: json['avatarImagePath']?.toString(),
+      cgpa: json['cgpa']?.toString() ?? '8.9',
+      streakDays: int.tryParse(json['streakDays']?.toString() ?? '') ?? 12,
+      isCvVerified: json['isCvVerified'] == true,
+      skills: parsedSkills,
+      domainScores: parsedScores,
+      resumeFileName: json['resumeFileName']?.toString(),
+      resumeFilePath: json['resumeFilePath']?.toString(),
+      resumeUploadedAt: json['resumeUploadedAt']?.toString(),
     );
   }
 }
@@ -120,6 +152,9 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
         'Full-Stack Tech': 0.85,
         'System Architecture': 0.78,
       },
+      resumeFileName: null,
+      resumeFilePath: null,
+      resumeUploadedAt: null,
     );
   }
 
@@ -149,6 +184,7 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
     String? targetRole,
     String? avatarInitials,
     String? avatarImagePath,
+    bool clearAvatarImagePath = false,
     String? cgpa,
   }) async {
     final initials = name != null && name.trim().isNotEmpty
@@ -166,10 +202,40 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
       college: college ?? state.college,
       targetRole: targetRole ?? state.targetRole,
       avatarInitials: avatarInitials ?? (initials.isEmpty ? 'AV' : initials),
-      avatarImagePath: avatarImagePath, // Allow passing null/updated path
+      avatarImagePath: avatarImagePath,
+      clearAvatarImagePath: clearAvatarImagePath,
       cgpa: cgpa ?? state.cgpa,
     );
 
+    await _saveProfile();
+  }
+
+  Future<void> setAvatarImagePath(String? path) async {
+    if (path == null) {
+      state = state.copyWith(clearAvatarImagePath: true);
+    } else {
+      state = state.copyWith(avatarImagePath: path);
+    }
+    await _saveProfile();
+  }
+
+  Future<void> setResume({
+    required String fileName,
+    required String filePath,
+    String? uploadedAt,
+  }) async {
+    final timeStr = uploadedAt ?? '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}';
+    state = state.copyWith(
+      resumeFileName: fileName,
+      resumeFilePath: filePath,
+      resumeUploadedAt: timeStr,
+      isCvVerified: true,
+    );
+    await _saveProfile();
+  }
+
+  Future<void> removeResume() async {
+    state = state.copyWith(clearResume: true);
     await _saveProfile();
   }
 

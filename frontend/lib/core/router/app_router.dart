@@ -23,6 +23,8 @@ import '../../features/roadmap/presentation/screens/career_roadmap_screen.dart';
 import '../../features/jobs/presentation/screens/application_tracker_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
 
+import '../../features/subscription/presentation/screens/subscription_details_screen.dart';
+
 final _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 
@@ -48,6 +50,11 @@ final _router = GoRouter(
     ),
 
     // ── Full-screen immersive routes (no bottom nav bar) ─────────────────────
+    GoRoute(
+      path: '/subscription-details',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const SubscriptionDetailsScreen(),
+    ),
     GoRoute(
       path: '/edit-profile',
       parentNavigatorKey: _rootNavigatorKey,

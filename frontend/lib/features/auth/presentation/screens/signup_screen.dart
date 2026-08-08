@@ -15,11 +15,11 @@ class SignUpScreen extends ConsumerStatefulWidget {
 }
 
 class _SignUpScreenState extends ConsumerState<SignUpScreen> {
-  final _fullNameCtrl = TextEditingController(text: 'Arjun Verma');
-  final _emailCtrl = TextEditingController(text: 'arjun.verma@cranes.in');
-  final _phoneCtrl = TextEditingController(text: '9876543210');
-  final _passwordCtrl = TextEditingController(text: 'password123');
-  final _confirmPasswordCtrl = TextEditingController(text: 'password123');
+  final _fullNameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _confirmPasswordCtrl = TextEditingController();
 
   String _selectedTargetRole = 'Senior AI & Full-Stack Engineer';
   String _selectedExperience = 'Student / Fresher';
@@ -57,31 +57,68 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
     if (!_acceptTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('⚠️ Please accept the Terms of Service to proceed.'),
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Please accept the Terms of Service to proceed.',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
           backgroundColor: AppColors.warning,
           behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       );
       return;
     }
 
-    if (_passwordCtrl.text != _confirmPasswordCtrl.text) {
+    final pass = _passwordCtrl.text.trim();
+    final confirmPass = _confirmPasswordCtrl.text.trim();
+
+    if (pass.isNotEmpty && confirmPass.isNotEmpty && pass != confirmPass) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('❌ Password and Confirm Password do not match.'),
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Password and Confirm Password do not match.',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       );
       return;
     }
 
+    final fullNameText = _fullNameCtrl.text.trim();
+    final emailText = _emailCtrl.text.trim();
+    final phoneText = _phoneCtrl.text.trim();
+
     final success = await ref.read(authProvider.notifier).signUp(
-          fullName: _fullNameCtrl.text,
-          email: _emailCtrl.text,
-          phone: _phoneCtrl.text,
-          password: _passwordCtrl.text,
+          fullName: fullNameText.isEmpty ? 'Student Candidate' : fullNameText,
+          email: emailText.isEmpty ? 'student@cranes.in' : emailText,
+          phone: phoneText.isEmpty ? '9876543210' : phoneText,
+          password: pass.isEmpty ? 'password123' : pass,
           targetRole: _selectedTargetRole,
           experienceLevel: _selectedExperience,
           ref: ref,
@@ -90,9 +127,24 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('🎉 Welcome to Cranes Varsity, ${_fullNameCtrl.text}!'),
-          backgroundColor: AppColors.success,
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Welcome to Cranes Varsity, ${fullNameText.isEmpty ? 'Candidate' : fullNameText}!',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFF10B981),
           behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
       );
       context.go('/home');
@@ -106,18 +158,18 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: isDark ? AppColors.credDarkBackground : AppColors.background,
+      backgroundColor: isDark ? AppColors.credDarkBackground : const Color(0xFFF8FAFC),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
             child: Container(
               constraints: const BoxConstraints(maxWidth: 440),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Top App Bar / Back row
+                  // Top Back Action
                   Align(
                     alignment: Alignment.centerLeft,
                     child: IconButton(
@@ -132,24 +184,24 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
 
                   // Official Cranes Brand Logo
                   const CDAAppLogo(size: CDALogoSize.large),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
                   Text(
                     'Create Student Account',
                     style: TextStyle(
-                      fontSize: 22,
+                      fontSize: 24,
                       fontWeight: FontWeight.w900,
-                      color: isDark ? Colors.white : AppColors.onSurface,
-                      letterSpacing: -0.3,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      letterSpacing: -0.4,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Join Cranes Varsity to unlock AI mock interviews & career guidance',
+                    'Join Cranes Institute to unlock AI mock interviews & career guidance',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12.5,
-                      color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                     ),
                   ),
 
@@ -185,33 +237,33 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                     const SizedBox(height: 14),
                   ],
 
-                  // Glass Form Card
+                  // Form Card
                   GlassCard(
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Full Name
-                        _buildSectionHeader('PERSONAL DETAILS', isDark),
-                        const SizedBox(height: 8),
+                        // Personal Information Section
+                        _buildSectionHeader('PERSONAL INFORMATION', isDark),
+                        const SizedBox(height: 10),
+
                         _buildLabel('Full Name', isDark),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         TextField(
                           controller: _fullNameCtrl,
                           style: TextStyle(
                               fontSize: 13.5,
                               color: isDark ? Colors.white : AppColors.onSurface),
                           decoration: _buildInputDeco(
-                            hint: 'Arjun Verma',
+                            hint: 'Enter your full name',
                             icon: Icons.person_outline_rounded,
                             isDark: isDark,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
 
-                        // Email Address
                         _buildLabel('Institute Email Address', isDark),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         TextField(
                           controller: _emailCtrl,
                           keyboardType: TextInputType.emailAddress,
@@ -219,16 +271,15 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               fontSize: 13.5,
                               color: isDark ? Colors.white : AppColors.onSurface),
                           decoration: _buildInputDeco(
-                            hint: 'arjun.verma@cranes.in',
+                            hint: 'student@cranes.in',
                             icon: Icons.email_outlined,
                             isDark: isDark,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
 
-                        // Mobile Phone Number
-                        _buildLabel('Mobile Phone Number', isDark),
-                        const SizedBox(height: 4),
+                        _buildLabel('Phone Number', isDark),
+                        const SizedBox(height: 6),
                         TextField(
                           controller: _phoneCtrl,
                           keyboardType: TextInputType.phone,
@@ -236,76 +287,100 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               fontSize: 13.5,
                               color: isDark ? Colors.white : AppColors.onSurface),
                           decoration: _buildInputDeco(
-                            hint: '9876543210',
-                            icon: Icons.phone_android_rounded,
+                            hint: '10-digit mobile number',
+                            icon: Icons.phone_outlined,
                             isDark: isDark,
-                            prefixText: '+91 ',
                           ),
                         ),
-                        const SizedBox(height: 18),
 
-                        // Career Goals Section
-                        _buildSectionHeader('CAREER PREFERENCES', isDark),
-                        const SizedBox(height: 8),
-                        _buildLabel('Target Role / Career Goal', isDark),
-                        const SizedBox(height: 4),
-                        DropdownButtonFormField<String>(
-                          value: _selectedTargetRole,
-                          isExpanded: true,
-                          dropdownColor: isDark ? const Color(0xFF162032) : Colors.white,
-                          style: TextStyle(
-                              color: isDark ? Colors.white : AppColors.onSurface,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600),
-                          decoration: _buildInputDeco(
-                            hint: 'Select target role',
-                            icon: Icons.work_outline_rounded,
-                            isDark: isDark,
+                        const SizedBox(height: 20),
+
+                        // Career Focus Section
+                        _buildSectionHeader('CAREER FOCUS', isDark),
+                        const SizedBox(height: 10),
+
+                        _buildLabel('Target Job Role', isDark),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF162032) : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isDark ? const Color(0xFF1E2D4A) : const Color(0xFFE2E8F0),
+                            ),
                           ),
-                          items: _targetRoles
-                              .map((role) => DropdownMenuItem(
-                                    value: role,
-                                    child: Text(role, overflow: TextOverflow.ellipsis),
-                                  ))
-                              .toList(),
-                          onChanged: (val) {
-                            if (val != null) setState(() => _selectedTargetRole = val);
-                          },
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _selectedTargetRole,
+                              isExpanded: true,
+                              dropdownColor: isDark ? const Color(0xFF1E2D4A) : Colors.white,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : AppColors.onSurface,
+                              ),
+                              icon: Icon(Icons.arrow_drop_down_rounded,
+                                  color: isDark ? AppColors.credNeonCyan : AppColors.primary),
+                              items: _targetRoles.map((role) {
+                                return DropdownMenuItem<String>(
+                                  value: role,
+                                  child: Text(role),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) setState(() => _selectedTargetRole = val);
+                              },
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 12),
+
+                        const SizedBox(height: 14),
 
                         _buildLabel('Experience Level', isDark),
-                        const SizedBox(height: 4),
-                        DropdownButtonFormField<String>(
-                          value: _selectedExperience,
-                          isExpanded: true,
-                          dropdownColor: isDark ? const Color(0xFF162032) : Colors.white,
-                          style: TextStyle(
-                              color: isDark ? Colors.white : AppColors.onSurface,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600),
-                          decoration: _buildInputDeco(
-                            hint: 'Select experience',
-                            icon: Icons.workspace_premium_rounded,
-                            isDark: isDark,
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF162032) : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isDark ? const Color(0xFF1E2D4A) : const Color(0xFFE2E8F0),
+                            ),
                           ),
-                          items: _experienceLevels
-                              .map((exp) => DropdownMenuItem(
-                                    value: exp,
-                                    child: Text(exp),
-                                  ))
-                              .toList(),
-                          onChanged: (val) {
-                            if (val != null) setState(() => _selectedExperience = val);
-                          },
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _selectedExperience,
+                              isExpanded: true,
+                              dropdownColor: isDark ? const Color(0xFF1E2D4A) : Colors.white,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white : AppColors.onSurface,
+                              ),
+                              icon: Icon(Icons.arrow_drop_down_rounded,
+                                  color: isDark ? AppColors.credNeonCyan : AppColors.primary),
+                              items: _experienceLevels.map((exp) {
+                                return DropdownMenuItem<String>(
+                                  value: exp,
+                                  child: Text(exp),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) setState(() => _selectedExperience = val);
+                              },
+                            ),
+                          ),
                         ),
-                        const SizedBox(height: 18),
 
-                        // Security Section
+                        const SizedBox(height: 20),
+
+                        // Account Security Section
                         _buildSectionHeader('ACCOUNT SECURITY', isDark),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
+
                         _buildLabel('Password', isDark),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         TextField(
                           controller: _passwordCtrl,
                           obscureText: _obscurePassword,
@@ -313,26 +388,26 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               fontSize: 13.5,
                               color: isDark ? Colors.white : AppColors.onSurface),
                           decoration: _buildInputDeco(
-                            hint: '••••••••',
+                            hint: 'Create password',
                             icon: Icons.lock_outline_rounded,
                             isDark: isDark,
-                            suffixIcon: IconButton(
+                            suffix: IconButton(
                               icon: Icon(
                                 _obscurePassword
                                     ? Icons.visibility_off_outlined
                                     : Icons.visibility_outlined,
-                                color: AppColors.outline,
                                 size: 18,
+                                color: AppColors.outline,
                               ),
                               onPressed: () =>
                                   setState(() => _obscurePassword = !_obscurePassword),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
 
                         _buildLabel('Confirm Password', isDark),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         TextField(
                           controller: _confirmPasswordCtrl,
                           obscureText: _obscureConfirmPassword,
@@ -340,25 +415,26 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               fontSize: 13.5,
                               color: isDark ? Colors.white : AppColors.onSurface),
                           decoration: _buildInputDeco(
-                            hint: '••••••••',
+                            hint: 'Re-enter password',
                             icon: Icons.lock_outline_rounded,
                             isDark: isDark,
-                            suffixIcon: IconButton(
+                            suffix: IconButton(
                               icon: Icon(
                                 _obscureConfirmPassword
                                     ? Icons.visibility_off_outlined
                                     : Icons.visibility_outlined,
-                                color: AppColors.outline,
                                 size: 18,
+                                color: AppColors.outline,
                               ),
-                              onPressed: () => setState(() =>
-                                  _obscureConfirmPassword = !_obscureConfirmPassword),
+                              onPressed: () => setState(
+                                  () => _obscureConfirmPassword = !_obscureConfirmPassword),
                             ),
                           ),
                         ),
+
                         const SizedBox(height: 16),
 
-                        // Terms & Conditions Checkbox
+                        // Terms Checkbox
                         Row(
                           children: [
                             SizedBox(
@@ -366,7 +442,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                               height: 22,
                               child: Checkbox(
                                 value: _acceptTerms,
-                                activeColor: AppColors.primary,
+                                activeColor: isDark ? AppColors.credNeonCyan : AppColors.primary,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(4),
                                 ),
@@ -376,25 +452,44 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                             ),
                             const SizedBox(width: 8),
                             Expanded(
-                              child: Text(
-                                'I agree to Cranes Terms of Service & Privacy Policy',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  color: isDark
-                                      ? const Color(0xFF94A3B8)
-                                      : AppColors.onSurfaceVariant,
+                              child: Text.rich(
+                                TextSpan(
+                                  text: 'I agree to the ',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark
+                                        ? const Color(0xFF94A3B8)
+                                        : AppColors.onSurfaceVariant,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: 'Terms of Service',
+                                      style: TextStyle(
+                                        color: isDark ? AppColors.credGold : AppColors.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const TextSpan(text: ' & '),
+                                    TextSpan(
+                                      text: 'Privacy Policy',
+                                      style: TextStyle(
+                                        color: isDark ? AppColors.credGold : AppColors.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
                           ],
                         ),
 
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 22),
 
-                        // Action CTA
+                        // Submit CTA
                         CDAButton(
-                          label: 'Create Account & Get 3 Free Trials 🚀',
-                          variant: CDAButtonVariant.gold,
+                          label: 'Create Account 🚀',
+                          variant: CDAButtonVariant.primary,
                           isLoading: authState.isLoading,
                           onTap: _handleSignUp,
                         ),
@@ -402,14 +497,14 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
 
-                  // Already have an account Footer
+                  // Already have account footer
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Already have a Cranes account? ',
+                        'Already have a CDA account? ',
                         style: TextStyle(
                           fontSize: 13,
                           color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
@@ -428,7 +523,6 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -439,14 +533,27 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
   }
 
   Widget _buildSectionHeader(String title, bool isDark) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 10.5,
-        fontWeight: FontWeight.w900,
-        color: isDark ? AppColors.credGold : AppColors.primary,
-        letterSpacing: 1.2,
-      ),
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 12,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.credGold : AppColors.primary,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2,
+            color: isDark ? AppColors.credGold : AppColors.primary,
+          ),
+        ),
+      ],
     );
   }
 
@@ -455,7 +562,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
       text,
       style: TextStyle(
         fontSize: 12.5,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.w800,
         color: isDark ? Colors.white : AppColors.onSurface,
       ),
     );
@@ -465,27 +572,35 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
     required String hint,
     required IconData icon,
     required bool isDark,
-    Widget? suffixIcon,
-    String? prefixText,
+    Widget? suffix,
   }) {
     return InputDecoration(
       hintText: hint,
-      prefixText: prefixText,
-      prefixStyle: TextStyle(
-        fontWeight: FontWeight.bold,
-        color: isDark ? AppColors.credNeonCyan : AppColors.primary,
+      hintStyle: TextStyle(
+        fontSize: 12.5,
+        color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
       ),
-      prefixIcon: Icon(
-        icon,
-        color: isDark ? AppColors.credNeonCyan : AppColors.primary,
-        size: 18,
-      ),
-      suffixIcon: suffixIcon,
+      prefixIcon: Icon(icon,
+          size: 18, color: isDark ? AppColors.credNeonCyan : AppColors.primary),
+      suffixIcon: suffix,
       filled: true,
       fillColor: isDark ? const Color(0xFF162032) : const Color(0xFFF1F5F9),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(
+          color: isDark ? const Color(0xFF1E2D4A) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(
+          color: isDark ? AppColors.credNeonCyan : AppColors.primary,
+          width: 1.5,
+        ),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     );

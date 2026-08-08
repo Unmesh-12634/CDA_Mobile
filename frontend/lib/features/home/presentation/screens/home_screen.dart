@@ -235,8 +235,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // ── Settings ─────────────────────────────────────────────
   void _openSettings() {
     final items = [
-      {'icon': Icons.person_rounded, 'label': 'Edit Profile', 'route': '/profile'},
-      {'icon': Icons.notifications_rounded, 'label': 'Notification Preferences', 'route': null},
+      {'icon': Icons.person_rounded, 'label': 'Edit Profile', 'route': '/edit-profile'},
+      {'icon': Icons.notifications_rounded, 'label': 'Notification Preferences', 'action': _showNotificationPreferencesSheet},
       {'icon': Icons.privacy_tip_rounded, 'label': 'Privacy & Security', 'route': null},
       {'icon': Icons.help_rounded, 'label': 'Help & Support', 'route': null},
       {'icon': Icons.info_rounded, 'label': 'About CDA', 'route': null},
@@ -285,7 +285,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         color: isDark ? AppColors.credDarkBorder : AppColors.outlineVariant),
                     onTap: () {
                       Navigator.pop(ctx);
-                      if (item['route'] != null) {
+                      if (item['action'] != null) {
+                        (item['action'] as Function)();
+                      } else if (item['route'] != null) {
                         context.push(item['route'] as String);
                       } else {
                         _showComingSoon(item['label'] as String);
@@ -300,6 +302,147 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
+  void _showNotificationPreferencesSheet() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    bool pushAlerts = true;
+    bool quizReminders = true;
+    bool jobAlerts = true;
+    bool interviewAlerts = true;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.credDarkCard : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 16,
+            bottom: 24 + MediaQuery.of(context).padding.bottom,
+          ),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.credDarkBorder : const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.notifications_active_rounded, color: AppColors.primary, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Notification Preferences',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : AppColors.onSurface,
+                            ),
+                          ),
+                          Text(
+                            'Customize real-time alerts & reminders',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+                SwitchListTile.adaptive(
+                  value: pushAlerts,
+                  activeColor: AppColors.primary,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('Push Notifications', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: isDark ? Colors.white : AppColors.onSurface)),
+                  subtitle: Text('Receive overall app activity updates', style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant)),
+                  onChanged: (v) => setSheetState(() => pushAlerts = v),
+                ),
+                SwitchListTile.adaptive(
+                  value: quizReminders,
+                  activeColor: AppColors.primary,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('Daily Quiz Reminders', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: isDark ? Colors.white : AppColors.onSurface)),
+                  subtitle: Text('Get notified for daily streak & XP questions', style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant)),
+                  onChanged: (v) => setSheetState(() => quizReminders = v),
+                ),
+                SwitchListTile.adaptive(
+                  value: jobAlerts,
+                  activeColor: AppColors.primary,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('Job Match Alerts', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: isDark ? Colors.white : AppColors.onSurface)),
+                  subtitle: Text('Alerts when high-match openings open', style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant)),
+                  onChanged: (v) => setSheetState(() => jobAlerts = v),
+                ),
+                SwitchListTile.adaptive(
+                  value: interviewAlerts,
+                  activeColor: AppColors.primary,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('AI Interview Feedback', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: isDark ? Colors.white : AppColors.onSurface)),
+                  subtitle: Text('Notifies when report evaluation is generated', style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant)),
+                  onChanged: (v) => setSheetState(() => interviewAlerts = v),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Notification preferences saved!'),
+                          backgroundColor: const Color(0xFF10B981),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      );
+                    },
+                    child: const Text('Save Preferences', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   // ─────────────────────────────────────────────────────────────
   @override
@@ -350,8 +493,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           SliverToBoxAdapter(child: _buildSectionHeader('Recent Activity')),
           SliverToBoxAdapter(child: _buildRecentActivity()),
 
-          // Nav bar clearance space
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
+          // Nav bar clearance space — Dynamic responsive clearance
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 80 + MediaQuery.of(context).padding.bottom,
+            ),
+          ),
         ],
       ),
     );
@@ -420,12 +567,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                             width: 44,
                                             height: 44,
                                             fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Center(
+                                              child: Text(profile.avatarInitials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                                            ),
                                           )
                                         : Image.file(
                                             File(profile.avatarImagePath!),
                                             width: 44,
                                             height: 44,
                                             fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Center(
+                                              child: Text(profile.avatarInitials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                                            ),
                                           ),
                                   )
                                 : Center(
@@ -1901,48 +2054,55 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           final isLast = i == _recentActivity.length - 1;
           return Column(
             children: [
-              GestureDetector(
-                onTap: () {
-                  if (a['route'] != null) {
-                    context.push(a['route'] as String);
-                  }
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: (a['color'] as Color).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.vertical(
+                    top: i == 0 ? const Radius.circular(20) : Radius.zero,
+                    bottom: isLast ? const Radius.circular(20) : Radius.zero,
+                  ),
+                  onTap: () {
+                    if (a['route'] != null) {
+                      context.push(a['route'] as String);
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: (a['color'] as Color).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(a['icon'] as IconData,
+                              color: a['color'] as Color, size: 20),
                         ),
-                        child: Icon(a['icon'] as IconData,
-                            color: a['color'] as Color, size: 18),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(a['title'] as String,
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: isDark ? Colors.white : AppColors.onSurface)),
-                            const SizedBox(height: 2),
-                            Text(a['sub'] as String,
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant)),
-                          ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(a['title'] as String,
+                                  style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white : AppColors.onSurface)),
+                              const SizedBox(height: 3),
+                              Text(a['sub'] as String,
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant)),
+                            ],
+                          ),
                         ),
-                      ),
-                      Icon(Icons.chevron_right_rounded,
-                          size: 18, color: isDark ? const Color(0xFF64748B) : AppColors.outlineVariant),
-                    ],
+                        Icon(Icons.chevron_right_rounded,
+                            size: 20, color: isDark ? const Color(0xFF64748B) : AppColors.outlineVariant),
+                      ],
+                    ),
                   ),
                 ),
               ),

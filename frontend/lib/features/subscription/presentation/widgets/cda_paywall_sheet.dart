@@ -50,12 +50,19 @@ class _CDAPaywallSheetState extends ConsumerState<CDAPaywallSheet> {
         ),
         title: const Row(
           children: [
-            Text('👑 ', style: TextStyle(fontSize: 24)),
-            Text('Welcome to CDA Pro!',
+            Text('👑 ', style: TextStyle(fontSize: 22)),
+            Expanded(
+              child: Text(
+                'Welcome to CDA Pro!',
                 style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 20)),
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: const Column(
@@ -153,15 +160,6 @@ class _CDAPaywallSheetState extends ConsumerState<CDAPaywallSheet> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
-                if (!sub.isPremium)
-                  Text(
-                    '${sub.trialsRemaining}/${sub.totalFreeTrials} Free Trials Left',
-                    style: const TextStyle(
-                        color: Color(0xFFEF4444),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700),
-                  ),
               ],
             ),
             const SizedBox(height: 10),

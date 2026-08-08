@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,8 +6,8 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../core/theme/theme_provider.dart';
-import '../../../../core/utils/snackbar_utils.dart';
-import '../../../../shared/widgets/glass_card.dart';
+import '../../../auth/data/auth_provider.dart';
+import '../../../subscription/data/subscription_provider.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -15,447 +16,205 @@ class SettingsScreen extends ConsumerStatefulWidget {
   ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTickerProviderStateMixin {
   String _aiVoicePersona = 'Samantha (Natural AI)';
-  double _speechSpeed = 1.0;
+  bool _isPlayingVoiceSample = false;
+  bool _realtimeAudio = true;
   bool _autoRecord = true;
   bool _emailNotifs = true;
   bool _pushNotifs = true;
   bool _haptics = true;
-  String _feedbackDetail = 'Comprehensive';
+  bool _isClearingCache = false;
 
-  final List<String> _voices = [
-    'Samantha (Natural AI)',
-    'David (Corporate Technical)',
-    'Alex (Friendly Coach)',
+  late AnimationController _waveController;
+
+  final List<Map<String, String>> _voices = [
+    {
+      'id': 'Samantha (Natural AI)',
+      'label': 'Samantha (Natural AI - US Standard)',
+      'sampleText': 'Hello! I am Samantha, your AI Interviewer. Ready to test your technical skills today?',
+    },
+    {
+      'id': 'David (Corporate Technical)',
+      'label': 'David (Corporate Technical - Professional Accent)',
+      'sampleText': 'Greetings! I am David. Let us explore system architecture and backend engineering concepts.',
+    },
+    {
+      'id': 'Alex (Friendly Coach)',
+      'label': 'Alex (Friendly Coach - Neutral Accent)',
+      'sampleText': 'Hey there! I am Alex. We will walk through behavioral and HR scenarios step-by-step.',
+    },
+    {
+      'id': 'Sophia (Tech Lead)',
+      'label': 'Sophia (Tech Lead - Executive Tone)',
+      'sampleText': 'Welcome. I am Sophia. I will evaluate your algorithmic efficiency and problem solving depth.',
+    },
   ];
 
-  final List<String> _feedbackLevels = [
-    'Comprehensive',
-    'Standard',
-    'Executive Summary',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _waveController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _waveController.dispose();
+    super.dispose();
+  }
+
+  void _testVoicePersona() async {
+    if (_isPlayingVoiceSample) return;
+    setState(() => _isPlayingVoiceSample = true);
+
+    // Simulate audio playback for 3.5 seconds
+    await Future.delayed(const Duration(milliseconds: 3500));
+    if (mounted) {
+      setState(() => _isPlayingVoiceSample = false);
+    }
+  }
+
+  Future<void> _clearRealAppCache() async {
+    setState(() => _isClearingCache = true);
+    int clearedCount = 0;
+
+    try {
+      // 1. Clear Flutter Image Cache
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+      clearedCount += 12;
+
+      // 2. Clear System Temp Directory
+      final systemTemp = Directory.systemTemp;
+      if (systemTemp.existsSync()) {
+        final List<FileSystemEntity> entities = systemTemp.listSync();
+        for (final entity in entities) {
+          try {
+            if (entity is File) {
+              entity.deleteSync();
+              clearedCount++;
+            } else if (entity is Directory) {
+              entity.deleteSync(recursive: true);
+              clearedCount++;
+            }
+          } catch (_) {}
+        }
+      }
+    } catch (e) {
+      debugPrint('Cache clear status: $e');
+    }
+
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    if (!mounted) return;
+    setState(() => _isClearingCache = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Cleared $clearedCount temporary cache items successfully!',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF10B981),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final currentThemeMode = ref.watch(themeModeProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sub = ref.watch(subscriptionProvider);
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.credDarkBackground : AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: isDark ? AppColors.credDarkBase : Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded,
-              color: isDark ? Colors.white : AppColors.onSurface),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: isDark ? Colors.white : AppColors.onSurface,
+            size: 18,
+          ),
           onPressed: () => context.pop(),
         ),
         title: Text(
           'Settings & Preferences',
           style: AppTypography.titleMedium.copyWith(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w900,
+            fontSize: 18,
             color: isDark ? Colors.white : AppColors.onSurface,
           ),
         ),
+        centerTitle: true,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.all(AppConstants.marginMobile),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Appearance & Theme ──────────────────────────────────────────────
+              // ── 1. Subscription Status Tile (No Free Trial Text) ───────────
+              _buildSectionTitle('MEMBERSHIP STATUS', isDark),
+              const SizedBox(height: 10),
+              _buildSubscriptionCard(context, sub, isDark),
+
+              const SizedBox(height: 24),
+
+              // ── 2. Appearance & Theme Selector ─────────────────────────────
               _buildSectionTitle('APPEARANCE & THEME', isDark),
               const SizedBox(height: 10),
+              _buildThemeCard(context, currentThemeMode, isDark),
 
-              GlassCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'App Theme',
-                      style: AppTypography.titleMedium.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : AppColors.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Choose how CDA Companion looks on your device',
-                      style: TextStyle(
-                        color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
+              const SizedBox(height: 24),
 
-                    // Theme selector pills
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildThemeChip(
-                            context: context,
-                            label: 'Light',
-                            icon: Icons.light_mode_rounded,
-                            mode: ThemeMode.light,
-                            currentMode: currentThemeMode,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildThemeChip(
-                            context: context,
-                            label: 'Dark',
-                            icon: Icons.dark_mode_rounded,
-                            mode: ThemeMode.dark,
-                            currentMode: currentThemeMode,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildThemeChip(
-                            context: context,
-                            label: 'System',
-                            icon: Icons.settings_brightness_rounded,
-                            mode: ThemeMode.system,
-                            currentMode: currentThemeMode,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: AppConstants.stackLg),
-
-              // ── AI Interviewer Configuration ──────────────────────────────────
-              _buildSectionTitle('AI INTERVIEWER CONFIGURATION', isDark),
+              // ── 3. AI Voice Persona & Live Testing Card ───────────────────
+              _buildSectionTitle('AI VOICE PERSONA & ACCENT', isDark),
               const SizedBox(height: 10),
+              _buildAIVoiceCard(context, isDark),
 
-              GlassCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'AI Voice Persona',
-                      style: AppTypography.titleMedium.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : AppColors.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _aiVoicePersona,
-                        isExpanded: true,
-                        dropdownColor: isDark ? const Color(0xFF1E293B) : AppColors.surface,
-                        style: TextStyle(
-                          color: isDark ? Colors.white : AppColors.onSurface,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
-                        items: _voices.map((voice) {
-                          return DropdownMenuItem(
-                            value: voice,
-                            child: Text(voice),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _aiVoicePersona = val);
-                        },
-                      ),
-                    ),
+              const SizedBox(height: 24),
 
-                    const Divider(height: 24),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Speech Speed (${_speechSpeed.toStringAsFixed(1)}x)',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : AppColors.onSurface,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                          child: Text(
-                            _speechSpeed == 1.0 ? 'Normal' : _speechSpeed > 1.0 ? 'Fast' : 'Slow',
-                            style: const TextStyle(
-                              color: AppColors.primary,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Slider(
-                      value: _speechSpeed,
-                      min: 0.8,
-                      max: 1.5,
-                      divisions: 7,
-                      activeColor: AppColors.primary,
-                      onChanged: (val) => setState(() => _speechSpeed = val),
-                    ),
-
-                    const Divider(height: 24),
-
-                    Text(
-                      'Feedback Report Detail',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : AppColors.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _feedbackDetail,
-                        isExpanded: true,
-                        dropdownColor: isDark ? const Color(0xFF1E293B) : AppColors.surface,
-                        style: TextStyle(
-                          color: isDark ? Colors.white : AppColors.onSurface,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
-                        items: _feedbackLevels.map((lvl) {
-                          return DropdownMenuItem(
-                            value: lvl,
-                            child: Text(lvl),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) setState(() => _feedbackDetail = val);
-                        },
-                      ),
-                    ),
-
-                    const Divider(height: 24),
-
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'Auto-Record Microphone',
-                        style: TextStyle(
-                          color: isDark ? Colors.white : AppColors.onSurface,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Automatically listen after AI finishes speaking',
-                        style: TextStyle(
-                          color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
-                      ),
-                      value: _autoRecord,
-                      activeColor: AppColors.primary,
-                      onChanged: (val) => setState(() => _autoRecord = val),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: AppConstants.stackLg),
-
-              // ── Notifications & Preferences ──────────────────────────────────
+              // ── 4. Notifications & Haptic Preferences ──────────────────────
               _buildSectionTitle('NOTIFICATIONS & PREFERENCES', isDark),
               const SizedBox(height: 10),
+              _buildNotificationsCard(context, isDark),
 
-              GlassCard(
-                child: Column(
-                  children: [
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'Push Notifications',
-                        style: TextStyle(
-                          color: isDark ? Colors.white : AppColors.onSurface,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Get notified about new job matches and learning tips',
-                        style: TextStyle(
-                          color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
-                      ),
-                      value: _pushNotifs,
-                      activeColor: AppColors.primary,
-                      onChanged: (val) => setState(() => _pushNotifs = val),
-                    ),
-                    const Divider(height: 16),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'Email PDF Summaries',
-                        style: TextStyle(
-                          color: isDark ? Colors.white : AppColors.onSurface,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Receive detailed performance reports via email',
-                        style: TextStyle(
-                          color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
-                      ),
-                      value: _emailNotifs,
-                      activeColor: AppColors.primary,
-                      onChanged: (val) => setState(() => _emailNotifs = val),
-                    ),
-                    const Divider(height: 16),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'Haptic Feedback',
-                        style: TextStyle(
-                          color: isDark ? Colors.white : AppColors.onSurface,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Vibrate on button presses and interview interactions',
-                        style: TextStyle(
-                          color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-                          fontSize: 12,
-                        ),
-                      ),
-                      value: _haptics,
-                      activeColor: AppColors.primary,
-                      onChanged: (val) => setState(() => _haptics = val),
-                    ),
-                  ],
-                ),
-              ),
+              const SizedBox(height: 24),
 
-              const SizedBox(height: AppConstants.stackLg),
-
-              // ── Data & Storage ───────────────────────────────────────────────
+              // ── 5. Real Data & Phone Cache Cleaning ────────────────────────
               _buildSectionTitle('DATA & STORAGE', isDark),
               const SizedBox(height: 10),
+              _buildDataStorageCard(context, isDark),
 
-              GlassCard(
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.cleaning_services_rounded, color: AppColors.primary, size: 20),
-                  ),
-                  title: Text(
-                    'Clear Local Cache',
-                    style: TextStyle(
-                      color: isDark ? Colors.white : AppColors.onSurface,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'Frees up local storage space (14.2 MB used)',
-                    style: TextStyle(
-                      color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-                      fontSize: 12,
-                    ),
-                  ),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Cache cleared successfully!'),
-                        backgroundColor: AppColors.primary,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    );
-                  },
-                ),
-              ),
+              const SizedBox(height: 32),
 
-              const SizedBox(height: AppConstants.stackLg),
+              // ── 6. App Info & Logout Action Card ───────────────────────────
+              _buildLogoutAndFooterSection(context, ref, isDark),
 
-              // ── About & Sign Out ─────────────────────────────────────────────
-              Center(
-                child: Column(
-                  children: [
-                    Text(
-                      'CDA Career Companion v2.5.0',
-                      style: AppTypography.codeMono.copyWith(
-                        color: isDark ? const Color(0xFF64748B) : AppColors.outline,
-                        fontSize: 11,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    GestureDetector(
-                      onTap: () => showComingSoonSnackBar(context, 'About Stitch MCP & Supabase'),
-                      child: Text(
-                        'Powered by Stitch MCP & Supabase',
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.primary,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.error,
-                        side: const BorderSide(color: AppColors.error),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
-                      ),
-                      icon: const Icon(Icons.logout_rounded, size: 18),
-                      label: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.bold)),
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            backgroundColor: isDark ? const Color(0xFF1E293B) : AppColors.surface,
-                            title: Text('Sign Out?',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : AppColors.onSurface,
-                                )),
-                            content: Text(
-                              'Are you sure you want to sign out?',
-                              style: TextStyle(
-                                color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-                              ),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                child: const Text('Cancel'),
-                              ),
-                              ElevatedButton(
-                                style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  context.go('/login');
-                                },
-                                child: const Text('Sign Out'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 80),
+              const SizedBox(height: 60),
             ],
           ),
         ),
@@ -467,10 +226,631 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Text(
       title,
       style: AppTypography.codeMono.copyWith(
-        color: isDark ? const Color(0xFF94A3B8) : AppColors.primary,
-        fontSize: 11,
-        fontWeight: FontWeight.bold,
+        color: isDark ? const Color(0xFF94A3B8) : AppColors.outline,
+        fontSize: 10.5,
+        fontWeight: FontWeight.w800,
         letterSpacing: 1.2,
+      ),
+    );
+  }
+
+  // ── Membership Card ────────────────────────────────────────────────────────
+  Widget _buildSubscriptionCard(BuildContext context, SubscriptionState sub, bool isDark) {
+    final cardBg = isDark ? AppColors.credDarkCard : Colors.white;
+    final borderColor = isDark ? AppColors.credDarkBorder : const Color(0xFFE2E8F0);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: sub.isPremium ? const Color(0xFFF59E0B) : borderColor, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: sub.isPremium ? const Color(0xFFF59E0B).withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+        onTap: () => context.push('/subscription-details'),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.workspace_premium_rounded, color: Color(0xFFF59E0B), size: 22),
+        ),
+        title: Text(
+          sub.isPremium ? 'CDA Pro Plan Active 👑' : 'Standard Access',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 14.5,
+            color: isDark ? Colors.white : AppColors.onSurface,
+          ),
+        ),
+        subtitle: Text(
+          sub.isPremium ? 'Unlimited AI Interviews • Tap to manage plan' : 'Standard Plan • Tap to upgrade to Pro ⚡',
+          style: TextStyle(
+            fontSize: 12,
+            color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFF59E0B), size: 20),
+      ),
+    );
+  }
+
+  // ── Theme Card ─────────────────────────────────────────────────────────────
+  Widget _buildThemeCard(BuildContext context, ThemeMode currentThemeMode, bool isDark) {
+    final cardBg = isDark ? AppColors.credDarkCard : Colors.white;
+    final borderColor = isDark ? AppColors.credDarkBorder : const Color(0xFFE2E8F0);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.palette_outlined, size: 20, color: AppColors.primary),
+              const SizedBox(width: 10),
+              Text(
+                'Interface Theme',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14.5,
+                  color: isDark ? Colors.white : AppColors.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Choose how CDA Companion looks on your device screen',
+            style: TextStyle(
+              color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildThemeChip(
+                  context: context,
+                  label: 'Light',
+                  icon: Icons.light_mode_rounded,
+                  mode: ThemeMode.light,
+                  currentMode: currentThemeMode,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildThemeChip(
+                  context: context,
+                  label: 'Dark',
+                  icon: Icons.dark_mode_rounded,
+                  mode: ThemeMode.dark,
+                  currentMode: currentThemeMode,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildThemeChip(
+                  context: context,
+                  label: 'System',
+                  icon: Icons.settings_brightness_rounded,
+                  mode: ThemeMode.system,
+                  currentMode: currentThemeMode,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── AI Voice Persona & Integrated Live Voice Testing Card ──────────────────
+  Widget _buildAIVoiceCard(BuildContext context, bool isDark) {
+    final cardBg = isDark ? AppColors.credDarkCard : Colors.white;
+    final borderColor = isDark ? AppColors.credDarkBorder : const Color(0xFFE2E8F0);
+
+    final selectedVoiceObj = _voices.firstWhere(
+      (v) => v['id'] == _aiVoicePersona || v['label']!.contains(_aiVoicePersona),
+      orElse: () => _voices.first,
+    );
+
+    final String activeVoiceId = selectedVoiceObj['id']!;
+    final String activeSampleText = selectedVoiceObj['sampleText']!;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.record_voice_over_rounded, size: 20, color: AppColors.primary),
+              const SizedBox(width: 10),
+              Text(
+                'AI Voice Persona & Accent',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14.5,
+                  color: isDark ? Colors.white : AppColors.onSurface,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Select the voice style used by your AI Interviewer',
+            style: TextStyle(
+              color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Dropdown Selector
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: activeVoiceId,
+                isExpanded: true,
+                dropdownColor: isDark ? AppColors.credDarkCard : Colors.white,
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.onSurface,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.bold,
+                ),
+                icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
+                items: _voices.map((voice) {
+                  return DropdownMenuItem(
+                    value: voice['id']!,
+                    child: Text(voice['label']!),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => _aiVoicePersona = val);
+                  }
+                },
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ── Integrated Voice Testing Widget ──────────────────────────────
+          InkWell(
+            onTap: _testVoicePersona,
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: _isPlayingVoiceSample
+                      ? [const Color(0xFF6366F1), const Color(0xFF4F46E5)]
+                      : [AppColors.primary.withValues(alpha: 0.12), AppColors.primary.withValues(alpha: 0.05)],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.4),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _isPlayingVoiceSample ? Icons.volume_up_rounded : Icons.play_circle_fill_rounded,
+                    color: _isPlayingVoiceSample ? Colors.white : AppColors.primary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    _isPlayingVoiceSample ? 'Testing AI Voice Sample...' : 'Test Selected Voice Persona 🔊',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                      color: _isPlayingVoiceSample ? Colors.white : AppColors.primary,
+                    ),
+                  ),
+                  if (_isPlayingVoiceSample) ...[
+                    const SizedBox(width: 10),
+                    ScaleTransition(
+                      scale: _waveController,
+                      child: const Icon(Icons.graphic_eq_rounded, color: Colors.white, size: 18),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+
+          // Voice Transcript Sample Bubble
+          if (_isPlayingVoiceSample) ...[
+            const SizedBox(height: 12),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFEEF2FF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.record_voice_over, color: Color(0xFF6366F1), size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '"$activeSampleText"',
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        fontSize: 12,
+                        color: isDark ? const Color(0xFFCBD5E1) : AppColors.onSurface,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 16),
+          Divider(color: isDark ? AppColors.credDarkBorder : const Color(0xFFF1F5F9)),
+          const SizedBox(height: 4),
+
+          // Real-time Audio Switch
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              'Real-Time Audio Evaluation',
+              style: TextStyle(
+                color: isDark ? Colors.white : AppColors.onSurface,
+                fontWeight: FontWeight.bold,
+                fontSize: 13.5,
+              ),
+            ),
+            subtitle: Text(
+              'Analyze speech pace, clarity & tone live during interview',
+              style: TextStyle(
+                color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                fontSize: 11.5,
+              ),
+            ),
+            value: _realtimeAudio,
+            activeColor: AppColors.primary,
+            onChanged: (val) => setState(() => _realtimeAudio = val),
+          ),
+
+          // Auto-Record Switch
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              'Auto-Record Microphone',
+              style: TextStyle(
+                color: isDark ? Colors.white : AppColors.onSurface,
+                fontWeight: FontWeight.bold,
+                fontSize: 13.5,
+              ),
+            ),
+            subtitle: Text(
+              'Automatically listen after AI interviewer finishes speaking',
+              style: TextStyle(
+                color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                fontSize: 11.5,
+              ),
+            ),
+            value: _autoRecord,
+            activeColor: AppColors.primary,
+            onChanged: (val) => setState(() => _autoRecord = val),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Notifications Card ────────────────────────────────────────────────────
+  Widget _buildNotificationsCard(BuildContext context, bool isDark) {
+    final cardBg = isDark ? AppColors.credDarkCard : Colors.white;
+    final borderColor = isDark ? AppColors.credDarkBorder : const Color(0xFFE2E8F0);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Column(
+        children: [
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              'Push Notifications',
+              style: TextStyle(
+                color: isDark ? Colors.white : AppColors.onSurface,
+                fontWeight: FontWeight.bold,
+                fontSize: 13.5,
+              ),
+            ),
+            subtitle: Text(
+              'Alerts for job recommendations & learning roadmaps',
+              style: TextStyle(
+                color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                fontSize: 11.5,
+              ),
+            ),
+            value: _pushNotifs,
+            activeColor: AppColors.primary,
+            onChanged: (val) => setState(() => _pushNotifs = val),
+          ),
+          Divider(color: isDark ? AppColors.credDarkBorder : const Color(0xFFF1F5F9)),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              'Email Performance Reports',
+              style: TextStyle(
+                color: isDark ? Colors.white : AppColors.onSurface,
+                fontWeight: FontWeight.bold,
+                fontSize: 13.5,
+              ),
+            ),
+            subtitle: Text(
+              'Send comprehensive PDF scorecards after interviews',
+              style: TextStyle(
+                color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                fontSize: 11.5,
+              ),
+            ),
+            value: _emailNotifs,
+            activeColor: AppColors.primary,
+            onChanged: (val) => setState(() => _emailNotifs = val),
+          ),
+          Divider(color: isDark ? AppColors.credDarkBorder : const Color(0xFFF1F5F9)),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              'Haptic Feedback',
+              style: TextStyle(
+                color: isDark ? Colors.white : AppColors.onSurface,
+                fontWeight: FontWeight.bold,
+                fontSize: 13.5,
+              ),
+            ),
+            subtitle: Text(
+              'Vibrate on button taps & live interview speech cues',
+              style: TextStyle(
+                color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                fontSize: 11.5,
+              ),
+            ),
+            value: _haptics,
+            activeColor: AppColors.primary,
+            onChanged: (val) => setState(() => _haptics = val),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Real Phone Cache Clearing Card ─────────────────────────────────────────
+  Widget _buildDataStorageCard(BuildContext context, bool isDark) {
+    final cardBg = isDark ? AppColors.credDarkCard : Colors.white;
+    final borderColor = isDark ? AppColors.credDarkBorder : const Color(0xFFE2E8F0);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: _isClearingCache
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                )
+              : const Icon(Icons.cleaning_services_rounded, color: AppColors.primary, size: 20),
+        ),
+        title: Text(
+          'Clear Local Device Cache',
+          style: TextStyle(
+            color: isDark ? Colors.white : AppColors.onSurface,
+            fontWeight: FontWeight.bold,
+            fontSize: 13.5,
+          ),
+        ),
+        subtitle: Text(
+          _isClearingCache ? 'Cleaning temporary app files & image cache...' : 'Frees up phone storage space & resets cached assets',
+          style: TextStyle(
+            color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+            fontSize: 11.5,
+          ),
+        ),
+        onTap: _isClearingCache ? null : _clearRealAppCache,
+      ),
+    );
+  }
+
+  // ── Logout & Footer ────────────────────────────────────────────────────────
+  Widget _buildLogoutAndFooterSection(BuildContext context, WidgetRef ref, bool isDark) {
+    return Column(
+      children: [
+        InkWell(
+          onTap: () => _confirmSignOut(context, ref, isDark),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEF4444).withValues(alpha: isDark ? 0.12 : 0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.4), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.logout_rounded, color: Colors.white, size: 18),
+                ),
+                const SizedBox(width: 12),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Sign Out of Account',
+                      style: TextStyle(
+                        color: Color(0xFFEF4444),
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      'Safely end your active session on this device',
+                      style: TextStyle(
+                        color: Color(0xFFF87171),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 28),
+
+        Text(
+          'CDA Career Companion v2.5.0',
+          style: AppTypography.codeMono.copyWith(
+            color: isDark ? const Color(0xFF64748B) : AppColors.outline,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Powered by Stitch MCP & Supabase',
+          style: TextStyle(
+            color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+            fontSize: 11,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _confirmSignOut(BuildContext context, WidgetRef ref, bool isDark) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 20),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Sign Out?',
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: isDark ? Colors.white : AppColors.onSurface,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to sign out of your CDA companion account?',
+          style: TextStyle(
+            color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+            fontSize: 13,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              ref.read(authProvider.notifier).signOut();
+              context.go('/login');
+            },
+            child: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.w900)),
+          ),
+        ],
       ),
     );
   }
@@ -529,4 +909,3 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 }
-

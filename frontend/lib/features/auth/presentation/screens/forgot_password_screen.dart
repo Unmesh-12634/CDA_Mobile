@@ -15,8 +15,8 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
 }
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
-  final _emailCtrl = TextEditingController(text: 'alex.morgan@cda.ai');
-  final _otpCtrl = TextEditingController(text: '123456');
+  final _emailCtrl = TextEditingController();
+  final _otpCtrl = TextEditingController();
   final _newPasswordCtrl = TextEditingController();
   final _confirmPasswordCtrl = TextEditingController();
 

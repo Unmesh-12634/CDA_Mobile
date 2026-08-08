@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../data/user_profile_provider.dart';
 
@@ -54,6 +55,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _checkLostImage();
     final profile = ref.read(userProfileProvider);
     _userSkills.addAll(profile.skills);
     _avatarImagePath = profile.avatarImagePath;
@@ -68,6 +70,23 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         text: 'Passionate software developer specializing in scalable Java backends & cross-platform Flutter mobile applications. Building real-world AI tools.');
     _customSkillCtrl = TextEditingController();
     _salaryCtrl = TextEditingController(text: '12');
+  }
+
+  Future<void> _checkLostImage() async {
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        final LostDataResponse response = await _picker.retrieveLostData();
+        if (response.isEmpty) return;
+        if (response.file != null) {
+          setState(() {
+            _avatarImagePath = response.file!.path;
+          });
+          await ref.read(userProfileProvider.notifier).setAvatarImagePath(response.file!.path);
+        }
+      } catch (e) {
+        debugPrint("Retrieve lost data error: $e");
+      }
+    }
   }
 
   @override
@@ -120,17 +139,78 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
-        maxWidth: 500,
-        maxHeight: 500,
+        maxWidth: 600,
+        maxHeight: 600,
         imageQuality: 85,
+        requestFullMetadata: false,
       );
       if (image != null) {
         setState(() {
           _avatarImagePath = image.path;
         });
+        await ref.read(userProfileProvider.notifier).setAvatarImagePath(image.path);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Profile photo updated!'),
+              backgroundColor: const Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
       }
     } catch (e, stack) {
       debugPrint("IMAGE PICKER ERROR: $e\n$stack");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not pick photo: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickResume() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx'],
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final file = result.files.single;
+        await ref.read(userProfileProvider.notifier).setResume(
+          fileName: file.name,
+          filePath: file.path!,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Resume "${file.name}" uploaded successfully!'),
+              backgroundColor: const Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error picking resume: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
     }
   }
 
@@ -417,12 +497,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                             width: 104,
                                             height: 104,
                                             fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Text(_avatarInitials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 34)),
                                           )
                                         : Image.file(
                                             File(_avatarImagePath!),
                                             width: 104,
                                             height: 104,
                                             fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Text(_avatarInitials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 34)),
                                           ),
                                   )
                                 : _selectedAvatarIndex == 0
@@ -464,6 +546,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
+
+                // Resume Upload Section
+                _buildResumeSection(isDark),
 
                 // Section 1: Personal Details
                 _buildSectionTitle('Personal Information', isDark),
@@ -698,15 +783,17 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 const SizedBox(height: 14),
 
                 // Job Type Tabs
-                Row(
-                  children: ['Full-Time', 'Internship', 'Remote', 'Contract'].map((type) {
-                    final isSelected = _selectedJobType == type;
-                    return Expanded(
-                      child: GestureDetector(
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: ['Full-Time', 'Internship', 'Remote', 'Contract'].map((type) {
+                      final isSelected = _selectedJobType == type;
+                      return GestureDetector(
                         onTap: () => setState(() => _selectedJobType = type),
                         child: Container(
-                          margin: const EdgeInsets.only(right: 6),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                           decoration: BoxDecoration(
                             color: isSelected
                                 ? AppColors.primary
@@ -718,24 +805,22 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                                   : (isDark ? AppColors.credDarkBorder : const Color(0xFFE2E8F0)),
                             ),
                           ),
-                          child: Center(
-                            child: Text(
-                              type,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                color: isSelected
-                                    ? Colors.white
-                                    : (isDark
-                                        ? const Color(0xFF94A3B8)
-                                        : AppColors.onSurfaceVariant),
-                              ),
+                          child: Text(
+                            type,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              color: isSelected
+                                  ? Colors.white
+                                  : (isDark
+                                      ? const Color(0xFF94A3B8)
+                                      : AppColors.onSurfaceVariant),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
                 const SizedBox(height: 20),
 
@@ -853,6 +938,191 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildResumeSection(bool isDark) {
+    final profile = ref.watch(userProfileProvider);
+    final hasResume = profile.resumeFileName != null;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.credDarkCard : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? AppColors.credDarkBorder : const Color(0xFFE2E8F0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.description_rounded, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Resume / Curriculum Vitae',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : AppColors.onSurface,
+                      ),
+                    ),
+                    Text(
+                      hasResume ? 'Uploaded & Active' : 'No resume uploaded yet',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: hasResume ? const Color(0xFF10B981) : (isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (hasResume) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E273A) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF2A364F) : const Color(0xFFE2E8F0),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.picture_as_pdf_rounded, color: Color(0xFFEF4444), size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          profile.resumeFileName!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : AppColors.onSurface,
+                          ),
+                        ),
+                        if (profile.resumeUploadedAt != null)
+                          Text(
+                            'Uploaded on ${profile.resumeUploadedAt}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isDark ? const Color(0xFF94A3B8) : AppColors.outline,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 20),
+                    onPressed: () async {
+                      await ref.read(userProfileProvider.notifier).removeResume();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('Resume removed'),
+                            backgroundColor: Colors.redAccent,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.upload_file_rounded, color: AppColors.primary, size: 18),
+                label: const Text('Change Resume (PDF/DOC)', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                onPressed: _pickResume,
+              ),
+            ),
+          ] else ...[
+            InkWell(
+              onTap: _pickResume,
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.cloud_upload_rounded, color: AppColors.primary, size: 28),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Tap to Upload Resume',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : AppColors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Supports PDF, DOC, DOCX files',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

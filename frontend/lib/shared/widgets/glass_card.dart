@@ -87,21 +87,11 @@ class _GlassCardState extends State<GlassCard> {
       child: widget.child,
     );
 
-    Widget content = isDark
-        ? ClipRRect(
-            borderRadius: radius,
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: inner,
-            ),
-          )
-        : inner;
-
-    content = AnimatedScale(
-      scale: _isPressed && widget.onTap != null ? 0.975 : 1.0,
+    Widget content = AnimatedScale(
+      scale: _isPressed && widget.onTap != null ? 0.98 : 1.0,
       duration: AppConstants.animationFast,
       curve: Curves.easeOutCubic,
-      child: content,
+      child: inner,
     );
 
     if (widget.onTap != null) {
