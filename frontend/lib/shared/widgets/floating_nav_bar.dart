@@ -127,9 +127,9 @@ class FloatingNavBar extends StatelessWidget {
                 child: Container(
                   width: 54,
                   height: 54,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       colors: [Color(0xFF4648D4), Color(0xFF6B6EF9)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,

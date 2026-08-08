@@ -83,7 +83,7 @@ class _CDAGradientFooterState extends State<CDAGradientFooter> {
     final heights = _bellHeights(widget.bars, 0.95, 0.5);
 
     return ClipRect(
-      child: Container(
+      child: SizedBox(
         height: widget.glowHeight,
         child: Stack(
           alignment: Alignment.bottomCenter,

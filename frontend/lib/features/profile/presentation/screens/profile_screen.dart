@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,202 +11,18 @@ import '../../../../shared/widgets/glass_card.dart';
 import '../../data/user_profile_provider.dart';
 import '../../../rewards/data/rewards_provider.dart';
 import '../../../rewards/presentation/widgets/reward_celebration_dialog.dart';
+import '../../../subscription/data/subscription_provider.dart';
+import '../../../subscription/presentation/widgets/cda_paywall_sheet.dart';
+import '../../../auth/data/auth_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   void _showEditProfileModal(BuildContext context, WidgetRef ref, UserProfile profile) {
-    final nameController = TextEditingController(text: profile.name);
-    final degreeController = TextEditingController(text: profile.degree);
-    final collegeController = TextEditingController(text: profile.college);
-    final roleController = TextEditingController(text: profile.targetRole);
-    final cgpaController = TextEditingController(text: profile.cgpa);
-
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          padding: EdgeInsets.only(
-            top: AppConstants.paddingLg,
-            left: AppConstants.paddingLg,
-            right: AppConstants.paddingLg,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + AppConstants.paddingLg,
-          ),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B) : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.2),
-                blurRadius: 20,
-                offset: const Offset(0, -4),
-              ),
-            ],
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
-                      borderRadius: BorderRadius.circular(100),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Edit Profile Details',
-                      style: AppTypography.titleMedium.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: isDark ? Colors.white : AppColors.onSurface,
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close_rounded, color: isDark ? Colors.white70 : AppColors.onSurface),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-                Divider(color: isDark ? const Color(0xFF334155) : AppColors.surfaceContainer),
-                const SizedBox(height: 12),
-                _buildModalTextField('Full Name', nameController, isDark, Icons.person_outline_rounded),
-                const SizedBox(height: 12),
-                _buildModalTextField('Degree / Branch', degreeController, isDark, Icons.school_outlined),
-                const SizedBox(height: 12),
-                _buildModalTextField('College / University', collegeController, isDark, Icons.account_balance_outlined),
-                const SizedBox(height: 12),
-                _buildModalTextField('Target Career Goal', roleController, isDark, Icons.work_outline_rounded),
-                const SizedBox(height: 12),
-                _buildModalTextField('CGPA / Grade', cgpaController, isDark, Icons.star_outline_rounded),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    onPressed: () {
-                      ref.read(userProfileProvider.notifier).updateProfile(
-                            name: nameController.text,
-                            degree: degreeController.text,
-                            college: collegeController.text,
-                            targetRole: roleController.text,
-                            cgpa: cgpaController.text,
-                          );
-                      Navigator.pop(ctx);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Profile updated successfully!'),
-                          backgroundColor: AppColors.success,
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      'Save Changes',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+    context.push('/edit-profile');
   }
 
-  void _showAddSkillDialog(BuildContext context, WidgetRef ref) {
-    final skillController = TextEditingController();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Add Core Skill',
-          style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.onSurface),
-        ),
-        content: TextField(
-          controller: skillController,
-          autofocus: true,
-          style: TextStyle(color: isDark ? Colors.white : AppColors.onSurface),
-          decoration: InputDecoration(
-            hintText: 'e.g. Docker, TypeScript, PyTorch',
-            hintStyle: TextStyle(color: isDark ? const Color(0xFF94A3B8) : AppColors.outline),
-            filled: true,
-            fillColor: isDark ? const Color(0xFF334155) : const Color(0xFFF8FAFC),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : AppColors.outline)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () {
-              if (skillController.text.trim().isNotEmpty) {
-                ref.read(userProfileProvider.notifier).addSkill(skillController.text.trim());
-              }
-              Navigator.pop(ctx);
-            },
-            child: const Text('Add Skill', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildModalTextField(String label, TextEditingController controller, bool isDark, IconData icon) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: isDark ? const Color(0xFFCBD5E1) : AppColors.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          style: TextStyle(fontSize: 14, color: isDark ? Colors.white : AppColors.onSurface),
-          decoration: InputDecoration(
-            prefixIcon: Icon(icon, size: 20, color: AppColors.primary),
-            filled: true,
-            fillColor: isDark ? const Color(0xFF334155) : const Color(0xFFF8FAFC),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          ),
-        ),
-      ],
-    );
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -275,6 +93,153 @@ class ProfileScreen extends ConsumerWidget {
 
               // Profile Completion Tracker Card
               _buildCompletionCard(context, ref, profile, isDark),
+
+              const SizedBox(height: 16),
+
+              // ── PRO MEMBERSHIP BANNER / CARD ────────────────────────────
+              Consumer(
+                builder: (context, ref, _) {
+                  final sub = ref.watch(subscriptionProvider);
+                  if (sub.isPremium) {
+                    return Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                            blurRadius: 18,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF59E0B),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.star_rounded, color: Colors.white, size: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'CDA Pro Membership Active 👑',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w800),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Unlimited AI Mock Interviews & Priority Placement',
+                                  style: TextStyle(
+                                      color: Color(0xFF94A3B8), fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF1E1B4B), Color(0xFF312E81)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF4F46E5).withValues(alpha: 0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF59E0B),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'UPGRADE',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w900),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${sub.trialsRemaining}/${sub.totalFreeTrials} Free Trials Remaining',
+                              style: const TextStyle(
+                                  color: Color(0xFFE0E7FF),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Become a CDA Pro Member ⚡',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Get unlimited AI mock interviews & real-time voice evaluation starting at ₹299/mo.',
+                          style: TextStyle(color: Color(0xFFC7D2FE), fontSize: 12),
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () => CDAPaywallSheet.show(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFF59E0B),
+                              foregroundColor: Colors.white,
+                              elevation: 4,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            child: const Text(
+                              'Upgrade to Pro (from ₹299/mo) 👑',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 13),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
 
               const SizedBox(height: 16),
 
@@ -457,17 +422,33 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    child: Center(
-                      child: Text(
-                        profile.avatarInitials,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 26,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                    ),
+                    child: profile.avatarImagePath != null
+                        ? ClipOval(
+                            child: kIsWeb
+                                ? Image.network(
+                                    profile.avatarImagePath!,
+                                    width: 78,
+                                    height: 78,
+                                    fit: BoxFit.cover,
+                                  )
+                                : Image.file(
+                                    File(profile.avatarImagePath!),
+                                    width: 78,
+                                    height: 78,
+                                    fit: BoxFit.cover,
+                                  ),
+                          )
+                        : Center(
+                            child: Text(
+                              profile.avatarInitials,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 26,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ),
                   ),
                   Container(
                     padding: const EdgeInsets.all(5),
@@ -495,47 +476,57 @@ class ProfileScreen extends ConsumerWidget {
                         Flexible(
                           child: Text(
                             profile.name,
-                            style: AppTypography.titleMedium.copyWith(
-                              fontSize: 20,
+                            style: AppTypography.headlineSmall.copyWith(
                               fontWeight: FontWeight.w900,
+                              fontSize: 19,
                               color: isDark ? Colors.white : AppColors.onSurface,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
-                            ),
-                            borderRadius: BorderRadius.circular(100),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 12),
-                              SizedBox(width: 3),
-                              Text(
-                                'PRO',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
+                              const SizedBox(width: 6),
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final sub = ref.watch(subscriptionProvider);
+                            if (sub.isPremium) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(100),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
-                          ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.workspace_premium_rounded,
+                                        color: Colors.white, size: 12),
+                                    SizedBox(width: 3),
+                                    Text(
+                                      'PRO 👑',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
                         ),
                       ],
                     ),
@@ -947,31 +938,6 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              InkWell(
-                onTap: () => _showAddSkillDialog(context, ref),
-                borderRadius: BorderRadius.circular(100),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(100),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.add_rounded, size: 14, color: AppColors.primary),
-                      SizedBox(width: 4),
-                      Text(
-                        'Add',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 14),
@@ -997,29 +963,13 @@ class ProfileScreen extends ConsumerWidget {
           color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
         ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            skill,
-            style: TextStyle(
-              color: isDark ? const Color(0xFFF1F5F9) : AppColors.onSurface,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(width: 6),
-          GestureDetector(
-            onTap: () {
-              ref.read(userProfileProvider.notifier).removeSkill(skill);
-            },
-            child: Icon(
-              Icons.close_rounded,
-              size: 14,
-              color: isDark ? const Color(0xFF94A3B8) : AppColors.outline,
-            ),
-          ),
-        ],
+      child: Text(
+        skill,
+        style: TextStyle(
+          color: isDark ? const Color(0xFFF1F5F9) : AppColors.onSurface,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -1306,6 +1256,7 @@ class ProfileScreen extends ConsumerWidget {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       onPressed: () {
+                        ref.read(authProvider.notifier).signOut();
                         Navigator.pop(ctx);
                         context.go('/login');
                       },

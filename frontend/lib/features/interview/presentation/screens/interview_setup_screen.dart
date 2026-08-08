@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -7,6 +8,8 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../../../shared/widgets/gradient_button.dart';
+import '../../../subscription/data/subscription_provider.dart';
+import '../../../subscription/presentation/widgets/cda_paywall_sheet.dart';
 
 // ─────────────────────────────────────────────────
 // Models
@@ -24,14 +27,14 @@ const _profileResume = 'Arjun_Vardhan_Resume.pdf'; // pre-loaded from profile
 // ─────────────────────────────────────────────────
 // Screen
 // ─────────────────────────────────────────────────
-class InterviewSetupScreen extends StatefulWidget {
+class InterviewSetupScreen extends ConsumerStatefulWidget {
   const InterviewSetupScreen({super.key});
 
   @override
-  State<InterviewSetupScreen> createState() => _InterviewSetupScreenState();
+  ConsumerState<InterviewSetupScreen> createState() => _InterviewSetupScreenState();
 }
 
-class _InterviewSetupScreenState extends State<InterviewSetupScreen>
+class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
     with TickerProviderStateMixin {
   // ── State ──────────────────────────────────────
   int _currentStep = 0;
@@ -1086,7 +1089,15 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
           GradientButton(
             text: 'Start AI Interview',
             icon: Icons.bolt_rounded,
-            onPressed: () => context.push('/interview/session'),
+            onPressed: () {
+              final success =
+                  ref.read(subscriptionProvider.notifier).consumeTrial();
+              if (success) {
+                context.push('/interview/session');
+              } else {
+                CDAPaywallSheet.show(context);
+              }
+            },
           ),
           const SizedBox(height: 10),
           SizedBox(
@@ -1099,6 +1110,7 @@ class _InterviewSetupScreenState extends State<InterviewSetupScreen>
                       fontWeight: FontWeight.bold)),
             ),
           ),
+          const SizedBox(height: 100),
         ],
       ),
     );

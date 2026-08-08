@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/splash/presentation/screens/splash_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/signup_screen.dart';
+import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/main_shell/presentation/screens/main_shell_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/learn/presentation/screens/learn_screen.dart';
@@ -13,9 +15,13 @@ import '../../features/interview/presentation/screens/interview_setup_screen.dar
 import '../../features/interview/presentation/screens/ai_interview_session_screen.dart';
 import '../../features/interview/presentation/screens/interview_analysis_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/profile/presentation/screens/edit_profile_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/quiz/presentation/screens/daily_quiz_screen.dart';
 import '../../features/jobs/presentation/screens/saved_jobs_screen.dart';
+import '../../features/roadmap/presentation/screens/career_roadmap_screen.dart';
+import '../../features/jobs/presentation/screens/application_tracker_screen.dart';
+import '../../features/notifications/presentation/screens/notifications_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -32,8 +38,21 @@ final _router = GoRouter(
       path: '/login',
       builder: (context, state) => const LoginScreen(),
     ),
+    GoRoute(
+      path: '/signup',
+      builder: (context, state) => const SignUpScreen(),
+    ),
+    GoRoute(
+      path: '/forgot-password',
+      builder: (context, state) => const ForgotPasswordScreen(),
+    ),
 
     // ── Full-screen immersive routes (no bottom nav bar) ─────────────────────
+    GoRoute(
+      path: '/edit-profile',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const EditProfileScreen(),
+    ),
     GoRoute(
       path: '/quiz',
       parentNavigatorKey: _rootNavigatorKey,
@@ -43,6 +62,21 @@ final _router = GoRouter(
       path: '/saved-jobs',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const SavedJobsScreen(),
+    ),
+    GoRoute(
+      path: '/career-roadmap',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const CareerRoadmapScreen(),
+    ),
+    GoRoute(
+      path: '/applications',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const ApplicationTrackerScreen(),
+    ),
+    GoRoute(
+      path: '/notifications',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const NotificationsScreen(),
     ),
     GoRoute(
       path: '/interview/setup',
