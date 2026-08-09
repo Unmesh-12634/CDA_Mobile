@@ -15,37 +15,53 @@ class ReportGeneratorAgent:
         self.groq_service = groq_service
 
     def _build_question_reviews_from_history(self, memory: InterviewMemory) -> List[QuestionReview]:
-        """Guarantees a detailed, complete QuestionReview for EVERY turn in memory.history."""
+        """Guarantees a detailed, evidence-based QuestionReview for EVERY turn in memory.history."""
         reviews: List[QuestionReview] = []
         for turn in memory.history:
             eval_data = turn.evaluation
-            good_pts = eval_data.strengths if eval_data.strengths else getattr(eval_data, "concepts_covered", [])
-            missing_pts = eval_data.missing_points if eval_data.missing_points else getattr(eval_data, "concepts_partially_covered", [])
+            good_pts = eval_data.strengths if eval_data.strengths else getattr(eval_data, "correct_points", [])
+            missing_pts = eval_data.missing_points if eval_data.missing_points else getattr(eval_data, "missing_concepts", [])
             if not good_pts:
-                good_pts = [f"Attempted response for {turn.question.topic}"]
+                good_pts = [f"Provided technical response for {turn.question.topic}"]
             if not missing_pts and eval_data.overall < 7.5:
-                missing_pts = ["Detailed production mechanics or trade-off metrics"]
+                missing_pts = [f"Deeper trade-off analysis for {turn.question.topic}"]
 
             how_to = (
-                getattr(eval_data, "constructive_feedback", "")
+                getattr(eval_data, "question_specific_improvement", "")
+                or getattr(eval_data, "constructive_feedback", "")
                 or getattr(eval_data, "senior_coaching_notes", "")
-                or f"Focus on explaining metrics and trade-offs for {turn.question.topic}."
+                or f"To improve on {turn.question.topic}, explain the underlying technical mechanics and trade-offs directly."
             )
             better_ans = (
-                getattr(eval_data, "senior_coaching_notes", "")
-                or getattr(eval_data, "expected_vs_actual", "")
-                or f"A Senior Lead response would detail trade-offs, architecture patterns, and production metrics for {turn.question.topic}."
+                getattr(eval_data, "expected_vs_actual", "")
+                or getattr(eval_data, "senior_coaching_notes", "")
+                or f"A strong answer would explain the core architecture, edge cases, and failure recovery for {turn.question.topic}."
             )
+
+            score_rat = (
+                getattr(eval_data, "score_rationale", "")
+                or getattr(eval_data, "feedback_summary", "")
+                or f"Candidate scored {eval_data.overall}/10 based on technical accuracy and reasoning depth on {turn.question.topic}."
+            )
+
+            ev_type_str = str(getattr(eval_data, "evidence_type", "Demonstrated Practical Experience"))
 
             q_review = QuestionReview(
                 question_id=turn.turn_number,
+                question_type=turn.question.question_type.value,
+                competency_tested=turn.question.topic,
+                why_this_question_was_asked=getattr(turn.question, "rationale", f"To evaluate candidate competency in {turn.question.topic}"),
                 question=turn.question.text,
                 candidate_answer=turn.candidate_answer,
                 score=eval_data.overall,
+                score_rationale=score_rat,
                 interviewer_expectation=getattr(eval_data, "expected_vs_actual", f"Expected clear technical explanation of {turn.question.topic}."),
-                concepts_covered=getattr(eval_data, "concepts_covered", []),
-                concepts_partially_covered=getattr(eval_data, "concepts_partially_covered", []),
-                missing_concepts=getattr(eval_data, "incorrect_or_missing_concepts", eval_data.missing_points),
+                concepts_covered=getattr(eval_data, "correct_points", eval_data.strengths),
+                concepts_partially_covered=getattr(eval_data, "partially_correct_points", []),
+                incorrect_points=getattr(eval_data, "incorrect_points", []),
+                missing_concepts=getattr(eval_data, "missing_concepts", eval_data.missing_points),
+                actual_experience_evidence="Demonstrated practical implementation details" if "Demonstrated" in ev_type_str else "Conceptual understanding demonstrated",
+                hypothetical_reasoning="Reasoned through hypothetical solution" if "Hypothetical" in ev_type_str else "Stated direct experience",
                 practical_vs_theory=getattr(eval_data, "practical_vs_theory_signal", "Balanced"),
                 tradeoffs_discussed=getattr(eval_data, "tradeoff_analysis_score", 0.0) >= 6.5,
                 architecture_thinking_shown=getattr(eval_data, "engineering_judgement_score", 0.0) >= 6.5,
@@ -53,6 +69,8 @@ class ReportGeneratorAgent:
                 confidence_trend="Confident" if eval_data.confidence_score >= 6.5 else "Hesitant",
                 what_was_good=good_pts,
                 what_was_missing=missing_pts,
+                how_answer_affected_interview=f"Influenced recommendation for next turn action: {eval_data.recommended_next_action}.",
+                why_next_question_was_chosen=f"Next question selected to evaluate {eval_data.recommended_next_action} topic.",
                 how_to_improve=how_to,
                 example_better_answer=better_ans,
                 senior_coaching_diff=better_ans,
@@ -70,14 +88,12 @@ class ReportGeneratorAgent:
                 f"Q: \"{turn.question.text}\"\n"
                 f"A: \"{turn.candidate_answer}\"\n"
                 f"Turn Score: {eval_data.overall}/10 (Accuracy: {eval_data.technical_accuracy}, Judgement: {getattr(eval_data, 'engineering_judgement_score', eval_data.depth)}, Trade-offs: {getattr(eval_data, 'tradeoff_analysis_score', eval_data.depth)})\n"
-                f"Intent: {getattr(eval_data, 'intent_understanding', 'N/A')}\n"
-                f"Signal: {getattr(eval_data, 'practical_vs_theory_signal', 'Balanced')}\n"
-                f"Concepts Covered: {', '.join(getattr(eval_data, 'concepts_covered', []))}\n"
-                f"Concepts Partially Covered: {', '.join(getattr(eval_data, 'concepts_partially_covered', []))}\n"
-                f"Strengths: {', '.join(eval_data.strengths)}\n"
-                f"Missing: {', '.join(eval_data.missing_points)}\n"
-                f"Expected vs Actual: {getattr(eval_data, 'expected_vs_actual', 'N/A')}\n"
-                f"Senior Coaching Notes: {getattr(eval_data, 'senior_coaching_notes', 'N/A')}\n"
+                f"Intent: {getattr(eval_data, 'intent_understanding', 'Evaluated candidate technical response for ' + turn.question.topic)}\n"
+                f"Evidence Type: {getattr(eval_data, 'evidence_type', 'Demonstrated Practical Experience')}\n"
+                f"Correct Points: {', '.join(getattr(eval_data, 'correct_points', eval_data.strengths))}\n"
+                f"Missing Concepts: {', '.join(getattr(eval_data, 'missing_concepts', eval_data.missing_points))}\n"
+                f"Score Rationale: {getattr(eval_data, 'score_rationale', eval_data.feedback_summary)}\n"
+                f"Question Specific Advice: {getattr(eval_data, 'question_specific_improvement', 'Detail core mechanics and trade-offs')}\n"
             )
             transcript_lines.append(t_str)
 
@@ -116,20 +132,24 @@ class ReportGeneratorAgent:
                 if val is not None and val <= 10.0:
                     setattr(report, attr, round(val * 10.0, 1))
 
-            # Calibrate hire_recommendation if missing
-            if not getattr(report, "hire_recommendation", None):
-                if math_avg >= 85.0:
-                    report.hire_recommendation = HireRecommendation.STRONG_HIRE
-                    report.hiring_readiness = "Strong Candidate"
-                elif math_avg >= 70.0:
-                    report.hire_recommendation = HireRecommendation.HIRE
-                    report.hiring_readiness = "Interview Ready"
-                elif math_avg >= 55.0:
-                    report.hire_recommendation = HireRecommendation.LEAN_HIRE
-                    report.hiring_readiness = "Developing"
-                else:
-                    report.hire_recommendation = HireRecommendation.NO_HIRE
-                    report.hiring_readiness = "Needs Preparation"
+            # Calibrate hire_recommendation if missing or inconsistent
+            if math_avg >= 85.0:
+                report.hire_recommendation = HireRecommendation.STRONG_HIRE
+                report.hiring_readiness = "Strong Candidate"
+            elif math_avg >= 70.0:
+                report.hire_recommendation = HireRecommendation.HIRE
+                report.hiring_readiness = "Interview Ready"
+            elif math_avg >= 55.0:
+                report.hire_recommendation = HireRecommendation.LEAN_HIRE
+                report.hiring_readiness = "Developing"
+            else:
+                report.hire_recommendation = HireRecommendation.NO_HIRE
+                report.hiring_readiness = "Needs Preparation"
+
+            # Set confidence based on question count
+            if len(memory.history) <= 5:
+                report.recommendation_confidence = "Medium Confidence (Limited Scope)"
+                report.scope_limit_notice = f"Interview scope was limited to {len(memory.history)} questions. Un-sampled skills are marked as Not Sampled rather than weak."
 
             # Set trajectory analysis if not populated
             if not getattr(report, "trajectory_analysis", ""):

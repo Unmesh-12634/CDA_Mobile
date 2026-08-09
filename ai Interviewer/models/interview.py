@@ -71,26 +71,35 @@ class TurnRecord(BaseModel):
 
 
 class QuestionReview(BaseModel):
-    """Detailed post-interview question review item."""
+    """Detailed post-interview question review item with complete evidence breakdown."""
 
     question_id: int
+    question_type: str = Field(default="Technical")
+    competency_tested: str = Field(default="Core Fundamentals")
+    why_this_question_was_asked: str = Field(default="")
     question: str
     candidate_answer: str
     score: float
-    interviewer_expectation: str = ""
+    score_rationale: str = Field(default="")
+    interviewer_expectation: str = Field(default="")
     concepts_covered: List[str] = Field(default_factory=list)
     concepts_partially_covered: List[str] = Field(default_factory=list)
+    incorrect_points: List[str] = Field(default_factory=list)
     missing_concepts: List[str] = Field(default_factory=list)
-    practical_vs_theory: str = "Balanced"
+    actual_experience_evidence: str = Field(default="")
+    hypothetical_reasoning: str = Field(default="")
+    practical_vs_theory: str = Field(default="Balanced")
     tradeoffs_discussed: bool = False
     architecture_thinking_shown: bool = False
-    communication_structure: str = "Structured & Clear"
-    confidence_trend: str = "Confident"
+    communication_structure: str = Field(default="Structured & Clear")
+    confidence_trend: str = Field(default="Confident")
     what_was_good: List[str] = Field(default_factory=list)
     what_was_missing: List[str] = Field(default_factory=list)
-    how_to_improve: str = ""
-    example_better_answer: str = ""
-    senior_coaching_diff: str = ""
+    how_answer_affected_interview: str = Field(default="")
+    why_next_question_was_chosen: str = Field(default="")
+    how_to_improve: str = Field(default="")
+    example_better_answer: str = Field(default="")
+    senior_coaching_diff: str = Field(default="")
 
 
 class InterviewReport(BaseModel):
@@ -112,19 +121,38 @@ class InterviewReport(BaseModel):
     engineering_judgement_score: float = Field(default=75.0, ge=0.0, le=100.0)
     production_readiness_score: float = Field(default=75.0, ge=0.0, le=100.0)
 
+    # Evidence Coverage Matrix (Validated vs Partially Validated vs Unverified vs Not Sampled)
+    resume_coverage_percentage: float = Field(default=85.0, ge=0.0, le=100.0)
+    validated_skills: List[str] = Field(default_factory=list)
+    partially_validated_skills: List[str] = Field(default_factory=list)
+    unverified_skills: List[str] = Field(default_factory=list)
+    not_sampled_skills: List[str] = Field(default_factory=list)
+    
+    projects_evaluated: List[str] = Field(default_factory=list)
+    partially_validated_projects: List[str] = Field(default_factory=list)
+    not_sampled_projects: List[str] = Field(default_factory=list)
+    
+    certifications_status: List[str] = Field(default_factory=list)
+    hackathons_status: List[str] = Field(default_factory=list)
+    leadership_status: List[str] = Field(default_factory=list)
+    hackathons_and_certs_evaluated: List[str] = Field(default_factory=list)
+
     hire_recommendation: HireRecommendation = HireRecommendation.HIRE
     hiring_readiness: str  # "Needs Preparation", "Developing", "Interview Ready", "Strong Candidate"
     hiring_panel_rationale: str = ""
     hiring_risks: List[str] = Field(default_factory=list)
-    recommendation_confidence: str = "High Confidence"
+    recommendation_confidence: str = "Medium Confidence (Limited Scope)"
     suggested_salary_level: str = "INR 12 - 18 LPA"
+    salary_estimate_note: str = Field(default="Estimated baseline market salary range based on candidate experience; not tied to technical score.")
+    scope_limit_notice: str = Field(default="Interview scope was limited to configured question count. Un-sampled skills are marked as Not Sampled rather than weak.")
 
     summary: str
     recruiter_notes: List[str] = Field(default_factory=list)
+    interviewer_notes: List[str] = Field(default_factory=list, description="Genuine Engineering Manager observations")
     trajectory_analysis: str = ""
     evidence_backed_conclusions: List[str] = Field(default_factory=list)
 
-    # 14-Dimension Narrative Evaluations
+    # Narrative Dimension Evaluations
     technical_maturity_eval: str = ""
     communication_style_eval: str = ""
     problem_solving_eval: str = ""
