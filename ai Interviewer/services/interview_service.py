@@ -65,7 +65,17 @@ class InterviewService:
         """Processes candidate answer for current turn, evaluates it, updates memory, and decides next question or end."""
         memory = self.sessions.get(session_id)
         if not memory:
-            raise ValueError(f"Interview session '{session_id}' not found.")
+            logger.warning(f"Session '{session_id}' not found in RAM. Auto-reconstructing session context for candidate...")
+            config = InterviewConfig(
+                candidate_name="Candidate",
+                job_role="Software Engineer",
+                target_question_count=5,
+            )
+            profile = self.resume_service.process_resume("", config.candidate_name)
+            plan = self.planner_agent.create_plan(config, profile)
+            memory = InterviewMemory(config=config, profile=profile, plan=plan)
+            memory.session_id = session_id
+            self.sessions[session_id] = memory
 
         # Check for explicit termination trigger
         if candidate_answer.strip().lower() == "end interview":
@@ -77,20 +87,11 @@ class InterviewService:
             q1, _ = self.interviewer_agent.generate_next_question(memory)
             current_q = q1
 
-        # 1. Fast sub-300ms single-pass turn evaluation & memory recording
-        score = 8.5 if len(candidate_answer.strip()) > 15 else 6.0
-        evaluation = AnswerEvaluation(
-            question_id=getattr(current_q, "id", 1),
-            technical_accuracy=score,
-            relevance=score,
-            clarity=score,
-            depth=score - 0.5,
-            overall=score,
-            strengths=["Clear candidate technical explanation."],
-            missing_points=[],
-            follow_up_needed=False,
-            recommended_next_action="next_topic",
-            feedback_summary="Candidate response recorded.",
+        # 1. Real Groq Llama-3 AI Turn Evaluation
+        evaluation = self.evaluator_agent.evaluate_answer(
+            question=current_q,
+            candidate_answer=candidate_answer,
+            job_role=memory.config.job_role,
         )
 
         # 2. Store turn in memory
@@ -101,7 +102,7 @@ class InterviewService:
             logger.info(f"Target question count ({memory.config.target_question_count}) reached for session '{session_id}'")
             return self.end_session(session_id)
 
-        # 4. Generate dynamic next question
+        # 4. Generate dynamic next question via Groq LLM
         next_q, transition = self.interviewer_agent.generate_next_question(memory)
         memory.current_question = next_q
 
