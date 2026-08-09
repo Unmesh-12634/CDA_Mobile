@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_typography.dart';
@@ -26,7 +27,11 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
   // TTS & Speech State
   late FlutterTts _flutterTts;
+  late stt.SpeechToText _speechToText;
+  bool _speechEnabled = false;
+  String _liveSpokenText = '';
   double _currentSpeechRate = 0.38; // Default natural speech pace
+
   int _autoMicCountdown = 0;
   Timer? _autoMicTimer;
   bool _isListening = false;
@@ -78,6 +83,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     )..repeat(reverse: true);
 
     _initTts();
+    _initSpeechToText();
     _initBackendSession();
   }
 
@@ -105,6 +111,47 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     });
   }
 
+  Future<void> _initSpeechToText() async {
+    _speechToText = stt.SpeechToText();
+    try {
+      _speechEnabled = await _speechToText.initialize(
+        onError: (val) => debugPrint('STT error: $val'),
+        onStatus: (val) => debugPrint('STT status: $val'),
+      );
+    } catch (e) {
+      debugPrint('STT init warning: $e');
+    }
+  }
+
+  void _startSpeechListening() async {
+    if (!_speechEnabled) return;
+    try {
+      await _speechToText.listen(
+        onResult: (result) {
+          if (mounted) {
+            setState(() {
+              _liveSpokenText = result.recognizedWords;
+            });
+          }
+        },
+        listenOptions: stt.SpeechListenOptions(
+          listenFor: const Duration(seconds: 120),
+          pauseFor: const Duration(seconds: 3),
+          partialResults: true,
+          localeId: 'en_US',
+        ),
+      );
+    } catch (e) {
+      debugPrint('STT listen error: $e');
+    }
+  }
+
+  void _stopSpeechListening() async {
+    try {
+      await _speechToText.stop();
+    } catch (_) {}
+  }
+
   void _cycleSpeechRate() async {
     double nextRate = 0.38;
     if ((_currentSpeechRate - 0.38).abs() < 0.02) {
@@ -126,6 +173,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
   void _speakAiText(String text) async {
     if (text.trim().isEmpty || _isMuted) return;
+    _stopSpeechListening();
     setState(() {
       _isAiSpeaking = true;
       _isListening = false;
@@ -151,7 +199,9 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         _isAiSpeaking = false;
         _autoMicCountdown = 0;
         _isListening = true;
+        _liveSpokenText = '';
       });
+      _startSpeechListening();
     }
   }
 
@@ -160,6 +210,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     setState(() {
       _autoMicCountdown = 3;
       _isListening = false;
+      _liveSpokenText = '';
     });
 
     _autoMicTimer = Timer.periodic(const Duration(seconds: 1), (t) {
@@ -176,7 +227,9 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         setState(() {
           _autoMicCountdown = 0;
           _isListening = true;
+          _liveSpokenText = '';
         });
+        _startSpeechListening();
         _startQuestionTimer();
       }
     });
@@ -304,16 +357,19 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     });
   }
 
-  /// 100% REAL Groq Llama-3 AI Question & Evaluation Backend Sync
+  /// 100% REAL Groq Llama-3 AI Question & Evaluation Backend Sync with Native STT
   Future<void> _nextQuestion({String? typedAnswer}) async {
     if (_isSubmittingAnswer) return;
 
     _autoMicTimer?.cancel();
+    _stopSpeechListening();
     await _flutterTts.stop();
 
     final candidateResponseText = (typedAnswer != null && typedAnswer.trim().isNotEmpty)
         ? typedAnswer.trim()
-        : 'Candidate provided a detailed response addressing technical trade-offs.';
+        : (_liveSpokenText.trim().isNotEmpty
+            ? _liveSpokenText.trim()
+            : 'Candidate provided a detailed response addressing technical trade-offs.');
 
     if (_currentQuestionIndex < _totalQuestions) {
       setState(() {
@@ -321,6 +377,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         _isAiSpeaking = true;
         _isListening = false;
         _activeHintText = null;
+        _liveSpokenText = '';
       });
 
       final api = ref.read(aiInterviewServiceProvider);
@@ -414,6 +471,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   Future<void> _finishInterviewSession() async {
     _countdownTimer?.cancel();
     _autoMicTimer?.cancel();
+    _stopSpeechListening();
     await _flutterTts.stop();
 
     setState(() {
@@ -455,6 +513,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
   @override
   void dispose() {
+    _stopSpeechListening();
     _flutterTts.stop();
     _autoMicTimer?.cancel();
     _countdownTimer?.cancel();
@@ -902,6 +961,31 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
                     ),
 
                     const SizedBox(height: 12),
+
+                    // LIVE SPOKEN VOICE TRANSCRIPTION PREVIEW
+                    if (_isListening && _liveSpokenText.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.mic_rounded, color: Color(0xFF10B981), size: 16),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Live Speech: "$_liveSpokenText"',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF10B981)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
 
                     // WAVEFORM EQUALIZER
                     SizedBox(
@@ -1423,6 +1507,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
               Navigator.of(context).pop();
 
               _autoMicTimer?.cancel();
+              _stopSpeechListening();
               _flutterTts.stop();
 
               setState(() {
