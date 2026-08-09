@@ -277,71 +277,58 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         : 'Candidate provided a detailed response addressing technical trade-offs.';
 
     if (_currentQuestionIndex < _totalQuestions) {
+      final setupConfig = ref.read(interviewSetupProvider);
+      final nextQuestionList = [
+        'Great explanation! How do you approach error handling, caching, and state synchronization under high system load in ${setupConfig.jobRole}?',
+        'Understood. Could you walk me through how you optimize database queries, index design, and API trade-offs for scalability?',
+        'Excellent point. How do you evaluate security trade-offs, authentication flows, and data protection in your architecture?',
+        'Very clear. What testing methodology (Unit vs Integration vs E2E) do you prioritize when shipping production features?',
+      ];
+
+      final optimisticNext = nextQuestionList[(_currentQuestionIndex - 1) % nextQuestionList.length];
+
       setState(() {
-        _isSubmittingAnswer = true;
+        _currentQuestionIndex++;
+        _isSubmittingAnswer = false;
+        _currentQuestionText = optimisticNext;
+        _transitionPhrase = 'Great response!';
         _isAiSpeaking = true;
         _isListening = false;
-        _currentQuestionText = 'Processing response & loading next scenario...';
+
+        _transcriptHistory.add({
+          'speaker': 'Candidate (You)',
+          'time': _formatTimer(150 - _secondsRemaining),
+          'text': candidateResponseText,
+          'isAi': 'false',
+        });
+        _transcriptHistory.add({
+          'speaker': 'AI Interviewer',
+          'time': '00:10',
+          'text': optimisticNext,
+          'isAi': 'true',
+        });
       });
 
-      final api = ref.read(aiInterviewServiceProvider);
+      _speakAiText('Great response! $optimisticNext');
 
+      // Async background backend sync
       if (_sessionId != null) {
-        final nextData = await api.submitAnswer(
+        final api = ref.read(aiInterviewServiceProvider);
+        api.submitAnswer(
           sessionId: _sessionId!,
           candidateAnswer: candidateResponseText,
           speakingDurationSec: (150 - _secondsRemaining).toDouble(),
-        );
-
-        if (mounted && nextData != null) {
-          setState(() {
-            _currentQuestionIndex = nextData.turnNumber;
-            _totalQuestions = nextData.totalTargetQuestions;
-            if (nextData.currentQuestion != null && nextData.currentQuestion!.isNotEmpty) {
+        ).then((nextData) {
+          if (mounted && nextData != null && nextData.currentQuestion != null && nextData.currentQuestion!.isNotEmpty) {
+            setState(() {
               _currentQuestionText = nextData.currentQuestion!;
-            }
-            _transitionPhrase = nextData.transitionPhrase;
-
-            _transcriptHistory.add({
-              'speaker': 'Candidate (You)',
-              'time': _formatTimer(150 - _secondsRemaining),
-              'text': candidateResponseText,
-              'isAi': 'false',
+              if (nextData.transitionPhrase.isNotEmpty) {
+                _transitionPhrase = nextData.transitionPhrase;
+              }
             });
-            _transcriptHistory.add({
-              'speaker': 'AI Interviewer',
-              'time': '00:10',
-              'text': _currentQuestionText,
-              'isAi': 'true',
-            });
-          });
-
-          _speakAiText('$_transitionPhrase. $_currentQuestionText');
-        }
-      } else {
-        setState(() {
-          _currentQuestionIndex++;
-          _currentQuestionText = 'Could you elaborate on architectural scalability, trade-offs, and fault tolerance in your projects?';
-          _transcriptHistory.add({
-            'speaker': 'Candidate (You)',
-            'time': _formatTimer(150 - _secondsRemaining),
-            'text': candidateResponseText,
-            'isAi': 'false',
-          });
-          _transcriptHistory.add({
-            'speaker': 'AI Interviewer',
-            'time': '00:10',
-            'text': _currentQuestionText,
-            'isAi': 'true',
-          });
-        });
-
-        _speakAiText('Great response! Now, $_currentQuestionText');
-      }
-
-      if (mounted) {
-        setState(() {
-          _isSubmittingAnswer = false;
+          }
+        }).catchError((e) {
+          debugPrint('Background submit error: $e');
         });
       }
     } else {

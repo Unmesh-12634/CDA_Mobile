@@ -887,6 +887,9 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
   // ─────────────────────────────────────────────────────────
   // STEP 4 — Resume
   // ─────────────────────────────────────────────────────────
+  bool _isAnalyzingResume = false;
+  List<String> _parsedResumeSkills = [];
+
   Widget _buildStep4Resume(ColorScheme cs) {
     return Padding(
       padding: const EdgeInsets.all(AppConstants.marginMobile),
@@ -898,7 +901,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                   .copyWith(fontWeight: FontWeight.bold, color: cs.onSurface)),
           const SizedBox(height: 6),
           Text(
-            'We\'ve loaded your resume from your profile. You can replace it if needed.',
+            'Upload your PDF resume so AI parses your skills upfront for instant question customization.',
             style: AppTypography.bodyMedium
                 .copyWith(color: cs.onSurfaceVariant, height: 1.5),
           ),
@@ -931,7 +934,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        'PDF Document · Loaded from profile',
+                        'PDF Document · Tap to change & analyze',
                         style: AppTypography.bodySmall
                             .copyWith(color: cs.onSurfaceVariant),
                       ),
@@ -942,13 +945,88 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                   icon: const Icon(Icons.swap_horiz_rounded,
                       color: AppColors.primary),
                   onPressed: _pickResume,
-                  tooltip: 'Change resume',
+                  tooltip: 'Change & Analyze Resume',
                 ),
               ],
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+
+          if (_isAnalyzingResume) ...[
+            GlassCard(
+              padding: const EdgeInsets.all(16),
+              backgroundColor: AppColors.primary.withValues(alpha: 0.08),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary)),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Analyzing Resume with AI...',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primary),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Extracting skills & project profile for instant personalized questions.',
+                          style: TextStyle(fontSize: 11, color: cs.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          if (_parsedResumeSkills.isNotEmpty) ...[
+            GlassCard(
+              padding: const EdgeInsets.all(14),
+              backgroundColor: const Color(0xFF10B981).withValues(alpha: 0.08),
+              border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 16),
+                      SizedBox(width: 8),
+                      Text(
+                        'AI SKILLS EXTRACTED UPFRONT',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF10B981), letterSpacing: 0.5),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: _parsedResumeSkills.map((skill) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        skill,
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                      ),
+                    )).toList(),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
 
           GlassCard(
             padding: const EdgeInsets.all(14),
@@ -959,7 +1037,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'The AI will personalise questions based on your experience and listed skills.',
+                    'Your questions are personalized based on your analyzed resume & skill breakdown.',
                     style: AppTypography.bodySmall
                         .copyWith(color: cs.onSurfaceVariant, height: 1.4),
                   ),
@@ -977,9 +1055,32 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
       final result = await FilePicker.platform
           .pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
       if (result != null && result.files.isNotEmpty) {
-        setState(() => _resumeFileName = result.files.first.name);
+        final path = result.files.first.path;
+        setState(() {
+          _resumeFileName = result.files.first.name;
+          _isAnalyzingResume = true;
+        });
+
+        if (path != null) {
+          final api = ref.read(aiInterviewServiceProvider);
+          final resData = await api.uploadResume(path, 'Arjun Verma');
+          if (mounted && resData != null) {
+            setState(() {
+              _isAnalyzingResume = false;
+              if (resData['skills'] != null) {
+                _parsedResumeSkills = List<String>.from(resData['skills']);
+              }
+            });
+          } else {
+            if (mounted) setState(() => _isAnalyzingResume = false);
+          }
+        } else {
+          if (mounted) setState(() => _isAnalyzingResume = false);
+        }
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _isAnalyzingResume = false);
+    }
   }
 
   // ─────────────────────────────────────────────────────────

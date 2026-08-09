@@ -134,6 +134,23 @@ class AiInterviewService {
     return null;
   }
 
+  /// Uploads and parses candidate PDF resume upfront during setup Step 4
+  Future<Map<String, dynamic>?> uploadResume(String filePath, String candidateName) async {
+    try {
+      final formData = FormData.fromMap({
+        'candidate_name': candidateName,
+        'file': await MultipartFile.fromFile(filePath, filename: filePath.split('/').last),
+      });
+      final response = await _dio.post('/api/v1/resume/upload', data: formData);
+      if (response.statusCode == 200 && response.data != null) {
+        return response.data;
+      }
+    } catch (e) {
+      debugPrint('Resume Upload Error: $e');
+    }
+    return null;
+  }
+
   /// Concludes interview session and retrieves final report
   Future<Map<String, dynamic>?> finishInterview(String sessionId) async {
     try {
