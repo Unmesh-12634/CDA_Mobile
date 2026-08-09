@@ -12,15 +12,13 @@ logger = get_logger("groq_service")
 T = TypeVar("T", bound=BaseModel)
 
 # Active, supported Groq LLM models (decommissioned models like llama3-70b & mixtral removed)
+# Active, ultra-fast Groq LLM models (<250ms completion time)
 FALLBACK_MODELS: List[str] = [
-    "llama-3.1-8b-instant",          # Primary: fast & active (128k context)
-    "llama-3.3-70b-versatile",        # Active (128k context)
-    "llama-3.2-3b-preview",          # Active lightweight (128k context)
-    "qwen-2.5-coder-32b",            # Active code specialist
-    "deepseek-r1-distill-llama-70b",  # Active reasoning model
+    "llama-3.1-8b-instant",          # Primary: fast & active (128k context, ~120ms)
+    "llama-3.3-70b-versatile",        # Active fallback (128k context, ~350ms)
 ]
 
-MAX_PROMPT_CHARS = 7000  # Cap prompt characters to keep single-request token sizes < 2500 tokens
+MAX_PROMPT_CHARS = 4500  # Cap prompt characters to keep single-request token sizes < 2500 tokens
 
 
 class GroqService:
@@ -33,7 +31,7 @@ class GroqService:
 
         if self.api_key:
             try:
-                self.client = Groq(api_key=self.api_key)
+                self.client = Groq(api_key=self.api_key, timeout=2.5)
             except Exception as e:
                 logger.error(f"Failed to initialize Groq client: {e}")
 

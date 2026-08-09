@@ -2,7 +2,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, status
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -162,7 +162,7 @@ def start_interview(req: StartInterviewRequest):
         raise HTTPException(status_code=500, detail=f"Failed to start interview: {str(e)}")
 
 @app.post("/api/v1/interview/answer", response_model=AnswerResponse)
-def submit_answer(req: AnswerRequest):
+def submit_answer(req: AnswerRequest, background_tasks: BackgroundTasks):
     """Processes candidate's answer, evaluates it, and generates the next AI question."""
     try:
         resp = interview_service.process_answer(req.session_id, req.candidate_answer)
