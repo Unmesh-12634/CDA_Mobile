@@ -357,7 +357,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     });
   }
 
-  /// 100% REAL Groq Llama-3 AI Question & Evaluation Backend Sync with Native STT
+  /// 100% REAL Groq Llama-3 AI Question & Evaluation Backend Sync with Dynamic Non-Repeating Fallbacks
   Future<void> _nextQuestion({String? typedAnswer}) async {
     if (_isSubmittingAnswer) return;
 
@@ -365,11 +365,15 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     _stopSpeechListening();
     await _flutterTts.stop();
 
-    final candidateResponseText = (typedAnswer != null && typedAnswer.trim().isNotEmpty)
+    String candidateResponseText = (typedAnswer != null && typedAnswer.trim().isNotEmpty)
         ? typedAnswer.trim()
         : (_liveSpokenText.trim().isNotEmpty
             ? _liveSpokenText.trim()
             : 'Candidate provided a detailed response addressing technical trade-offs.');
+
+    if (candidateResponseText.toLowerCase() == 'skip this' || candidateResponseText.toLowerCase() == 'skip') {
+      candidateResponseText = 'Candidate requested to skip this question.';
+    }
 
     setState(() {
       _isSubmittingAnswer = true;
@@ -380,6 +384,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     });
 
     final api = ref.read(aiInterviewServiceProvider);
+    final setupConfig = ref.read(interviewSetupProvider);
 
     if (_sessionId != null) {
       final nextData = await api.submitAnswer(
@@ -421,17 +426,27 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
         _speakAiText('$_transitionPhrase. $_currentQuestionText');
       } else {
+        // Distinct non-repeating dynamic fallback topics
         if (_currentQuestionIndex >= _totalQuestions) {
           _finishInterviewSession(isCompleted: true);
           return;
         }
 
-        final setupConfig = ref.read(interviewSetupProvider);
+        final fallbackQuestions = [
+          'What is the difference between a GET and POST HTTP request, and provide an example use case for each?',
+          'In your work on ${setupConfig.jobRole}, how do you manage database transactions, indexing, and high-concurrency caching?',
+          'How do you evaluate trade-offs between microservices vs monolithic architecture under high traffic in ${setupConfig.jobRole}?',
+          'How do you handle JWT token authentication, refresh flows, and security encryption in production?',
+          'What strategy do you use for CI/CD automated testing, container deployment, and monitoring error spikes?',
+        ];
+
+        final nextQText = fallbackQuestions[(_currentQuestionIndex) % fallbackQuestions.length];
+
         setState(() {
           _currentQuestionIndex++;
           _isSubmittingAnswer = false;
-          _currentQuestionText = 'Great technical response. In your work on ${setupConfig.jobRole}, how do you manage database transactions, indexing, and high-concurrency caching?';
-          _transitionPhrase = 'Good trade-off explanation.';
+          _currentQuestionText = nextQText;
+          _transitionPhrase = 'Understood. Moving to the next technical topic.';
 
           _transcriptHistory.add({
             'speaker': 'Candidate (You)',
@@ -455,12 +470,21 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         return;
       }
 
-      final setupConfig = ref.read(interviewSetupProvider);
+      final fallbackQuestions = [
+        'What is the difference between a GET and POST HTTP request, and provide an example use case for each?',
+        'In your work on ${setupConfig.jobRole}, how do you manage database transactions, indexing, and high-concurrency caching?',
+        'How do you evaluate trade-offs between microservices vs monolithic architecture under high traffic in ${setupConfig.jobRole}?',
+        'How do you handle JWT token authentication, refresh flows, and security encryption in production?',
+        'What strategy do you use for CI/CD automated testing, container deployment, and monitoring error spikes?',
+      ];
+
+      final nextQText = fallbackQuestions[(_currentQuestionIndex) % fallbackQuestions.length];
+
       setState(() {
         _currentQuestionIndex++;
         _isSubmittingAnswer = false;
-        _currentQuestionText = 'Great response! For ${setupConfig.jobRole}, how do you evaluate architectural scalability, state synchronization, and fault tolerance?';
-        _transitionPhrase = 'Solid answer.';
+        _currentQuestionText = nextQText;
+        _transitionPhrase = 'Understood. Let us move to the next scenario.';
 
         _transcriptHistory.add({
           'speaker': 'Candidate (You)',
