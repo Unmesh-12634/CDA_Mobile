@@ -101,13 +101,14 @@ def start_interview(req: StartInterviewRequest):
     try:
         # Map string difficulty
         diff_map = {
-            "entry": DifficultyLevel.ENTRY,
-            "easy": DifficultyLevel.ENTRY,
+            "entry": DifficultyLevel.BEGINNER,
+            "easy": DifficultyLevel.BEGINNER,
+            "beginner": DifficultyLevel.BEGINNER,
             "intermediate": DifficultyLevel.INTERMEDIATE,
             "medium": DifficultyLevel.INTERMEDIATE,
             "hard": DifficultyLevel.ADVANCED,
             "advanced": DifficultyLevel.ADVANCED,
-            "expert": DifficultyLevel.EXPERT,
+            "expert": DifficultyLevel.ADVANCED,
         }
         diff = diff_map.get(req.difficulty.lower(), DifficultyLevel.INTERMEDIATE)
 
@@ -136,16 +137,28 @@ def start_interview(req: StartInterviewRequest):
         if req.voice_persona:
             voice_service.set_voice_persona(req.voice_persona)
 
+        current_q_text = "Tell me about your background."
+        if resp.current_question:
+            if isinstance(resp.current_question, str):
+                current_q_text = resp.current_question
+            elif hasattr(resp.current_question, "text"):
+                current_q_text = resp.current_question.text
+            elif hasattr(resp.current_question, "question_text"):
+                current_q_text = resp.current_question.question_text
+            else:
+                current_q_text = str(resp.current_question)
+
         return StartInterviewResponse(
             session_id=resp.session_id,
             is_completed=resp.is_completed,
             initial_greeting=resp.initial_greeting,
-            current_question=resp.current_question.question_text if resp.current_question else "Tell me about your background.",
+            current_question=current_q_text,
             turn_number=resp.turn_number,
             total_target_questions=resp.total_target_questions,
             transition_phrase=resp.transition_phrase,
         )
     except Exception as e:
+        logger.error(f"Failed to start interview: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to start interview: {str(e)}")
 
 @app.post("/api/v1/interview/answer", response_model=AnswerResponse)
@@ -170,10 +183,21 @@ def submit_answer(req: AnswerRequest):
                 last_score = last_turn.evaluation.overall_turn_score
                 last_feedback = last_turn.evaluation.constructive_feedback
 
+        current_q_text = None
+        if resp.current_question:
+            if isinstance(resp.current_question, str):
+                current_q_text = resp.current_question
+            elif hasattr(resp.current_question, "text"):
+                current_q_text = resp.current_question.text
+            elif hasattr(resp.current_question, "question_text"):
+                current_q_text = resp.current_question.question_text
+            else:
+                current_q_text = str(resp.current_question)
+
         return AnswerResponse(
             session_id=resp.session_id,
             is_completed=resp.is_completed,
-            current_question=resp.current_question.question_text if resp.current_question else None,
+            current_question=current_q_text,
             turn_number=resp.turn_number,
             total_target_questions=resp.total_target_questions,
             transition_phrase=resp.transition_phrase,
