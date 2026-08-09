@@ -312,6 +312,33 @@ async def websocket_audio_stream(websocket: WebSocket, session_id: str):
     except Exception as e:
         logger.error(f"WebSocket error for session '{session_id}': {e}")
 
+@app.websocket("/ws/interview/{session_id}")
+async def websocket_interview_stream(websocket: WebSocket, session_id: str):
+    """Bidirectional WebSocket control channel for live interview turns and real-time candidate telemetry HUD."""
+    await websocket.accept()
+    logger.info(f"WebSocket interview stream connected for session '{session_id}'")
+    try:
+        while True:
+            data = await websocket.receive_json()
+            event_type = data.get("type")
+            if event_type == "telemetry":
+                wpm = data.get("wpm", 140)
+                fillers = data.get("fillers", 0)
+                clarity = data.get("clarity", 85)
+                await websocket.send_json({
+                    "type": "telemetry_ack",
+                    "session_id": session_id,
+                    "wpm_status": "Optimal" if 120 <= wpm <= 165 else "Pacing Alert",
+                    "fillers": fillers,
+                    "clarity_score": clarity,
+                })
+            elif event_type == "ping":
+                await websocket.send_json({"type": "pong", "session_id": session_id})
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket interview stream disconnected for '{session_id}'")
+    except Exception as e:
+        logger.error(f"WebSocket stream error for session '{session_id}': {e}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
