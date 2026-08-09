@@ -1171,7 +1171,8 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
               Map<String, dynamic>? reportData;
               if (_sessionId != null) {
                 try {
-                  reportData = await _apiService.finishInterview(_sessionId!);
+                  final api = ref.read(aiInterviewServiceProvider);
+                  reportData = await api.finishInterview(_sessionId!);
                 } catch (e) {
                   debugPrint('Failed to finish interview report: $e');
                 }
