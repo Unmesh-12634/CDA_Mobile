@@ -32,6 +32,10 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   String _liveSpokenText = '';
   double _currentSpeechRate = 0.38; // Default natural speech pace
 
+  // Typewriter Subtitle State
+  String _displayedQuestionText = '';
+  Timer? _typewriterTimer;
+
   int _autoMicCountdown = 0;
   Timer? _autoMicTimer;
   bool _isListening = false;
@@ -171,6 +175,38 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     } catch (_) {}
   }
 
+  /// Synchronized Word-by-Word Typewriter Animation as AI speaks out loud
+  void _startTypewriterAnimation(String fullText) {
+    _typewriterTimer?.cancel();
+    if (fullText.trim().isEmpty) return;
+
+    final words = fullText.split(' ');
+    int currentWordIndex = 0;
+
+    setState(() {
+      _displayedQuestionText = '';
+    });
+
+    _typewriterTimer = Timer.periodic(const Duration(milliseconds: 140), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (currentWordIndex < words.length) {
+        setState(() {
+          if (currentWordIndex == 0) {
+            _displayedQuestionText = words[0];
+          } else {
+            _displayedQuestionText += ' ${words[currentWordIndex]}';
+          }
+          currentWordIndex++;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
   void _speakAiText(String text) async {
     if (text.trim().isEmpty || _isMuted) return;
     _stopSpeechListening();
@@ -178,6 +214,9 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       _isAiSpeaking = true;
       _isListening = false;
     });
+
+    _startTypewriterAnimation(text);
+
     try {
       await _flutterTts.stop();
       await _flutterTts.speak(text);
@@ -192,6 +231,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
   /// Interrupt AI speech immediately (Barge-in) and start mic recording
   void _interruptSpeechAndListen() async {
+    _typewriterTimer?.cancel();
     await _flutterTts.stop();
     _autoMicTimer?.cancel();
     if (mounted) {
@@ -200,6 +240,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         _autoMicCountdown = 0;
         _isListening = true;
         _liveSpokenText = '';
+        _displayedQuestionText = _currentQuestionText;
       });
       _startSpeechListening();
     }
@@ -357,10 +398,11 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     });
   }
 
-  /// 100% REAL Groq Llama-3 AI Question & Evaluation Backend Sync with Dynamic Non-Repeating Fallbacks
+  /// 100% REAL Groq Llama-3 AI Question & Evaluation Backend Sync with Typewriter Subtitle Animation
   Future<void> _nextQuestion({String? typedAnswer}) async {
     if (_isSubmittingAnswer) return;
 
+    _typewriterTimer?.cancel();
     _autoMicTimer?.cancel();
     _stopSpeechListening();
     await _flutterTts.stop();
@@ -381,6 +423,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       _isListening = false;
       _activeHintText = null;
       _liveSpokenText = '';
+      _displayedQuestionText = '';
     });
 
     final api = ref.read(aiInterviewServiceProvider);
@@ -426,7 +469,6 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
         _speakAiText('$_transitionPhrase. $_currentQuestionText');
       } else {
-        // Distinct non-repeating dynamic fallback topics
         if (_currentQuestionIndex >= _totalQuestions) {
           _finishInterviewSession(isCompleted: true);
           return;
@@ -505,6 +547,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   }
 
   Future<void> _finishInterviewSession({bool isCompleted = false}) async {
+    _typewriterTimer?.cancel();
     _countdownTimer?.cancel();
     _autoMicTimer?.cancel();
     _stopSpeechListening();
@@ -554,6 +597,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
   @override
   void dispose() {
+    _typewriterTimer?.cancel();
     _stopSpeechListening();
     _flutterTts.stop();
     _autoMicTimer?.cancel();
@@ -722,6 +766,8 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     String speedLabel = '0.38x';
     if ((_currentSpeechRate - 0.30).abs() < 0.02) speedLabel = '0.3x';
     if ((_currentSpeechRate - 0.50).abs() < 0.02) speedLabel = '0.5x';
+
+    final questionTextToDisplay = _displayedQuestionText.isNotEmpty ? _displayedQuestionText : _currentQuestionText;
 
     return Scaffold(
       backgroundColor: cs.surface,
@@ -1068,7 +1114,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
                     const SizedBox(height: 12),
 
-                    // Question Box with Real AI Engine Sync & Hint Button
+                    // Question Box with Typewriter Subtitles & Hint Button
                     GlassCard(
                       padding: const EdgeInsets.all(16),
                       child: Column(
@@ -1154,8 +1200,8 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
                             AnimatedSwitcher(
                               duration: const Duration(milliseconds: 300),
                               child: Text(
-                                _currentQuestionText,
-                                key: ValueKey<String>(_currentQuestionText),
+                                questionTextToDisplay,
+                                key: ValueKey<String>(questionTextToDisplay),
                                 style: AppTypography.bodyMedium.copyWith(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
@@ -1547,6 +1593,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
               final router = GoRouter.of(context);
               Navigator.of(context).pop();
 
+              _typewriterTimer?.cancel();
               _autoMicTimer?.cancel();
               _stopSpeechListening();
               _flutterTts.stop();
