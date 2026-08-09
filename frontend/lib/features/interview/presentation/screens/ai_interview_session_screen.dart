@@ -1167,8 +1167,8 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () async {
-              final nav = Navigator.of(context);
-              nav.pop(); // Close dialog immediately
+              final router = GoRouter.of(context);
+              Navigator.of(context).pop(); // Close dialog
 
               Map<String, dynamic> reportData = {
                 'session_id': _sessionId ?? 'early_end',
@@ -1197,8 +1197,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
                 }
               }
 
-              if (!mounted) return;
-              context.go('/interview/analysis/${_sessionId ?? 'latest'}', extra: reportData);
+              router.go('/interview/analysis/${_sessionId ?? 'latest'}', extra: reportData);
             },
             child: const Text('End & View Results', style: TextStyle(color: Colors.white)),
           ),
