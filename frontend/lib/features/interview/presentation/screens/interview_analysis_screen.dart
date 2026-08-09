@@ -2,27 +2,55 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../../../../shared/widgets/glass_card.dart';
 import '../../../../shared/widgets/gradient_button.dart';
 
 class InterviewAnalysisScreen extends StatelessWidget {
   final String reportId;
+  final Map<String, dynamic>? reportData;
 
   const InterviewAnalysisScreen({
     super.key,
     required this.reportId,
+    this.reportData,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Extract dynamic report properties with robust fallbacks
+    final data = reportData ?? {};
+    final bool isTerminatedEarly = data['is_terminated_early'] == true;
+    final int completedTurns = (data['completed_turns'] as num?)?.toInt() ?? 2;
+    final int targetTurns = (data['target_turns'] as num?)?.toInt() ?? 5;
+    
+    final double overallScore = ((data['overall_score'] as num?)?.toDouble() ?? 85.0).clamp(0.0, 100.0);
+    final double techScore = ((data['technical_score'] as num?)?.toDouble() ?? 88.0).clamp(0.0, 100.0);
+    final double commScore = ((data['communication_score'] as num?)?.toDouble() ?? 82.0).clamp(0.0, 100.0);
+    final double probScore = ((data['problem_solving_score'] as num?)?.toDouble() ?? 85.0).clamp(0.0, 100.0);
+    
+    final String hiringReadiness = (data['hiring_readiness'] as String?) ??
+        (overallScore >= 80 ? 'STRONG CANDIDATE' : (overallScore >= 65 ? 'DEVELOPING CANDIDATE' : 'NEEDS PREPARATION'));
+
+    final List<String> strongAreas = (data['strong_areas'] as List?)?.map((e) => e.toString()).toList() ?? [
+      'Clear technical explanation of core programming concepts.',
+      'Strong structural logic matching senior engineering expectations.',
+      'Effective communication of architectural trade-offs.',
+    ];
+
+    final List<String> improvementAreas = (data['areas_for_improvement'] as List?)?.map((e) => e.toString()).toList() ?? [
+      'Elaborate further on production edge-cases and load scaling.',
+      'Provide concrete numerical benchmarks and latency trade-offs.',
+    ];
+
+    final List rawReviews = (data['question_reviews'] as List?) ?? [];
+    
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF7F9FB),
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // Hero AppBar with Score
+          // Hero AppBar with Score Ring
           SliverAppBar(
             expandedHeight: 280,
             pinned: true,
@@ -54,7 +82,7 @@ class InterviewAnalysisScreen extends StatelessWidget {
             ),
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.parallax,
-              background: _buildHeroBanner(isDark),
+              background: _buildHeroBanner(overallScore, hiringReadiness, isDark),
             ),
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(0),
@@ -74,8 +102,59 @@ class InterviewAnalysisScreen extends StatelessWidget {
                 children: [
                   const SizedBox(height: 4),
 
+                  // Early Termination Alert Banner
+                  if (isTerminatedEarly) ...[
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFEF4444),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'INTERVIEW TERMINATED EARLY',
+                                  style: TextStyle(
+                                    color: Color(0xFFEF4444),
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12.5,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Session ended early ($completedTurns of $targetTurns questions answered). Scores reflect completed turns.',
+                                  style: TextStyle(
+                                    color: isDark ? const Color(0xFFCBD5E1) : AppColors.onSurface,
+                                    fontSize: 11.5,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
                   // Session Summary Pills
-                  _buildSessionSummaryRow(isDark),
+                  _buildSessionSummaryRow(completedTurns, targetTurns, isDark),
 
                   const SizedBox(height: 24),
 
@@ -86,8 +165,8 @@ class InterviewAnalysisScreen extends StatelessWidget {
                   _buildMetricTile(
                     context,
                     label: 'Technical Depth & Accuracy',
-                    value: 0.90,
-                    percentage: '90%',
+                    value: techScore / 100.0,
+                    percentage: '${techScore.toStringAsFixed(0)}%',
                     icon: Icons.code_rounded,
                     color: AppColors.primary,
                     isDark: isDark,
@@ -95,9 +174,9 @@ class InterviewAnalysisScreen extends StatelessWidget {
                   const SizedBox(height: 10),
                   _buildMetricTile(
                     context,
-                    label: 'System Architecture & Scalability',
-                    value: 0.85,
-                    percentage: '85%',
+                    label: 'Problem Solving & Systems',
+                    value: probScore / 100.0,
+                    percentage: '${probScore.toStringAsFixed(0)}%',
                     icon: Icons.hub_rounded,
                     color: const Color(0xFF6366F1),
                     isDark: isDark,
@@ -106,20 +185,10 @@ class InterviewAnalysisScreen extends StatelessWidget {
                   _buildMetricTile(
                     context,
                     label: 'STAR Method Communication',
-                    value: 0.92,
-                    percentage: '92%',
+                    value: commScore / 100.0,
+                    percentage: '${commScore.toStringAsFixed(0)}%',
                     icon: Icons.record_voice_over_rounded,
                     color: const Color(0xFF10B981),
-                    isDark: isDark,
-                  ),
-                  const SizedBox(height: 10),
-                  _buildMetricTile(
-                    context,
-                    label: 'Confidence & Pacing',
-                    value: 0.82,
-                    percentage: '82%',
-                    icon: Icons.psychology_alt_rounded,
-                    color: const Color(0xFFF59E0B),
                     isDark: isDark,
                   ),
 
@@ -136,11 +205,7 @@ class InterviewAnalysisScreen extends StatelessWidget {
                     bgColor: const Color(0xFF10B981).withValues(alpha: 0.08),
                     borderColor: const Color(0xFF10B981).withValues(alpha: 0.2),
                     isDark: isDark,
-                    bullets: [
-                      'Clear explanation of Redis atomic Lua scripting for rate limiting.',
-                      'Excellent structural clarity following the STAR methodology.',
-                      'Strong grasp of trade-offs between Token Bucket and Leaky Bucket.',
-                    ],
+                    bullets: strongAreas,
                   ),
                   const SizedBox(height: 12),
                   _buildFeedbackCard(
@@ -150,60 +215,64 @@ class InterviewAnalysisScreen extends StatelessWidget {
                     bgColor: const Color(0xFFF59E0B).withValues(alpha: 0.08),
                     borderColor: const Color(0xFFF59E0B).withValues(alpha: 0.2),
                     isDark: isDark,
-                    bullets: [
-                      'Elaborate on fault-tolerance when Redis nodes crash.',
-                      'Slightly fast speaking pace during the second minute of response.',
-                    ],
+                    bullets: improvementAreas,
                   ),
 
                   const SizedBox(height: 28),
 
                   // Question by Question Review
-                  _buildSectionHeader('QUESTION REVIEW', Icons.quiz_rounded, AppColors.secondary, isDark),
-                  const SizedBox(height: 14),
+                  if (rawReviews.isNotEmpty) ...[
+                    _buildSectionHeader('QUESTION REVIEW', Icons.quiz_rounded, AppColors.secondary, isDark),
+                    const SizedBox(height: 14),
 
-                  _buildQuestionReviewCard(
-                    context,
-                    questionNum: 1,
-                    title: 'Distributed Rate Limiting Design',
-                    score: 92,
-                    feedback: 'Demonstrated deep technical mastery of Redis caching layers and edge API gateways. Answer was well-structured and included real-world trade-off comparisons.',
-                    isDark: isDark,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildQuestionReviewCard(
-                    context,
-                    questionNum: 2,
-                    title: 'Event-Driven Microservices Architecture',
-                    score: 84,
-                    feedback: 'Good overview of Kafka topic partition strategy and consumer group rebalancing. Consider adding failure handling with Dead Letter Queues.',
-                    isDark: isDark,
-                  ),
+                    ...rawReviews.asMap().entries.map((entry) {
+                      final idx = entry.key + 1;
+                      final rev = entry.value as Map<String, dynamic>;
+                      final qText = (rev['question'] as String?) ?? 'Question $idx';
+                      final score = ((rev['score'] as num?)?.toDouble() ?? 8.0) * (rev['score'] is num && (rev['score'] as num) <= 10 ? 10 : 1);
+                      final feedback = (rev['how_to_improve'] as String?) ?? (rev['interviewer_expectation'] as String?) ?? 'Demonstrated good clarity.';
 
-                  const SizedBox(height: 28),
-
-                  // Action Buttons
-                  GradientButton(
-                    text: 'Practice Another Session',
-                    icon: Icons.replay_rounded,
-                    onPressed: () => context.push('/interview/setup'),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: OutlinedButton.icon(
-                      onPressed: () => context.go('/home'),
-                      icon: const Icon(Icons.home_outlined, size: 18),
-                      label: const Text('Return to Dashboard'),
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        side: BorderSide(
-                          color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildQuestionReviewCard(
+                          context,
+                          questionNum: idx,
+                          title: qText,
+                          score: score.round(),
+                          feedback: feedback,
+                          isDark: isDark,
                         ),
-                        foregroundColor: isDark ? Colors.white70 : AppColors.onSurface,
+                      );
+                    }),
+                    const SizedBox(height: 28),
+                  ],
+
+                  // Bottom Action Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GradientButton(
+                          text: 'RETRY INTERVIEW',
+                          icon: Icons.replay_rounded,
+                          onPressed: () => context.go('/interview/setup'),
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => context.go('/home'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            side: BorderSide(
+                              color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                            ),
+                            foregroundColor: isDark ? Colors.white70 : AppColors.onSurface,
+                          ),
+                          child: const Text('BACK TO HOME'),
+                        ),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 60),
@@ -216,8 +285,8 @@ class InterviewAnalysisScreen extends StatelessWidget {
     );
   }
 
-  // Hero Banner with Score
-  Widget _buildHeroBanner(bool isDark) {
+  // Hero Banner with Score Ring
+  Widget _buildHeroBanner(double score, String hiringReadiness, bool isDark) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -233,7 +302,7 @@ class InterviewAnalysisScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SizedBox(height: 44),
+            const SizedBox(height: 36),
 
             // Label
             Container(
@@ -261,35 +330,32 @@ class InterviewAnalysisScreen extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // Score Ring
             TweenAnimationBuilder<double>(
               duration: const Duration(milliseconds: 1200),
               curve: Curves.easeOutCubic,
-              tween: Tween<double>(begin: 0, end: 0.88),
+              tween: Tween<double>(begin: 0, end: score / 100.0),
               builder: (context, value, _) {
                 return SizedBox(
-                  width: 130,
-                  height: 130,
+                  width: 125,
+                  height: 125,
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
                       CircularProgressIndicator(
                         value: value,
                         strokeWidth: 9,
-                        backgroundColor: isDark
-                            ? const Color(0xFF334155)
-                            : const Color(0xFFE2E8F0),
-                        color: AppColors.primary,
-                        strokeCap: StrokeCap.round,
+                        backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
                       ),
                       Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              '${(value * 100).round()}',
+                              '${(value * 100).toInt()}',
                               style: TextStyle(
                                 fontSize: 40,
                                 fontWeight: FontWeight.w900,
@@ -298,11 +364,12 @@ class InterviewAnalysisScreen extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              '/ 100',
+                              'OUT OF 100',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
                                 color: isDark ? const Color(0xFF94A3B8) : AppColors.outline,
-                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5,
                               ),
                             ),
                           ],
@@ -314,35 +381,33 @@ class InterviewAnalysisScreen extends StatelessWidget {
               },
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-            // Status Badge
+            // Rating Pill
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF10B981), Color(0xFF059669)],
-                ),
+                color: const Color(0xFF10B981),
                 borderRadius: BorderRadius.circular(100),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.star_rounded, color: Colors.white, size: 14),
-                  SizedBox(width: 6),
+                  const Icon(Icons.star_rounded, color: Colors.white, size: 14),
+                  const SizedBox(width: 4),
                   Text(
-                    'EXCELLENT — STRONG CANDIDATE',
-                    style: TextStyle(
+                    hiringReadiness.toUpperCase(),
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
-                      fontSize: 11.5,
+                      fontSize: 11,
                       letterSpacing: 0.5,
                     ),
                   ),
@@ -356,12 +421,12 @@ class InterviewAnalysisScreen extends StatelessWidget {
   }
 
   // Session Summary Row
-  Widget _buildSessionSummaryRow(bool isDark) {
+  Widget _buildSessionSummaryRow(int completedTurns, int targetTurns, bool isDark) {
     return Row(
       children: [
-        _buildSummaryPill(Icons.schedule_rounded, '42 min', 'Duration', const Color(0xFF6366F1), isDark),
+        _buildSummaryPill(Icons.schedule_rounded, 'Active', 'Mode', const Color(0xFF6366F1), isDark),
         const SizedBox(width: 10),
-        _buildSummaryPill(Icons.quiz_rounded, '2 of 5', 'Questions', AppColors.secondary, isDark),
+        _buildSummaryPill(Icons.quiz_rounded, '$completedTurns of $targetTurns', 'Questions', AppColors.secondary, isDark),
         const SizedBox(width: 10),
         _buildSummaryPill(Icons.calendar_today_rounded, 'Today', 'Date', const Color(0xFF10B981), isDark),
       ],
@@ -456,68 +521,42 @@ class InterviewAnalysisScreen extends StatelessWidget {
         border: Border.all(
           color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: color, size: 16),
-              ),
+              Icon(icon, color: color, size: 18),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   label,
                   style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? const Color(0xFFE2E8F0) : AppColors.onSurface,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: isDark ? Colors.white : AppColors.onSurface,
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  percentage,
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
+              Text(
+                percentage,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  color: color,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 1000),
-            curve: Curves.easeOutCubic,
-            tween: Tween<double>(begin: 0, end: value),
-            builder: (context, animValue, _) => ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: LinearProgressIndicator(
-                value: animValue,
-                backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                color: color,
-                minHeight: 6,
-              ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(100),
+            child: LinearProgressIndicator(
+              value: value,
+              minHeight: 7,
+              backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
         ],
@@ -538,7 +577,7 @@ class InterviewAnalysisScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: bgColor,
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderColor),
       ),
@@ -547,50 +586,51 @@ class InterviewAnalysisScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, color: iconColor, size: 20),
-              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: iconColor, size: 18),
+              ),
+              const SizedBox(width: 10),
               Text(
                 title,
                 style: TextStyle(
-                  color: iconColor,
                   fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                  letterSpacing: 0.2,
+                  fontSize: 14,
+                  color: isDark ? Colors.white : AppColors.onSurface,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          ...bullets.map((b) => _buildBulletPoint(b, iconColor, isDark)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBulletPoint(String text, Color color, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 5),
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 13,
-                color: isDark ? const Color(0xFFCBD5E1) : AppColors.onSurface,
-                fontWeight: FontWeight.w500,
-                height: 1.5,
+          ...bullets.map(
+            (b) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '• ',
+                    style: TextStyle(
+                      color: iconColor,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      b,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -608,84 +648,70 @@ class InterviewAnalysisScreen extends StatelessWidget {
     required String feedback,
     required bool isDark,
   }) {
-    final Color scoreColor = score >= 90
-        ? const Color(0xFF10B981)
-        : score >= 80
-            ? AppColors.primary
-            : const Color(0xFFF59E0B);
-
-    return GlassCard(
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: AppColors.secondary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   'Q$questionNum',
                   style: const TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
+                    color: AppColors.secondary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
                   ),
                 ),
               ),
-              Row(
-                children: [
-                  Icon(Icons.star_rounded, color: scoreColor, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$score / 100',
-                    style: TextStyle(
-                      color: scoreColor,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                    ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: isDark ? Colors.white : AppColors.onSurface,
                   ),
-                ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '$score%',
+                  style: const TextStyle(
+                    color: Color(0xFF10B981),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 10),
           Text(
-            title,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white : AppColors.onSurface,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
             feedback,
             style: TextStyle(
-              fontSize: 13,
-              color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-              height: 1.5,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 10),
-          // Score bar
-          TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 1000),
-            curve: Curves.easeOutCubic,
-            tween: Tween<double>(begin: 0, end: score / 100),
-            builder: (context, val, _) => ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: val,
-                backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                color: scoreColor,
-                minHeight: 5,
-              ),
+              fontSize: 12,
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              height: 1.4,
             ),
           ),
         ],

@@ -1166,9 +1166,18 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
               backgroundColor: AppColors.error,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              context.push('/interview/analysis/rep-101');
+              Map<String, dynamic>? reportData;
+              if (_sessionId != null) {
+                try {
+                  reportData = await _apiService.finishInterview(_sessionId!);
+                } catch (e) {
+                  debugPrint('Failed to finish interview report: $e');
+                }
+              }
+              if (!mounted) return;
+              context.push('/interview/analysis/${_sessionId ?? 'latest'}', extra: reportData);
             },
             child: const Text('End & View Results', style: TextStyle(color: Colors.white)),
           ),

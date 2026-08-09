@@ -100,7 +100,8 @@ final _router = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? 'rep-101';
-        return InterviewAnalysisScreen(reportId: id);
+        final extra = state.extra as Map<String, dynamic>?;
+        return InterviewAnalysisScreen(reportId: id, reportData: extra);
       },
     ),
     GoRoute(
