@@ -8,6 +8,7 @@ class InterviewSetupConfig {
   final String difficulty;
   final int targetQuestionCount;
   final String voicePersona;
+  final double speechRate;
   final List<String> enrolledCourses;
   final List<String> skills;
   final String? resumePath;
@@ -20,6 +21,7 @@ class InterviewSetupConfig {
     this.difficulty = 'Intermediate',
     this.targetQuestionCount = 5,
     this.voicePersona = 'guy',
+    this.speechRate = 0.38,
     this.enrolledCourses = const ['Full-Stack Web Development', 'System Design & Microservices'],
     this.skills = const ['Java', 'Flutter', 'Python', 'Dart', 'FastAPI'],
     this.resumePath,
@@ -33,6 +35,7 @@ class InterviewSetupConfig {
     String? difficulty,
     int? targetQuestionCount,
     String? voicePersona,
+    double? speechRate,
     List<String>? enrolledCourses,
     List<String>? skills,
     String? resumePath,
@@ -45,6 +48,7 @@ class InterviewSetupConfig {
       difficulty: difficulty ?? this.difficulty,
       targetQuestionCount: targetQuestionCount ?? this.targetQuestionCount,
       voicePersona: voicePersona ?? this.voicePersona,
+      speechRate: speechRate ?? this.speechRate,
       enrolledCourses: enrolledCourses ?? this.enrolledCourses,
       skills: skills ?? this.skills,
       resumePath: resumePath ?? this.resumePath,
@@ -63,6 +67,7 @@ class InterviewSetupNotifier extends StateNotifier<InterviewSetupConfig> {
     String? difficulty,
     int? targetQuestionCount,
     String? voicePersona,
+    double? speechRate,
     List<String>? enrolledCourses,
     List<String>? skills,
     String? resumePath,
@@ -75,6 +80,7 @@ class InterviewSetupNotifier extends StateNotifier<InterviewSetupConfig> {
       difficulty: difficulty,
       targetQuestionCount: targetQuestionCount,
       voicePersona: voicePersona,
+      speechRate: speechRate,
       enrolledCourses: enrolledCourses,
       skills: skills,
       resumePath: resumePath,

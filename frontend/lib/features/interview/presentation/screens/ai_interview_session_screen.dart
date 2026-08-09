@@ -26,6 +26,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
   // TTS & Speech State
   late FlutterTts _flutterTts;
+  double _currentSpeechRate = 0.38; // Default natural speech pace
   int _autoMicCountdown = 0;
   Timer? _autoMicTimer;
   bool _isListening = false;
@@ -37,6 +38,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
   // Backend Integration State
   bool _isInitializing = true;
+  bool _isTerminatingSession = false;
   String _initializationStatus = 'Connecting to Render AI Engine...';
   String? _sessionId;
   bool _backendConnected = false;
@@ -77,9 +79,12 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
   Future<void> _initTts() async {
     _flutterTts = FlutterTts();
+    final setupConfig = ref.read(interviewSetupProvider);
+    _currentSpeechRate = setupConfig.speechRate;
+
     try {
       await _flutterTts.setLanguage('en-US');
-      await _flutterTts.setSpeechRate(0.48);
+      await _flutterTts.setSpeechRate(_currentSpeechRate);
       await _flutterTts.setVolume(1.0);
       await _flutterTts.setPitch(1.0);
     } catch (e) {
@@ -94,6 +99,25 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         _start3SecondMicCountdown();
       }
     });
+  }
+
+  void _cycleSpeechRate() async {
+    double nextRate = 0.38;
+    if ((_currentSpeechRate - 0.38).abs() < 0.02) {
+      nextRate = 0.50;
+    } else if ((_currentSpeechRate - 0.50).abs() < 0.02) {
+      nextRate = 0.30;
+    } else {
+      nextRate = 0.38;
+    }
+
+    setState(() {
+      _currentSpeechRate = nextRate;
+    });
+
+    try {
+      await _flutterTts.setSpeechRate(_currentSpeechRate);
+    } catch (_) {}
   }
 
   void _speakAiText(String text) async {
@@ -201,14 +225,16 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
         _speakAiText('${sessionData.initialGreeting}. ${sessionData.currentQuestion}');
       } else {
-        // Fallback mode
+        // Dynamic Fallback mode with candidate name
         setState(() {
           _isInitializing = false;
-          _currentQuestionText = 'Tell me about your experience in ${setupConfig.jobRole} and how your projects align with key technical fundamentals.';
+          _currentQuestionText = 'Tell me about your experience as a ${setupConfig.jobRole} and how your projects align with key technical fundamentals.';
+          final greeting = 'Welcome ${setupConfig.candidateName}! Let us begin your ${setupConfig.difficulty} ${setupConfig.interviewType} interview session for ${setupConfig.jobRole}.';
+
           _transcriptHistory.add({
             'speaker': 'AI Interviewer (${setupConfig.voicePersona.toUpperCase()})',
             'time': '00:02',
-            'text': 'Welcome ${setupConfig.candidateName}! Let us begin your ${setupConfig.difficulty} ${setupConfig.interviewType} interview session for ${setupConfig.jobRole}.',
+            'text': greeting,
             'isAi': 'true',
           });
           _transcriptHistory.add({
@@ -255,6 +281,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         _isSubmittingAnswer = true;
         _isAiSpeaking = true;
         _isListening = false;
+        _currentQuestionText = 'Processing response & loading next scenario...';
       });
 
       final api = ref.read(aiInterviewServiceProvider);
@@ -327,6 +354,10 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     _autoMicTimer?.cancel();
     await _flutterTts.stop();
 
+    setState(() {
+      _isTerminatingSession = true;
+    });
+
     final router = GoRouter.of(context);
 
     Map<String, dynamic> reportData = {
@@ -383,6 +414,54 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = cs.brightness == Brightness.dark;
+
+    if (_isTerminatingSession) {
+      return Scaffold(
+        backgroundColor: isDark ? AppColors.credDarkBackground : AppColors.background,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(28.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.error.withValues(alpha: 0.12),
+                    ),
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.error),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  Text(
+                    'Terminating Session...',
+                    style: AppTypography.headlineMobile.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppColors.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Generating final performance report & AI analytics...',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     if (_isInitializing) {
       return Scaffold(
@@ -478,6 +557,10 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       );
     }
 
+    String speedLabel = '0.38x';
+    if ((_currentSpeechRate - 0.30).abs() < 0.02) speedLabel = '0.3x';
+    if ((_currentSpeechRate - 0.50).abs() < 0.02) speedLabel = '0.5x';
+
     return Scaffold(
       backgroundColor: cs.surface,
       appBar: AppBar(
@@ -531,6 +614,19 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
           ],
         ),
         actions: [
+          // Voice Speed Selector Action
+          TextButton.icon(
+            onPressed: _cycleSpeechRate,
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+            ),
+            icon: const Icon(Icons.speed_rounded, size: 16),
+            label: Text(
+              speedLabel,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+            ),
+          ),
           IconButton(
             icon: Icon(_isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded),
             color: _isMuted ? AppColors.error : AppColors.primary,
@@ -812,13 +908,17 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
                             ],
                           ),
                           const SizedBox(height: 10),
-                          Text(
-                            _currentQuestionText,
-                            style: AppTypography.bodyMedium.copyWith(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              height: 1.45,
-                              color: isDark ? Colors.white : AppColors.onSurface,
+                          AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            child: Text(
+                              _currentQuestionText,
+                              key: ValueKey<String>(_currentQuestionText),
+                              style: AppTypography.bodyMedium.copyWith(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                height: 1.45,
+                                color: isDark ? Colors.white : AppColors.onSurface,
+                              ),
                             ),
                           ),
                         ],
@@ -1175,6 +1275,10 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
               _autoMicTimer?.cancel();
               _flutterTts.stop();
+
+              setState(() {
+                _isTerminatingSession = true;
+              });
 
               Map<String, dynamic> reportData = {
                 'session_id': _sessionId ?? 'early_end',

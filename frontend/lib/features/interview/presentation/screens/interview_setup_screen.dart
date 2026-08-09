@@ -53,6 +53,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
   InterviewType? _selectedType = InterviewType.technical;
   double _difficulty = 2; // 1-Beginner, 2-Intermediate, 3-Advanced
   InterviewDuration _selectedDuration = InterviewDuration.standard;
+  double _selectedSpeechRate = 0.38;
   String? _resumeFileName = _profileResume;
 
   late final PageController _pageController;
@@ -1037,6 +1038,26 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
           _buildSummaryRow('RESUME', _resumeFileName ?? _profileResume,
               Icons.picture_as_pdf_rounded, AppColors.error, cs),
 
+          const SizedBox(height: 16),
+          _buildSectionChip(Icons.record_voice_over_rounded, 'AI VOICE SPEECH RATE', AppColors.primary),
+          const SizedBox(height: 10),
+
+          Row(
+            children: [
+              Expanded(
+                child: _buildSpeedPill(0.30, 'Slow 0.3x', cs),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildSpeedPill(0.38, 'Normal 0.38x', cs),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildSpeedPill(0.50, 'Fast 0.5x', cs),
+              ),
+            ],
+          ),
+
           const SizedBox(height: 20),
 
           GradientButton(
@@ -1049,6 +1070,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                     difficulty: _difficultyLabel,
                     interviewType: _typeLabel,
                     targetQuestionCount: _targetQuestionCount,
+                    speechRate: _selectedSpeechRate,
                     resumePath: _resumeFileName ?? _profileResume,
                     enrolledCourses: const ['Full-Stack Web Development', 'System Design & Microservices'],
                     skills: const ['Java', 'Flutter', 'Python', 'Dart', 'FastAPI'],
@@ -1114,6 +1136,35 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSpeedPill(double rate, String label, ColorScheme cs) {
+    final isSelected = (_selectedSpeechRate - rate).abs() < 0.02;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedSpeechRate = rate),
+      child: AnimatedContainer(
+        duration: AppConstants.animationFast,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : cs.surfaceContainer,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : cs.outlineVariant,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.bold,
+              color: isSelected ? AppColors.primary : cs.onSurface,
+            ),
+          ),
+        ),
       ),
     );
   }
