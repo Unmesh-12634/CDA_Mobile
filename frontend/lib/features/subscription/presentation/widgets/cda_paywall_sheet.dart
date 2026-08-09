@@ -93,7 +93,6 @@ class _CDAPaywallSheetState extends ConsumerState<CDAPaywallSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final sub = ref.watch(subscriptionProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final sheetBg = isDark ? const Color(0xFF090D16) : Colors.white;
     final bottomInset = MediaQuery.of(context).padding.bottom + 36;

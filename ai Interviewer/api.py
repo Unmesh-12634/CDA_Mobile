@@ -21,6 +21,9 @@ from models.interview import (
 )
 from services.interview_service import InterviewService
 from services.voice_service import VoiceService
+from utils.logger import get_logger
+
+logger = get_logger("api")
 
 # Initialize FastAPI App
 app = FastAPI(

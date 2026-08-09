@@ -34,82 +34,154 @@ final _router = GoRouter(
   routes: [
     GoRoute(
       path: '/splash',
-      builder: (context, state) => const SplashScreen(),
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        child: const SplashScreen(),
+      ),
     ),
     GoRoute(
       path: '/login',
-      builder: (context, state) => const LoginScreen(),
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        child: const LoginScreen(),
+      ),
     ),
     GoRoute(
       path: '/signup',
-      builder: (context, state) => const SignUpScreen(),
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        child: const SignUpScreen(),
+      ),
     ),
     GoRoute(
       path: '/forgot-password',
-      builder: (context, state) => const ForgotPasswordScreen(),
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const ForgotPasswordScreen(),
+      ),
     ),
 
     // ── Full-screen immersive routes (no bottom nav bar) ─────────────────────
     GoRoute(
       path: '/subscription-details',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const SubscriptionDetailsScreen(),
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const SubscriptionDetailsScreen(),
+      ),
     ),
     GoRoute(
       path: '/edit-profile',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const EditProfileScreen(),
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const EditProfileScreen(),
+      ),
     ),
     GoRoute(
       path: '/quiz',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const DailyQuizScreen(),
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const DailyQuizScreen(),
+      ),
     ),
     GoRoute(
       path: '/saved-jobs',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const SavedJobsScreen(),
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const SavedJobsScreen(),
+      ),
     ),
     GoRoute(
       path: '/career-roadmap',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const CareerRoadmapScreen(),
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const CareerRoadmapScreen(),
+      ),
     ),
     GoRoute(
       path: '/applications',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const ApplicationTrackerScreen(),
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const ApplicationTrackerScreen(),
+      ),
     ),
     GoRoute(
       path: '/notifications',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const NotificationsScreen(),
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const NotificationsScreen(),
+      ),
     ),
     GoRoute(
       path: '/interview/setup',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const InterviewSetupScreen(),
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const InterviewSetupScreen(),
+      ),
     ),
     GoRoute(
       path: '/interview/session',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const AiInterviewSessionScreen(),
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const AiInterviewSessionScreen(),
+      ),
     ),
     GoRoute(
       path: '/interview/analysis/:id',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final id = state.pathParameters['id'] ?? 'rep-101';
         final extra = state.extra as Map<String, dynamic>?;
-        return InterviewAnalysisScreen(reportId: id, reportData: extra);
+        return _buildAppleTransitionPage(
+          context: context,
+          state: state,
+          isSlide: true,
+          child: InterviewAnalysisScreen(reportId: id, reportData: extra),
+        );
       },
     ),
     GoRoute(
       path: '/jobs/:id',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final id = state.pathParameters['id'] ?? 'job-101';
-        return JobDetailScreen(jobId: id);
+        return _buildAppleTransitionPage(
+          context: context,
+          state: state,
+          isSlide: true,
+          child: JobDetailScreen(jobId: id),
+        );
       },
     ),
 
@@ -124,27 +196,95 @@ final _router = GoRouter(
         ),
         GoRoute(
           path: '/home',
-          builder: (context, state) => const HomeScreen(),
+          pageBuilder: (context, state) => _buildAppleTransitionPage(
+            context: context,
+            state: state,
+            child: const HomeScreen(),
+          ),
         ),
         GoRoute(
           path: '/learn',
-          builder: (context, state) => const LearnScreen(),
+          pageBuilder: (context, state) => _buildAppleTransitionPage(
+            context: context,
+            state: state,
+            child: const LearnScreen(),
+          ),
         ),
         GoRoute(
           path: '/jobs',
-          builder: (context, state) => const JobsScreen(),
+          pageBuilder: (context, state) => _buildAppleTransitionPage(
+            context: context,
+            state: state,
+            child: const JobsScreen(),
+          ),
         ),
         GoRoute(
           path: '/profile',
-          builder: (context, state) => const ProfileScreen(),
+          pageBuilder: (context, state) => _buildAppleTransitionPage(
+            context: context,
+            state: state,
+            child: const ProfileScreen(),
+          ),
         ),
         GoRoute(
           path: '/settings',
-          builder: (context, state) => const SettingsScreen(),
+          pageBuilder: (context, state) => _buildAppleTransitionPage(
+            context: context,
+            state: state,
+            child: const SettingsScreen(),
+          ),
         ),
       ],
     ),
   ],
 );
+
+/// Custom Apple Physical Spring Page Transition (220ms zero-latency response)
+CustomTransitionPage<T> _buildAppleTransitionPage<T>({
+  required BuildContext context,
+  required GoRouterState state,
+  required Widget child,
+  bool isSlide = false,
+}) {
+  return CustomTransitionPage<T>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 220),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      if (MediaQuery.of(context).disableAnimations) {
+        return child;
+      }
+      if (isSlide) {
+        // Physical Apple horizontal slide + opacity fade for detail sub-screens
+        final slide = Tween<Offset>(
+          begin: const Offset(0.08, 0.0),
+          end: Offset.zero,
+        ).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+        );
+        final fade = Tween<double>(begin: 0.0, end: 1.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOut),
+        );
+        return SlideTransition(
+          position: slide,
+          child: FadeTransition(opacity: fade, child: child),
+        );
+      } else {
+        // Smooth scale (0.97 -> 1.0) + opacity fade for top-level tab switches
+        final scale = Tween<double>(begin: 0.97, end: 1.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+        );
+        final fade = Tween<double>(begin: 0.0, end: 1.0).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeOut),
+        );
+        return ScaleTransition(
+          scale: scale,
+          child: FadeTransition(opacity: fade, child: child),
+        );
+      }
+    },
+  );
+}
 
 final routerProvider = Provider<GoRouter>((_) => _router);

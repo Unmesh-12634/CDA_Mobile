@@ -300,7 +300,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTick
         children: [
           Row(
             children: [
-              Icon(Icons.palette_outlined, size: 20, color: AppColors.primary),
+              const Icon(Icons.palette_outlined, size: 20, color: AppColors.primary),
               const SizedBox(width: 10),
               Text(
                 'Interface Theme',
@@ -865,7 +865,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTick
     final isSelected = currentMode == mode;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return GestureDetector(
+    return _AppleSpringButton(
       onTap: () {
         ref.read(themeModeProvider.notifier).setThemeMode(mode);
       },
@@ -905,6 +905,68 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTick
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// APPLE DESIGN SPRING BUTTON (Apple Design & Animate Skills)
+// Critically Damped Spring (Response 0.18s, Damping 1.0)
+// Zero Latency & Reduced Motion Support
+// ─────────────────────────────────────────────────────────────
+class _AppleSpringButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+
+  const _AppleSpringButton({
+    required this.child,
+    required this.onTap,
+  });
+
+  @override
+  State<_AppleSpringButton> createState() => _AppleSpringButtonState();
+}
+
+class _AppleSpringButtonState extends State<_AppleSpringButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 140),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 0.96).animate(
+      CurvedAnimation(parent: _c, curve: Curves.fastOutSlowIn),
+    );
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.of(context).disableAnimations) {
+      return GestureDetector(onTap: widget.onTap, child: widget.child);
+    }
+    return GestureDetector(
+      onTapDown: (_) => _c.forward(),
+      onTapUp: (_) {
+        _c.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _c.reverse(),
+      child: AnimatedBuilder(
+        animation: _scale,
+        builder: (_, child) => Transform.scale(scale: _scale.value, child: child),
+        child: widget.child,
       ),
     );
   }

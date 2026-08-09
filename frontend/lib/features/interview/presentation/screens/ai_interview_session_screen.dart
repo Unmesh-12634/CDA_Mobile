@@ -567,6 +567,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       _isTerminatingSession = true;
     });
 
+    if (!mounted) return;
     final router = GoRouter.of(context);
 
     Map<String, dynamic> reportData = {
