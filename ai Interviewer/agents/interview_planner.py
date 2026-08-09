@@ -15,39 +15,36 @@ class InterviewPlannerAgent:
         self.groq_service = groq_service
 
     def create_plan(self, config: InterviewConfig, profile: CandidateProfile) -> InterviewPlan:
-        """Generates a custom strategic interview plan based on candidate projects, skills, level, and role."""
-        prompt = PLANNER_USER_PROMPT.format(
-            candidate_detailed_context=profile.to_detailed_prompt_context(),
-            job_role=config.job_role,
-            interview_type=config.interview_type.value,
-            difficulty=config.difficulty.value,
-            target_question_count=config.target_question_count,
-        )
+        """Generates a custom strategic interview plan instantly (0ms) based on candidate profile & role requirements."""
+        top_skills = profile.skills[:4] if profile.skills else ["Core Fundamentals", "Problem Solving"]
+        skills_str = ", ".join(top_skills)
 
-        plan = self.groq_service.generate_structured(
-            model_class=InterviewPlan,
-            prompt=prompt,
-            system_prompt=PLANNER_SYSTEM_PROMPT,
-            temperature=0.3,
-        )
-
-        if not plan or not plan.topic_allocations:
-            logger.warning("Failed to generate LLM plan. Falling back to default strategic plan.")
-            return self._fallback_plan(config, profile)
-
-        return plan
-
-    def _fallback_plan(self, config: InterviewConfig, profile: CandidateProfile) -> InterviewPlan:
-        """Generates a reliable fallback plan if LLM output fails."""
         default_topics = [
-            TopicAllocation(topic_name=f"Core {config.job_role} Concepts", weight_percentage=35.0, target_questions=3),
-            TopicAllocation(topic_name="Project Deep-Dive & Tech Stack", weight_percentage=30.0, target_questions=2),
-            TopicAllocation(topic_name="System Architecture & Problem Solving", weight_percentage=20.0, target_questions=2),
-            TopicAllocation(topic_name="Behavioral & Role Readiness", weight_percentage=15.0, target_questions=1),
+            TopicAllocation(
+                topic_name=f"Core {config.job_role} Concepts",
+                weight_percentage=35.0,
+                target_questions=max(1, int(config.target_question_count * 0.35)),
+            ),
+            TopicAllocation(
+                topic_name=f"Hands-on Experience ({skills_str})",
+                weight_percentage=30.0,
+                target_questions=max(1, int(config.target_question_count * 0.30)),
+            ),
+            TopicAllocation(
+                topic_name="System Architecture & Problem Solving",
+                weight_percentage=20.0,
+                target_questions=max(1, int(config.target_question_count * 0.20)),
+            ),
+            TopicAllocation(
+                topic_name="Behavioral & Role Readiness",
+                weight_percentage=15.0,
+                target_questions=max(1, int(config.target_question_count * 0.15)),
+            ),
         ]
+
         return InterviewPlan(
             job_role=config.job_role,
-            focus_summary=f"Comprehensive {config.interview_type.value} interview for {config.job_role} ({profile.experience_level}).",
+            focus_summary=f"Comprehensive {config.interview_type.value} interview for {config.job_role} ({profile.experience_level}) focusing on {skills_str}.",
             topic_allocations=default_topics,
             key_objectives=[f"Assess core competencies for {config.job_role}"],
         )

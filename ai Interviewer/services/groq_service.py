@@ -89,17 +89,18 @@ class GroqService:
                     return ""
 
                 except RateLimitError as e:
-                    logger.warning(f"Groq Rate Limit (429/413) hit for model '{current_model}': {e}. Switching model...")
+                    logger.warning(f"Groq Rate Limit on model '{current_model}'. Retrying in 0.1s...")
+                    time.sleep(0.1)
                     last_error = e
-                    break
                 except APIConnectionError as e:
                     logger.warning(f"Groq Connection Error on '{current_model}' (Attempt {attempts}): {e}")
                     last_error = e
                     if attempts < max_attempts:
-                        time.sleep(1.0)
+                        time.sleep(0.1)
                 except APIStatusError as e:
                     if e.status_code in [429, 413]:
-                        logger.warning(f"Groq {e.status_code} Error on model '{current_model}'. Switching model...")
+                        logger.warning(f"Groq {e.status_code} Error on model '{current_model}'. Retrying in 0.1s...")
+                        time.sleep(0.1)
                         last_error = e
                         break
                     logger.error(f"Groq API Status Error on '{current_model}': {e}")
