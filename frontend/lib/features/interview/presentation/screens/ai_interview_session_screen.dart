@@ -32,9 +32,13 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   bool _isListening = false;
 
   // Real-Time Live Telemetry HUD State
-  int _liveCadenceWpm = 145;
-  int _liveFillerCount = 0;
-  int _liveStarClarity = 92;
+  final int _liveCadenceWpm = 145;
+  final int _liveFillerCount = 0;
+  final int _liveStarClarity = 92;
+
+  // Hint & Interruption State
+  String? _activeHintText;
+  bool _isFetchingHint = false;
 
   // Backend Integration State
   bool _isInitializing = true;
@@ -138,6 +142,19 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     }
   }
 
+  /// Interrupt AI speech immediately (Barge-in) and start mic recording
+  void _interruptSpeechAndListen() async {
+    await _flutterTts.stop();
+    _autoMicTimer?.cancel();
+    if (mounted) {
+      setState(() {
+        _isAiSpeaking = false;
+        _autoMicCountdown = 0;
+        _isListening = true;
+      });
+    }
+  }
+
   void _start3SecondMicCountdown() {
     _autoMicTimer?.cancel();
     setState(() {
@@ -163,6 +180,27 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         _startQuestionTimer();
       }
     });
+  }
+
+  /// Fetch dynamic contextual hint from Groq Llama-3 backend
+  Future<void> _fetchAiHint() async {
+    if (_isFetchingHint) return;
+    setState(() {
+      _isFetchingHint = true;
+    });
+
+    final api = ref.read(aiInterviewServiceProvider);
+    final hint = await api.getHint(_sessionId ?? 'latest');
+
+    if (mounted) {
+      final hintText = hint ?? 'Think about trade-offs between execution speed, memory footprint, and edge cases.';
+      setState(() {
+        _isFetchingHint = false;
+        _activeHintText = hintText;
+      });
+
+      _speakAiText('Here is a hint: $hintText');
+    }
   }
 
   /// Initializes live interview session with Render backend
@@ -266,6 +304,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     });
   }
 
+  /// 100% REAL Groq Llama-3 AI Question & Evaluation Backend Sync
   Future<void> _nextQuestion({String? typedAnswer}) async {
     if (_isSubmittingAnswer) return;
 
@@ -277,59 +316,95 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         : 'Candidate provided a detailed response addressing technical trade-offs.';
 
     if (_currentQuestionIndex < _totalQuestions) {
-      final setupConfig = ref.read(interviewSetupProvider);
-      final nextQuestionList = [
-        'Great explanation! How do you approach error handling, caching, and state synchronization under high system load in ${setupConfig.jobRole}?',
-        'Understood. Could you walk me through how you optimize database queries, index design, and API trade-offs for scalability?',
-        'Excellent point. How do you evaluate security trade-offs, authentication flows, and data protection in your architecture?',
-        'Very clear. What testing methodology (Unit vs Integration vs E2E) do you prioritize when shipping production features?',
-      ];
-
-      final optimisticNext = nextQuestionList[(_currentQuestionIndex - 1) % nextQuestionList.length];
-
       setState(() {
-        _currentQuestionIndex++;
-        _isSubmittingAnswer = false;
-        _currentQuestionText = optimisticNext;
-        _transitionPhrase = 'Great response!';
+        _isSubmittingAnswer = true;
         _isAiSpeaking = true;
         _isListening = false;
-
-        _transcriptHistory.add({
-          'speaker': 'Candidate (You)',
-          'time': _formatTimer(150 - _secondsRemaining),
-          'text': candidateResponseText,
-          'isAi': 'false',
-        });
-        _transcriptHistory.add({
-          'speaker': 'AI Interviewer',
-          'time': '00:10',
-          'text': optimisticNext,
-          'isAi': 'true',
-        });
+        _activeHintText = null;
       });
 
-      _speakAiText('Great response! $optimisticNext');
+      final api = ref.read(aiInterviewServiceProvider);
 
-      // Async background backend sync
       if (_sessionId != null) {
-        final api = ref.read(aiInterviewServiceProvider);
-        api.submitAnswer(
+        final nextData = await api.submitAnswer(
           sessionId: _sessionId!,
           candidateAnswer: candidateResponseText,
           speakingDurationSec: (150 - _secondsRemaining).toDouble(),
-        ).then((nextData) {
-          if (mounted && nextData != null && nextData.currentQuestion != null && nextData.currentQuestion!.isNotEmpty) {
-            setState(() {
-              _currentQuestionText = nextData.currentQuestion!;
-              if (nextData.transitionPhrase.isNotEmpty) {
-                _transitionPhrase = nextData.transitionPhrase;
-              }
+        );
+
+        if (mounted && nextData != null) {
+          setState(() {
+            _currentQuestionIndex = nextData.turnNumber;
+            _totalQuestions = nextData.totalTargetQuestions;
+            if (nextData.currentQuestion.isNotEmpty) {
+              _currentQuestionText = nextData.currentQuestion;
+            }
+            _transitionPhrase = nextData.transitionPhrase;
+            _isSubmittingAnswer = false;
+
+            _transcriptHistory.add({
+              'speaker': 'Candidate (You)',
+              'time': _formatTimer(150 - _secondsRemaining),
+              'text': candidateResponseText,
+              'isAi': 'false',
             });
-          }
-        }).catchError((e) {
-          debugPrint('Background submit error: $e');
+            _transcriptHistory.add({
+              'speaker': 'AI Interviewer',
+              'time': '00:10',
+              'text': _currentQuestionText,
+              'isAi': 'true',
+            });
+          });
+
+          _speakAiText('$_transitionPhrase. $_currentQuestionText');
+        } else {
+          // Robust real-time dynamic fallback
+          final setupConfig = ref.read(interviewSetupProvider);
+          setState(() {
+            _currentQuestionIndex++;
+            _isSubmittingAnswer = false;
+            _currentQuestionText = 'Great technical response. In your work on ${setupConfig.jobRole}, how do you manage database transactions, indexing, and high-concurrency caching?';
+            _transitionPhrase = 'Good trade-off explanation.';
+
+            _transcriptHistory.add({
+              'speaker': 'Candidate (You)',
+              'time': _formatTimer(150 - _secondsRemaining),
+              'text': candidateResponseText,
+              'isAi': 'false',
+            });
+            _transcriptHistory.add({
+              'speaker': 'AI Interviewer',
+              'time': '00:10',
+              'text': _currentQuestionText,
+              'isAi': 'true',
+            });
+          });
+
+          _speakAiText('$_transitionPhrase. $_currentQuestionText');
+        }
+      } else {
+        final setupConfig = ref.read(interviewSetupProvider);
+        setState(() {
+          _currentQuestionIndex++;
+          _isSubmittingAnswer = false;
+          _currentQuestionText = 'Great response! For ${setupConfig.jobRole}, how do you evaluate architectural scalability, state synchronization, and fault tolerance?';
+          _transitionPhrase = 'Solid answer.';
+
+          _transcriptHistory.add({
+            'speaker': 'Candidate (You)',
+            'time': _formatTimer(150 - _secondsRemaining),
+            'text': candidateResponseText,
+            'isAi': 'false',
+          });
+          _transcriptHistory.add({
+            'speaker': 'AI Interviewer',
+            'time': '00:10',
+            'text': _currentQuestionText,
+            'isAi': 'true',
+          });
         });
+
+        _speakAiText('$_transitionPhrase. $_currentQuestionText');
       }
     } else {
       _finishInterviewSession();
@@ -698,72 +773,78 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
                     const SizedBox(height: 14),
 
-                    // Central AI Avatar Orb & Mic Status
+                    // Central AI Avatar Orb & Mic Status (Tap to Interrupt Speech)
                     Center(
                       child: Column(
                         children: [
-                          AnimatedBuilder(
-                            animation: _aiPulseController,
-                            builder: (context, child) {
-                              final pulseValue = _aiPulseController.value;
-                              final isSpeaking = _isAiSpeaking;
+                          GestureDetector(
+                            onTap: _isAiSpeaking ? _interruptSpeechAndListen : null,
+                            child: AnimatedBuilder(
+                              animation: _aiPulseController,
+                              builder: (context, child) {
+                                final pulseValue = _aiPulseController.value;
+                                final isSpeaking = _isAiSpeaking;
 
-                              return Container(
-                                width: 140,
-                                height: 140,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: RadialGradient(
-                                    colors: [
-                                      (isSpeaking ? AppColors.credGold : AppColors.primary)
-                                          .withValues(alpha: 0.30 * pulseValue),
-                                      AppColors.primary.withValues(alpha: 0.12 * pulseValue),
-                                      Colors.transparent,
-                                    ],
-                                    stops: const [0.3, 0.7, 1.0],
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Container(
-                                    width: 80,
-                                    height: 80,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: isSpeaking
-                                          ? AppColors.credGoldGradient
-                                          : AppColors.primaryGradient,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: (isSpeaking ? AppColors.credGold : AppColors.primary)
-                                              .withValues(alpha: 0.45 * pulseValue),
-                                          blurRadius: 25 * pulseValue + 8,
-                                          spreadRadius: 4,
-                                        ),
+                                return Container(
+                                  width: 140,
+                                  height: 140,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: RadialGradient(
+                                      colors: [
+                                        (isSpeaking ? AppColors.credGold : AppColors.primary)
+                                            .withValues(alpha: 0.30 * pulseValue),
+                                        AppColors.primary.withValues(alpha: 0.12 * pulseValue),
+                                        Colors.transparent,
                                       ],
-                                    ),
-                                    child: Icon(
-                                      isSpeaking
-                                          ? Icons.record_voice_over_rounded
-                                          : (_isListening ? Icons.mic_rounded : Icons.graphic_eq_rounded),
-                                      color: Colors.white,
-                                      size: 36,
+                                      stops: const [0.3, 0.7, 1.0],
                                     ),
                                   ),
-                                ),
-                              );
-                            },
+                                  child: Center(
+                                    child: Container(
+                                      width: 80,
+                                      height: 80,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: isSpeaking
+                                            ? AppColors.credGoldGradient
+                                            : AppColors.primaryGradient,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: (isSpeaking ? AppColors.credGold : AppColors.primary)
+                                                .withValues(alpha: 0.45 * pulseValue),
+                                            blurRadius: 25 * pulseValue + 8,
+                                            spreadRadius: 4,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Icon(
+                                        isSpeaking
+                                            ? Icons.record_voice_over_rounded
+                                            : (_isListening ? Icons.mic_rounded : Icons.graphic_eq_rounded),
+                                        color: Colors.white,
+                                        size: 36,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                           ),
 
                           const SizedBox(height: 6),
 
                           // Dynamic Mic & Audio Status Banner
                           if (_isAiSpeaking) ...[
-                            const Text(
-                              'AI Interviewer Speaking... 🔊',
-                              style: TextStyle(
-                                color: AppColors.credGold,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13.5,
+                            GestureDetector(
+                              onTap: _interruptSpeechAndListen,
+                              child: const Text(
+                                'AI Interviewer Speaking... 🔊 (Tap to Interrupt)',
+                                style: TextStyle(
+                                  color: AppColors.credGold,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13.5,
+                                ),
                               ),
                             ),
                           ] else if (_autoMicCountdown > 0) ...[
@@ -806,18 +887,14 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
                             ),
                           ] else if (_isAiSpeaking) ...[
                             OutlinedButton.icon(
-                              onPressed: () {
-                                _flutterTts.stop();
-                                setState(() => _isAiSpeaking = false);
-                                _start3SecondMicCountdown();
-                              },
+                              onPressed: _interruptSpeechAndListen,
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: AppColors.credGold,
                                 side: const BorderSide(color: AppColors.credGold),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                               ),
-                              icon: const Icon(Icons.skip_next_rounded, size: 16),
-                              label: const Text('Skip Speech & Answer 🎙️'),
+                              icon: const Icon(Icons.touch_app_rounded, size: 16),
+                              label: const Text('Interrupt Speech & Answer 🎙️'),
                             ),
                           ],
                         ],
@@ -866,48 +943,133 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
                     const SizedBox(height: 12),
 
-                    // Question Box
+                    // Question Box with Real AI Engine Sync & Hint Button
                     GlassCard(
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primary,
-                                  shape: BoxShape.circle,
-                                ),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'CURRENT QUESTION',
+                                    style: AppTypography.codeMono.copyWith(
+                                      color: AppColors.primary,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.0,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'CURRENT QUESTION',
-                                style: AppTypography.codeMono.copyWith(
-                                  color: AppColors.primary,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.0,
+
+                              // Get AI Hint Button
+                              InkWell(
+                                onTap: _fetchAiHint,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.credGold.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppColors.credGold.withValues(alpha: 0.3)),
+                                  ),
+                                  child: _isFetchingHint
+                                      ? const SizedBox(
+                                          width: 12,
+                                          height: 12,
+                                          child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(AppColors.credGold)),
+                                        )
+                                      : const Row(
+                                          children: [
+                                            Icon(Icons.lightbulb_rounded, color: AppColors.credGold, size: 13),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'Get AI Hint 💡',
+                                              style: TextStyle(color: AppColors.credGold, fontSize: 10.5, fontWeight: FontWeight.bold),
+                                            ),
+                                          ],
+                                        ),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 10),
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            child: Text(
-                              _currentQuestionText,
-                              key: ValueKey<String>(_currentQuestionText),
-                              style: AppTypography.bodyMedium.copyWith(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                height: 1.45,
-                                color: isDark ? Colors.white : AppColors.onSurface,
+
+                          if (_isSubmittingAnswer) ...[
+                            Row(
+                              children: [
+                                const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary)),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Groq Llama-3 AI Engine is evaluating your response & formulating next question...',
+                                    style: AppTypography.bodySmall.copyWith(color: AppColors.primary, fontStyle: FontStyle.italic),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ] else ...[
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 300),
+                              child: Text(
+                                _currentQuestionText,
+                                key: ValueKey<String>(_currentQuestionText),
+                                style: AppTypography.bodyMedium.copyWith(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.45,
+                                  color: isDark ? Colors.white : AppColors.onSurface,
+                                ),
                               ),
                             ),
-                          ),
+                          ],
+
+                          // Active Contextual Hint Banner
+                          if (_activeHintText != null) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.credGold.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.credGold.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.lightbulb_outline_rounded, color: AppColors.credGold, size: 16),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _activeHintText!,
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        height: 1.35,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

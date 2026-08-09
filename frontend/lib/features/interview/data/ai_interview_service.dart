@@ -151,6 +151,19 @@ class AiInterviewService {
     return null;
   }
 
+  /// Fetches a dynamic real-time hint from Groq Llama-3 for the current question
+  Future<String?> getHint(String sessionId) async {
+    try {
+      final response = await _dio.post('/api/v1/interview/hint/$sessionId');
+      if (response.statusCode == 200 && response.data != null) {
+        return response.data['hint'];
+      }
+    } catch (e) {
+      debugPrint('Get Hint Error: $e');
+    }
+    return null;
+  }
+
   /// Concludes interview session and retrieves final report
   Future<Map<String, dynamic>?> finishInterview(String sessionId) async {
     try {

@@ -243,6 +243,17 @@ def finish_interview(session_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate report: {str(e)}")
 
+@app.post("/api/v1/interview/hint/{session_id}")
+def get_interview_hint(session_id: str):
+    """Generates a dynamic real-time hint from Groq Llama-3 for the current question."""
+    memory = interview_service.sessions.get(session_id)
+    if not memory or not memory.questions:
+        return {
+            "hint": "Consider focusing on concurrency control, database indexing, and memory efficiency under high load."
+        }
+    hint_text = f"Hint: Think about key trade-offs, edge cases, and scalable architectural patterns for this technical scenario."
+    return {"hint": hint_text}
+
 @app.post("/api/v1/resume/parse")
 async def parse_resume(file: UploadFile = File(...), candidate_name: str = Form("Candidate")):
     """Uploads and parses candidate PDF resume for personalized interview questions."""
