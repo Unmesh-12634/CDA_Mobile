@@ -371,81 +371,67 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
             ? _liveSpokenText.trim()
             : 'Candidate provided a detailed response addressing technical trade-offs.');
 
-    if (_currentQuestionIndex < _totalQuestions) {
-      setState(() {
-        _isSubmittingAnswer = true;
-        _isAiSpeaking = true;
-        _isListening = false;
-        _activeHintText = null;
-        _liveSpokenText = '';
-      });
+    setState(() {
+      _isSubmittingAnswer = true;
+      _isAiSpeaking = true;
+      _isListening = false;
+      _activeHintText = null;
+      _liveSpokenText = '';
+    });
 
-      final api = ref.read(aiInterviewServiceProvider);
+    final api = ref.read(aiInterviewServiceProvider);
 
-      if (_sessionId != null) {
-        final nextData = await api.submitAnswer(
-          sessionId: _sessionId!,
-          candidateAnswer: candidateResponseText,
-          speakingDurationSec: (150 - _secondsRemaining).toDouble(),
-        );
+    if (_sessionId != null) {
+      final nextData = await api.submitAnswer(
+        sessionId: _sessionId!,
+        candidateAnswer: candidateResponseText,
+        speakingDurationSec: (150 - _secondsRemaining).toDouble(),
+      );
 
-        if (mounted && nextData != null) {
-          setState(() {
-            _currentQuestionIndex = nextData.turnNumber;
-            _totalQuestions = nextData.totalTargetQuestions;
-            if (nextData.currentQuestion.isNotEmpty) {
-              _currentQuestionText = nextData.currentQuestion;
-            }
-            _transitionPhrase = nextData.transitionPhrase;
-            _isSubmittingAnswer = false;
-
-            _transcriptHistory.add({
-              'speaker': 'Candidate (You)',
-              'time': _formatTimer(150 - _secondsRemaining),
-              'text': candidateResponseText,
-              'isAi': 'false',
-            });
-            _transcriptHistory.add({
-              'speaker': 'AI Interviewer',
-              'time': '00:10',
-              'text': _currentQuestionText,
-              'isAi': 'true',
-            });
-          });
-
-          _speakAiText('$_transitionPhrase. $_currentQuestionText');
-        } else {
-          // Robust real-time dynamic fallback
-          final setupConfig = ref.read(interviewSetupProvider);
-          setState(() {
-            _currentQuestionIndex++;
-            _isSubmittingAnswer = false;
-            _currentQuestionText = 'Great technical response. In your work on ${setupConfig.jobRole}, how do you manage database transactions, indexing, and high-concurrency caching?';
-            _transitionPhrase = 'Good trade-off explanation.';
-
-            _transcriptHistory.add({
-              'speaker': 'Candidate (You)',
-              'time': _formatTimer(150 - _secondsRemaining),
-              'text': candidateResponseText,
-              'isAi': 'false',
-            });
-            _transcriptHistory.add({
-              'speaker': 'AI Interviewer',
-              'time': '00:10',
-              'text': _currentQuestionText,
-              'isAi': 'true',
-            });
-          });
-
-          _speakAiText('$_transitionPhrase. $_currentQuestionText');
+      if (mounted && nextData != null) {
+        if (nextData.isCompleted || nextData.turnNumber > nextData.totalTargetQuestions) {
+          _finishInterviewSession(isCompleted: true);
+          return;
         }
+
+        setState(() {
+          _currentQuestionIndex = nextData.turnNumber;
+          _totalQuestions = nextData.totalTargetQuestions;
+          if (nextData.currentQuestion.isNotEmpty) {
+            _currentQuestionText = nextData.currentQuestion;
+          }
+          if (nextData.transitionPhrase.isNotEmpty) {
+            _transitionPhrase = nextData.transitionPhrase;
+          }
+          _isSubmittingAnswer = false;
+
+          _transcriptHistory.add({
+            'speaker': 'Candidate (You)',
+            'time': _formatTimer(150 - _secondsRemaining),
+            'text': candidateResponseText,
+            'isAi': 'false',
+          });
+          _transcriptHistory.add({
+            'speaker': 'AI Interviewer',
+            'time': '00:10',
+            'text': _currentQuestionText,
+            'isAi': 'true',
+          });
+        });
+
+        _speakAiText('$_transitionPhrase. $_currentQuestionText');
       } else {
+        if (_currentQuestionIndex >= _totalQuestions) {
+          _finishInterviewSession(isCompleted: true);
+          return;
+        }
+
         final setupConfig = ref.read(interviewSetupProvider);
         setState(() {
           _currentQuestionIndex++;
           _isSubmittingAnswer = false;
-          _currentQuestionText = 'Great response! For ${setupConfig.jobRole}, how do you evaluate architectural scalability, state synchronization, and fault tolerance?';
-          _transitionPhrase = 'Solid answer.';
+          _currentQuestionText = 'Great technical response. In your work on ${setupConfig.jobRole}, how do you manage database transactions, indexing, and high-concurrency caching?';
+          _transitionPhrase = 'Good trade-off explanation.';
 
           _transcriptHistory.add({
             'speaker': 'Candidate (You)',
@@ -464,11 +450,37 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         _speakAiText('$_transitionPhrase. $_currentQuestionText');
       }
     } else {
-      _finishInterviewSession();
+      if (_currentQuestionIndex >= _totalQuestions) {
+        _finishInterviewSession(isCompleted: true);
+        return;
+      }
+
+      final setupConfig = ref.read(interviewSetupProvider);
+      setState(() {
+        _currentQuestionIndex++;
+        _isSubmittingAnswer = false;
+        _currentQuestionText = 'Great response! For ${setupConfig.jobRole}, how do you evaluate architectural scalability, state synchronization, and fault tolerance?';
+        _transitionPhrase = 'Solid answer.';
+
+        _transcriptHistory.add({
+          'speaker': 'Candidate (You)',
+          'time': _formatTimer(150 - _secondsRemaining),
+          'text': candidateResponseText,
+          'isAi': 'false',
+        });
+        _transcriptHistory.add({
+          'speaker': 'AI Interviewer',
+          'time': '00:10',
+          'text': _currentQuestionText,
+          'isAi': 'true',
+        });
+      });
+
+      _speakAiText('$_transitionPhrase. $_currentQuestionText');
     }
   }
 
-  Future<void> _finishInterviewSession() async {
+  Future<void> _finishInterviewSession({bool isCompleted = false}) async {
     _countdownTimer?.cancel();
     _autoMicTimer?.cancel();
     _stopSpeechListening();
@@ -482,15 +494,17 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
     Map<String, dynamic> reportData = {
       'session_id': _sessionId ?? 'completed_session',
-      'is_terminated_early': false,
-      'completed_turns': _totalQuestions,
+      'is_terminated_early': !isCompleted,
+      'completed_turns': isCompleted ? _totalQuestions : (_currentQuestionIndex - 1),
       'target_turns': _totalQuestions,
-      'overall_score': 88.0,
-      'technical_score': 90.0,
-      'communication_score': 86.0,
-      'problem_solving_score': 88.0,
-      'hiring_readiness': 'STRONG CANDIDATE',
-      'summary': 'Candidate successfully completed all target interview rounds demonstrating strong technical mastery.',
+      'overall_score': isCompleted ? 88.0 : 78.0,
+      'technical_score': isCompleted ? 90.0 : 80.0,
+      'communication_score': isCompleted ? 86.0 : 76.0,
+      'problem_solving_score': isCompleted ? 88.0 : 78.0,
+      'hiring_readiness': isCompleted ? 'STRONG CANDIDATE' : 'SESSION REVOKED EARLY',
+      'summary': isCompleted
+          ? 'Candidate successfully completed all target interview rounds demonstrating strong technical mastery.'
+          : 'Interview session revoked early by candidate. Performance evaluated up to completed turns.',
       'strong_areas': ['Comprehensive problem solving', 'Clean architectural patterns', 'Effective trade-off explanations'],
       'areas_for_improvement': ['Deep numerical benchmarking under ultra-high load'],
     };
@@ -501,6 +515,9 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         final remoteReport = await api.finishInterview(_sessionId!);
         if (remoteReport != null) {
           reportData = remoteReport;
+          if (isCompleted) {
+            reportData['is_terminated_early'] = false;
+          }
         }
       } catch (e) {
         debugPrint('Finish session error: $e');
@@ -1535,6 +1552,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
                   final remoteReport = await api.finishInterview(_sessionId!);
                   if (remoteReport != null) {
                     reportData = remoteReport;
+                    reportData['is_terminated_early'] = true;
                   }
                 } catch (e) {
                   debugPrint('Finish interview API error: $e');
