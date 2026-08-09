@@ -43,11 +43,31 @@ class AiInterviewService {
       : _dio = Dio(
           BaseOptions(
             baseUrl: baseUrl,
-            connectTimeout: const Duration(seconds: 45), // Higher timeout for Render cold start
+            connectTimeout: const Duration(seconds: 45),
             receiveTimeout: const Duration(seconds: 45),
             headers: {'Content-Type': 'application/json'},
           ),
-        );
+        ) {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onError: (DioException error, ErrorInterceptorHandler handler) async {
+          if (error.type == DioExceptionType.connectionTimeout ||
+              error.type == DioExceptionType.receiveTimeout ||
+              (error.response?.statusCode != null && error.response!.statusCode! >= 500)) {
+            debugPrint('⚡ Automatic HTTP retry for: ${error.requestOptions.path}');
+            try {
+              await Future.delayed(const Duration(seconds: 1));
+              final response = await _dio.fetch(error.requestOptions);
+              return handler.resolve(response);
+            } catch (retryError) {
+              return handler.next(error);
+            }
+          }
+          return handler.next(error);
+        },
+      ),
+    );
+  }
 
   /// Pings the Render backend health check
   Future<bool> checkHealth() async {
