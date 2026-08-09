@@ -201,13 +201,13 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
   String get _typeLabel {
     switch (_selectedType) {
       case InterviewType.technical:
-        return 'Technical Screening';
+        return 'Technical';
       case InterviewType.behavioral:
-        return 'Behavioral (HR)';
+        return 'Behavioral';
       case InterviewType.systemDesign:
         return 'System Design';
       case null:
-        return '—';
+        return 'Technical';
     }
   }
 
