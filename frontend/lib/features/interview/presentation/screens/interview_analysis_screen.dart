@@ -127,7 +127,7 @@ class InterviewAnalysisScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'INTERVIEW TERMINATED EARLY',
+                                  'INTERVIEW REVOKED / TERMINATED EARLY',
                                   style: TextStyle(
                                     color: Color(0xFFEF4444),
                                     fontWeight: FontWeight.w800,
