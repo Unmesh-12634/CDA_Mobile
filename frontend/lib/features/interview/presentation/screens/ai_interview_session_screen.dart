@@ -128,6 +128,16 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   }
 
   void _startSpeechListening() async {
+    if (!_speechEnabled) {
+      try {
+        _speechEnabled = await _speechToText.initialize(
+          onError: (val) => debugPrint('STT error: $val'),
+          onStatus: (val) => debugPrint('STT status: $val'),
+        );
+      } catch (e) {
+        debugPrint('STT re-init warning: $e');
+      }
+    }
     if (!_speechEnabled) return;
     try {
       await _speechToText.listen(
