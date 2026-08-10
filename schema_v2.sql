@@ -333,10 +333,11 @@ CREATE INDEX IF NOT EXISTS idx_ai_interview_session_user ON ai_interview_session
 CREATE INDEX IF NOT EXISTS idx_user_weekly_report_user ON user_weekly_report(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_progress_user ON user_progress(user_id);
 
--- 19. Enable RLS and Universal Access Policies for App
+-- 19. Enable RLS and Granular Access Policies for App
 DO $$ 
 DECLARE 
     tbl_name text;
+    pol record;
     app_tables text[] := ARRAY[
         'users', 'user_auth', 'user_interview_settings', 'companies', 'jobs', 
         'saved_jobs', 'job_applications', 'user_job_application', 'reels', 
@@ -348,8 +349,19 @@ BEGIN
     FOREACH tbl_name IN ARRAY app_tables LOOP
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = tbl_name) THEN
             EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl_name);
-            EXECUTE format('DROP POLICY IF EXISTS "Public Full Access Policy" ON public.%I;', tbl_name);
-            EXECUTE format('CREATE POLICY "Public Full Access Policy" ON public.%I FOR ALL USING (true) WITH CHECK (true);', tbl_name);
+            
+            FOR pol IN 
+                SELECT policyname 
+                FROM pg_policies 
+                WHERE schemaname = 'public' AND tablename = tbl_name 
+            LOOP
+                EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I;', pol.policyname, tbl_name);
+            END LOOP;
+            
+            EXECUTE format('CREATE POLICY "Allow Select" ON public.%I FOR SELECT TO anon, authenticated, service_role USING (true);', tbl_name);
+            EXECUTE format('CREATE POLICY "Allow Insert" ON public.%I FOR INSERT TO anon, authenticated, service_role WITH CHECK (true);', tbl_name);
+            EXECUTE format('CREATE POLICY "Allow Update" ON public.%I FOR UPDATE TO anon, authenticated, service_role USING (true) WITH CHECK (true);', tbl_name);
+            EXECUTE format('CREATE POLICY "Allow Delete" ON public.%I FOR DELETE TO anon, authenticated, service_role USING (true);', tbl_name);
         END IF;
     END LOOP;
 END $$;
