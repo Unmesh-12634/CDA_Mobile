@@ -22,113 +22,98 @@ class CDAAppLogo extends StatelessWidget {
     double logoWidth;
     double logoHeight;
     double taglineSize;
+    double titleFontSize;
 
     switch (size) {
       case CDALogoSize.small:
-        logoWidth = 48.0;
-        logoHeight = 48.0;
-        taglineSize = 8.5;
-        break;
-      case CDALogoSize.large:
-        logoWidth = 100.0;
-        logoHeight = 100.0;
-        taglineSize = 11.0;
+        logoWidth = 36.0;
+        logoHeight = 36.0;
+        taglineSize = 8.0;
+        titleFontSize = 15.0;
         break;
       case CDALogoSize.medium:
-        logoWidth = 72.0;
-        logoHeight = 72.0;
-        taglineSize = 10.0;
+        logoWidth = 52.0;
+        logoHeight = 52.0;
+        taglineSize = 9.5;
+        titleFontSize = 18.0;
+        break;
+      case CDALogoSize.large:
+        logoWidth = 64.0;
+        logoHeight = 64.0;
+        taglineSize = 10.5;
+        titleFontSize = 21.0;
         break;
     }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Official Cranes Logo Badge Container
+        // Official Cranes Logo Badge Container (Compact & Elegant)
         Container(
           width: logoWidth,
           height: logoHeight,
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.35 : 0.20),
-                blurRadius: size == CDALogoSize.large ? 20 : 12,
+                color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.30 : 0.15),
+                blurRadius: size == CDALogoSize.large ? 16 : 10,
                 spreadRadius: 1,
-                offset: const Offset(0, 4),
+                offset: const Offset(0, 3),
               ),
               BoxShadow(
-                color: const Color(0xFF4648D4).withValues(alpha: isDark ? 0.25 : 0.12),
-                blurRadius: 10,
+                color: const Color(0xFF4648D4).withValues(alpha: isDark ? 0.20 : 0.10),
+                blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
             ],
             border: Border.all(
-              color: isDark ? const Color(0xFFF59E0B).withValues(alpha: 0.6) : const Color(0xFFE2E8F0),
-              width: 1.5,
+              color: isDark ? const Color(0xFFF59E0B).withValues(alpha: 0.5) : const Color(0xFFE2E8F0),
+              width: 1.2,
             ),
           ),
           child: Image.asset(
             'assets/images/cranes_logo.png',
             fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) {
-              // Fallback icon if asset fails loading
               return const Icon(
                 Icons.school_rounded,
                 color: AppColors.primary,
-                size: 32,
+                size: 28,
               );
             },
           ),
         ),
 
         if (showText) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
 
-          // Official Cranes Brand Badge
+          // Official Brand Title: CRANES VARSITY
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'CRANES',
+                'CRANES ',
                 style: TextStyle(
-                  fontSize: size == CDALogoSize.large ? 22 : 18,
+                  fontSize: titleFontSize,
                   fontWeight: FontWeight.w900,
                   color: isDark ? Colors.white : const Color(0xFF0F172A),
-                  letterSpacing: 2.0,
+                  letterSpacing: 1.5,
                 ),
               ),
-              const SizedBox(width: 4),
-              Text(
-                '®',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.credGold : const Color(0xFF003399),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                decoration: BoxDecoration(
-                  gradient: AppColors.credGoldGradient,
-                  borderRadius: BorderRadius.circular(6),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-                child: const Text(
-                  'ACADEMY',
+              ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [Color(0xFFF59E0B), Color(0xFF4648D4)],
+                ).createShader(bounds),
+                child: Text(
+                  'VARSITY',
                   style: TextStyle(
-                    fontSize: 9.5,
+                    fontSize: titleFontSize,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
-                    letterSpacing: 1.0,
+                    letterSpacing: 1.5,
                   ),
                 ),
               ),
@@ -144,7 +129,7 @@ class CDAAppLogo extends StatelessWidget {
                 fontSize: taglineSize,
                 fontWeight: FontWeight.w700,
                 color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                letterSpacing: 1.2,
+                letterSpacing: 1.1,
               ),
             ),
           ],

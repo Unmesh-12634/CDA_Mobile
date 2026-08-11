@@ -14,16 +14,16 @@ class InterviewSetupConfig {
   final String? resumePath;
 
   const InterviewSetupConfig({
-    this.candidateName = 'Arjun Verma',
-    this.jobRole = 'Senior AI & Full-Stack Engineer',
+    this.candidateName = '',
+    this.jobRole = '',
     this.experienceLevel = 'Mid-Level',
     this.interviewType = 'Technical',
     this.difficulty = 'Intermediate',
     this.targetQuestionCount = 5,
-    this.voicePersona = 'guy',
-    this.speechRate = 0.38,
-    this.enrolledCourses = const ['Full-Stack Web Development', 'System Design & Microservices'],
-    this.skills = const ['Java', 'Flutter', 'Python', 'Dart', 'FastAPI'],
+    this.voicePersona = 'christopher',
+    this.speechRate = 0.50,
+    this.enrolledCourses = const [],
+    this.skills = const [],
     this.resumePath,
   });
 

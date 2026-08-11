@@ -12,8 +12,10 @@ import '../../features/learn/presentation/screens/learn_screen.dart';
 import '../../features/jobs/presentation/screens/jobs_screen.dart';
 import '../../features/jobs/presentation/screens/job_detail_screen.dart';
 import '../../features/interview/presentation/screens/interview_setup_screen.dart';
+import '../../features/interview/presentation/screens/interview_reports_history_screen.dart';
 import '../../features/interview/presentation/screens/ai_interview_session_screen.dart';
 import '../../features/interview/presentation/screens/interview_analysis_screen.dart';
+import '../../features/interview/presentation/screens/backend_connection_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/profile/presentation/screens/edit_profile_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
@@ -145,6 +147,26 @@ final _router = GoRouter(
         state: state,
         isSlide: true,
         child: const InterviewSetupScreen(),
+      ),
+    ),
+    GoRoute(
+      path: '/interview/reports',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const InterviewReportsHistoryScreen(),
+      ),
+    ),
+    GoRoute(
+      path: '/interview/diagnostics',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const BackendConnectionDiagnosticsScreen(),
       ),
     ),
     GoRoute(

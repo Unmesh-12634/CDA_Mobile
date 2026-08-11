@@ -2,64 +2,61 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/config/app_config.dart';
+import 'models/ai_interview_models.dart';
 
-class AiInterviewSessionData {
-  final String sessionId;
-  final bool isCompleted;
-  final String initialGreeting;
-  final String currentQuestion;
-  final int turnNumber;
-  final int totalTargetQuestions;
-  final String transitionPhrase;
+// Re-export models for convenient imports across feature widgets
+export 'models/ai_interview_models.dart';
 
-  AiInterviewSessionData({
-    required this.sessionId,
-    required this.isCompleted,
-    required this.initialGreeting,
-    required this.currentQuestion,
-    required this.turnNumber,
-    required this.totalTargetQuestions,
-    required this.transitionPhrase,
-  });
+/// Legacy alias for compatibility with existing riverpod bindings
+typedef AiInterviewSessionData = StartInterviewResponse;
 
-  factory AiInterviewSessionData.fromJson(Map<String, dynamic> json) {
-    return AiInterviewSessionData(
-      sessionId: json['session_id'] ?? '',
-      isCompleted: json['is_completed'] ?? false,
-      initialGreeting: json['initial_greeting'] ?? '',
-      currentQuestion: json['current_question'] ?? '',
-      turnNumber: json['turn_number'] ?? 1,
-      totalTargetQuestions: json['total_target_questions'] ?? 5,
-      transitionPhrase: json['transition_phrase'] ?? '',
-    );
-  }
-}
-
-class AiInterviewService {
-  static const String baseUrl = 'https://cda-ai-interview-engine.onrender.com';
+/// Dedicated Production API Client for FastAPI Engine on Render
+class AiInterviewApiClient {
   final Dio _dio;
 
-  AiInterviewService()
+  AiInterviewApiClient()
       : _dio = Dio(
           BaseOptions(
-            baseUrl: baseUrl,
-            connectTimeout: const Duration(seconds: 45),
-            receiveTimeout: const Duration(seconds: 45),
+            baseUrl: AppConfig.apiBaseUrl,
+            connectTimeout: const Duration(seconds: 60),
+            receiveTimeout: const Duration(seconds: 90),
+            sendTimeout: const Duration(seconds: 60),
             headers: {'Content-Type': 'application/json'},
           ),
         ) {
     _dio.interceptors.add(
       InterceptorsWrapper(
+        onRequest: (options, handler) {
+          options.extra['startTime'] = DateTime.now().millisecondsSinceEpoch;
+          debugPrint('🌐 [API REQ] ${options.method} ${options.path}');
+          return handler.next(options);
+        },
+        onResponse: (response, handler) {
+          final startTime = response.requestOptions.extra['startTime'] as int?;
+          final latency = startTime != null
+              ? DateTime.now().millisecondsSinceEpoch - startTime
+              : 0;
+          debugPrint('✅ [API RES] ${response.requestOptions.method} ${response.requestOptions.path} - ${response.statusCode} OK (${latency}ms)');
+          return handler.next(response);
+        },
         onError: (DioException error, ErrorInterceptorHandler handler) async {
+          final startTime = error.requestOptions.extra['startTime'] as int?;
+          final latency = startTime != null
+              ? DateTime.now().millisecondsSinceEpoch - startTime
+              : 0;
+          debugPrint('❌ [API ERR] ${error.requestOptions.method} ${error.requestOptions.path} - ${error.response?.statusCode ?? 'NETWORK_ERROR'} (${latency}ms): ${error.message}');
+          
+          // Auto-retry once on Render cold start or 5xx server errors
           if (error.type == DioExceptionType.connectionTimeout ||
               error.type == DioExceptionType.receiveTimeout ||
               (error.response?.statusCode != null && error.response!.statusCode! >= 500)) {
-            debugPrint('⚡ Automatic HTTP retry for: ${error.requestOptions.path}');
+            debugPrint('⚡ Auto-retrying request for: ${error.requestOptions.path}');
             try {
-              await Future.delayed(const Duration(seconds: 1));
+              await Future.delayed(const Duration(seconds: 3));
               final response = await _dio.fetch(error.requestOptions);
               return handler.resolve(response);
-            } catch (retryError) {
+            } catch (_) {
               return handler.next(error);
             }
           }
@@ -69,135 +66,207 @@ class AiInterviewService {
     );
   }
 
-  /// Pings the Render backend health check
-  Future<bool> checkHealth() async {
+  /// GET /api/v1/health — Checks Render backend reachability and calculates latency
+  Future<HealthResponse?> healthCheck() async {
+    final stopwatch = Stopwatch()..start();
     try {
-      final response = await _dio.get('/api/v1/health');
-      if (response.statusCode == 200) {
-        return response.data['status'] == 'online';
+      final response = await _dio.get('/health').timeout(const Duration(seconds: 15));
+      stopwatch.stop();
+      if (response.statusCode == 200 && response.data != null) {
+        return HealthResponse.fromJson(response.data, stopwatch.elapsedMilliseconds);
       }
     } catch (e) {
-      debugPrint('AI Backend Health Check Warning: $e');
+      stopwatch.stop();
+      debugPrint('healthCheck error: $e');
+    }
+    return null;
+  }
+
+  /// Performs detailed health test with latency for diagnostic screens
+  Future<Map<String, dynamic>> testDetailedHealth() async {
+    final stopwatch = Stopwatch()..start();
+    try {
+      final response = await _dio.get('/health').timeout(const Duration(seconds: 15));
+      stopwatch.stop();
+      if (response.statusCode == 200 && response.data != null) {
+        final data = Map<String, dynamic>.from(response.data);
+        data['latency_ms'] = stopwatch.elapsedMilliseconds;
+        data['is_healthy'] = true;
+        return data;
+      }
+    } catch (e) {
+      stopwatch.stop();
+      return {
+        'is_healthy': false,
+        'status': 'offline',
+        'error': e.toString(),
+        'latency_ms': stopwatch.elapsedMilliseconds,
+      };
+    }
+    return {'is_healthy': false, 'status': 'error', 'latency_ms': stopwatch.elapsedMilliseconds};
+  }
+
+  /// Polls health endpoint during Render cold start wake-up phase
+  Future<bool> waitForBackendReady({
+    int maxWaitSeconds = 90,
+    void Function(int phase, String message)? onPhaseUpdate,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    onPhaseUpdate?.call(0, 'Waking up AI Engine on Render...');
+
+    while (stopwatch.elapsed.inSeconds < maxWaitSeconds) {
+      final elapsed = stopwatch.elapsed.inSeconds;
+
+      if (elapsed < 10) {
+        onPhaseUpdate?.call(0, 'Waking up AI Engine on Render...');
+      } else if (elapsed < 25) {
+        onPhaseUpdate?.call(1, 'Loading Groq Llama-3 70B Engine...');
+      } else if (elapsed < 40) {
+        onPhaseUpdate?.call(2, 'Configuring Voice Persona...');
+      } else {
+        onPhaseUpdate?.call(3, 'Finalizing Render connection... (${maxWaitSeconds - elapsed}s)');
+      }
+
+      final health = await healthCheck();
+      if (health != null && health.status == 'online') {
+        onPhaseUpdate?.call(4, 'AI Engine Ready!');
+        return true;
+      }
+
+      await Future.delayed(const Duration(seconds: 3));
     }
     return false;
   }
 
-  /// Silently pre-warms the Render backend in the background to prevent cold start latency
+  /// Pre-warms the Render backend on app startup
   Future<void> preWarmBackend() async {
     try {
-      debugPrint('⚡ Pre-warming Render AI Engine in background...');
-      await _dio.get('/api/v1/health');
+      await _dio.get('/health').timeout(const Duration(seconds: 8));
     } catch (_) {}
   }
 
-  /// Starts a new live AI Interview Session on Render backend
-  Future<AiInterviewSessionData?> startInterview({
-    required String candidateName,
-    required String jobRole,
-    required String experienceLevel,
-    required String interviewType,
-    required String difficulty,
-    int targetQuestionCount = 5,
-    String voicePersona = 'guy',
-    List<String> enrolledCourses = const [],
-    List<String> skills = const [],
-    String? resumePath,
-  }) async {
-    try {
-      final response = await _dio.post(
-        '/api/v1/interview/start',
-        data: {
-          'candidate_name': candidateName,
-          'job_role': jobRole,
-          'experience_level': experienceLevel,
-          'interview_type': interviewType,
-          'difficulty': difficulty,
-          'target_question_count': targetQuestionCount,
-          'voice_persona': voicePersona,
-          'enrolled_courses': enrolledCourses,
-          'skills': skills,
-          'resume_path': resumePath,
-        },
-      );
-
-      if (response.statusCode == 200 && response.data != null) {
-        return AiInterviewSessionData.fromJson(response.data);
+  /// POST /api/v1/interview/start — Starts session and returns initial greeting & Q1
+  Future<StartInterviewResponse?> startInterview(StartInterviewRequest request) async {
+    final delays = [0, 1, 3];
+    for (int i = 0; i < delays.length; i++) {
+      if (delays[i] > 0) await Future.delayed(Duration(seconds: delays[i]));
+      try {
+        final response = await _dio
+            .post('/interview/start', data: request.toJson())
+            .timeout(const Duration(seconds: 60));
+        if (response.statusCode == 200 && response.data != null) {
+          return StartInterviewResponse.fromJson(response.data);
+        }
+      } catch (e) {
+        debugPrint('startInterview attempt ${i + 1} failed: $e');
+        if (i == delays.length - 1) rethrow;
       }
-    } catch (e) {
-      debugPrint('Start Interview Error: $e');
     }
     return null;
   }
 
-  /// Submits candidate answer to Render backend and receives next question
-  Future<AiInterviewSessionData?> submitAnswer({
-    required String sessionId,
-    required String candidateAnswer,
-    double speakingDurationSec = 15.0,
-  }) async {
-    try {
-      final response = await _dio.post(
-        '/api/v1/interview/answer',
-        data: {
-          'session_id': sessionId,
-          'candidate_answer': candidateAnswer,
-          'speaking_duration_sec': speakingDurationSec,
-        },
-      );
+  /// POST /api/v1/interview/answer — Submits candidate answer, returns evaluation + Q(N+1)
+  Future<AnswerResponse?> submitAnswer(AnswerRequest request) async {
+    final delays = [0, 1];
+    for (int i = 0; i < delays.length; i++) {
+      if (delays[i] > 0) await Future.delayed(Duration(seconds: delays[i]));
+      try {
+        final response = await _dio
+            .post('/interview/answer', data: request.toJson())
+            .timeout(const Duration(seconds: 90));
 
-      if (response.statusCode == 200 && response.data != null) {
-        return AiInterviewSessionData.fromJson(response.data);
+        if (response.statusCode == 200 && response.data != null) {
+          return AnswerResponse.fromJson(response.data);
+        }
+      } catch (e) {
+        debugPrint('submitAnswer attempt ${i + 1} failed: $e');
+        if (i == delays.length - 1) return null;
       }
-    } catch (e) {
-      debugPrint('Submit Answer Error: $e');
     }
     return null;
   }
 
-  /// Uploads and parses candidate PDF resume upfront during setup Step 4
-  Future<Map<String, dynamic>?> uploadResume(String filePath, String candidateName) async {
+  /// POST /api/v1/interview/finish/{session_id} — Concludes interview & returns full report
+  Future<InterviewFinishResponse?> finishInterview(String sessionId) async {
+    final delays = [0, 1];
+    for (int i = 0; i < delays.length; i++) {
+      if (delays[i] > 0) await Future.delayed(Duration(seconds: delays[i]));
+      try {
+        final response = await _dio
+            .post('/interview/finish/$sessionId')
+            .timeout(const Duration(seconds: 45));
+        if (response.statusCode == 200 && response.data != null) {
+          return InterviewFinishResponse.fromJson(response.data);
+        }
+      } catch (e) {
+        debugPrint('finishInterview attempt ${i + 1} failed: $e');
+        if (i == delays.length - 1) return null;
+      }
+    }
+    return null;
+  }
+
+  /// POST /api/v1/resume/parse — Parses candidate PDF resume using multipart form-data
+  Future<ResumeParseResponse?> parseResume(String filePath, String candidateName) async {
     try {
       final formData = FormData.fromMap({
         'candidate_name': candidateName,
-        'file': await MultipartFile.fromFile(filePath, filename: filePath.split('/').last),
+        'file': await MultipartFile.fromFile(
+          filePath,
+          filename: filePath.split('/').last,
+        ),
       });
-      final response = await _dio.post('/api/v1/resume/upload', data: formData);
+      final response = await _dio
+          .post('/resume/parse', data: formData)
+          .timeout(const Duration(seconds: 30));
       if (response.statusCode == 200 && response.data != null) {
-        return response.data;
+        return ResumeParseResponse.fromJson(response.data);
       }
     } catch (e) {
-      debugPrint('Resume Upload Error: $e');
+      debugPrint('parseResume error: $e');
     }
     return null;
   }
 
-  /// Fetches a dynamic real-time hint from Groq Llama-3 for the current question
+  /// POST /api/v1/interview/hint/{session_id} — Gets contextual hint from Groq
   Future<String?> getHint(String sessionId) async {
     try {
-      final response = await _dio.post('/api/v1/interview/hint/$sessionId');
+      final response = await _dio
+          .post('/interview/hint/$sessionId')
+          .timeout(const Duration(seconds: 15));
       if (response.statusCode == 200 && response.data != null) {
-        return response.data['hint'];
+        return response.data['hint'] as String?;
       }
     } catch (e) {
-      debugPrint('Get Hint Error: $e');
+      debugPrint('getHint error: $e');
     }
     return null;
   }
 
-  /// Concludes interview session and retrieves final report
-  Future<Map<String, dynamic>?> finishInterview(String sessionId) async {
+  /// POST /api/v1/tts/synthesize — Synthesizes Edge Neural Voice MP3 bytes
+  Future<Uint8List?> synthesizeSpeech(String text, String voicePersona) async {
     try {
-      final response = await _dio.post('/api/v1/interview/finish/$sessionId');
+      final response = await _dio.post(
+        '/tts/synthesize',
+        data: {
+          'text': text,
+          'voice_persona': voicePersona,
+        },
+        options: Options(responseType: ResponseType.bytes),
+      );
       if (response.statusCode == 200 && response.data != null) {
-        return response.data;
+        return Uint8List.fromList(response.data);
       }
     } catch (e) {
-      debugPrint('Finish Interview Error: $e');
+      debugPrint('synthesizeSpeech error: $e');
     }
     return null;
   }
 }
 
-final aiInterviewServiceProvider = Provider<AiInterviewService>((ref) {
-  return AiInterviewService();
+/// Compatibility typedef for AiInterviewService
+typedef AiInterviewService = AiInterviewApiClient;
+
+final aiInterviewServiceProvider = Provider<AiInterviewApiClient>((ref) {
+  return AiInterviewApiClient();
 });

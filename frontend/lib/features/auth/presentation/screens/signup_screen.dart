@@ -183,7 +183,7 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                   ),
 
                   // Official Cranes Brand Logo
-                  const CDAAppLogo(size: CDALogoSize.large),
+                  const CDAAppLogo(size: CDALogoSize.medium),
                   const SizedBox(height: 20),
 
                   Text(

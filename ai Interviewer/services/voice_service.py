@@ -158,6 +158,46 @@ class VoiceService:
         logger.info(f"Groq Whisper transcribed text: '{transcription}'")
         return transcription
 
+    def analyze_speech_analytics(self, transcript: str, duration_sec: float = 15.0) -> dict:
+        """Analyzes transcript for WPM, filler words count, and clarity score."""
+        if not transcript:
+            return {"wpm": 0, "filler_count": 0, "clarity_score": 75}
+        
+        words = transcript.split()
+        word_count = len(words)
+        wpm = int((word_count / max(duration_sec, 1.0)) * 60)
+        wpm = max(60, min(wpm, 240))
+
+        filler_words = ["uh", "um", "like", "you know", "basically", "literally", "actually", "so", "right"]
+        filler_count = sum(transcript.lower().count(fw) for fw in filler_words)
+        clarity_score = max(40, min(100, 85 - (filler_count * 3) + min(word_count // 10, 15)))
+
+        return {
+            "wpm": wpm,
+            "filler_count": filler_count,
+            "clarity_score": clarity_score,
+        }
+
+    def analyze_speech_analytics(self, transcript: str, duration_sec: float = 15.0) -> dict:
+        """Analyzes transcript for WPM, filler words count, and clarity score."""
+        if not transcript:
+            return {"wpm": 0, "filler_count": 0, "clarity_score": 75}
+        
+        words = transcript.split()
+        word_count = len(words)
+        wpm = int((word_count / max(duration_sec, 1.0)) * 60)
+        wpm = max(60, min(wpm, 240))
+
+        filler_words = ["uh", "um", "like", "you know", "basically", "literally", "actually", "so", "right"]
+        filler_count = sum(transcript.lower().count(fw) for fw in filler_words)
+        clarity_score = max(40, min(100, 85 - (filler_count * 3) + min(word_count // 10, 15)))
+
+        return {
+            "wpm": wpm,
+            "filler_count": filler_count,
+            "clarity_score": clarity_score,
+        }
+
 
 def select_file_descriptors():
     """Cross-platform helper to check if stdin has pending input without blocking."""

@@ -268,12 +268,27 @@ async def parse_resume(file: UploadFile = File(...), candidate_name: str = Form(
             f.write(await file.read())
 
         profile = interview_service.resume_service.process_resume(str(file_path), candidate_name)
+        
+        # Format projects list
+        proj_list = []
+        if hasattr(profile, "projects") and profile.projects:
+            for p in profile.projects:
+                if hasattr(p, "title") and p.title:
+                    proj_list.append(p.title)
+                elif isinstance(p, str):
+                    proj_list.append(p)
+                elif isinstance(p, dict):
+                    proj_list.append(p.get("title", str(p)))
+        
         return {
             "status": "success",
             "candidate_name": getattr(profile, "name", candidate_name),
             "skills": getattr(profile, "skills", []),
-            "experience_level": profile.experience_level,
-            "target_role": profile.target_career_goal,
+            "projects": proj_list,
+            "hackathons": getattr(profile, "hackathons", []),
+            "certifications": getattr(profile, "certifications", []),
+            "experience_level": getattr(profile, "experience_level", "Mid-Level"),
+            "target_role": getattr(profile, "target_career_goal", ""),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to parse resume: {str(e)}")

@@ -1346,7 +1346,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   child: _PillButton(
                     label: 'Reports',
                     filled: false,
-                    onTap: () => _showComingSoon('Reports'),
+                    onTap: () => context.push('/interview/reports'),
                   ),
                 ),
               ],

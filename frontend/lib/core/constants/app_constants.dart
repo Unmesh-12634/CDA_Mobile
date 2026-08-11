@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 abstract class AppConstants {
-  static const String appName = 'CDA Career Companion';
-  static const String academyFullName = 'Cranes Digital Academy';
+  static const String appName = 'Cranes Varsity Platform';
+  static const String academyFullName = 'Cranes Varsity';
 
   // Layout Spacing & Margins (Base 8px grid)
   static const double marginMobile = 20.0;

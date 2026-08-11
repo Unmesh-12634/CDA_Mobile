@@ -21,6 +21,9 @@ dependencies:
   flutter_tts: ^4.0.2
   speech_to_text: ^7.0.0
   web_socket_channel: ^3.0.0
+  audioplayers: ^6.6.0
+  video_player: ^2.8.6
+  share_plus: ^10.0.0
 
 dev_dependencies:
   flutter_test:

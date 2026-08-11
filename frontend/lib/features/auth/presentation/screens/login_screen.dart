@@ -87,7 +87,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   // Institute Brand App Logo Badge
                   const CDAAppLogo(
-                    size: CDALogoSize.large,
+                    size: CDALogoSize.medium,
                     showText: true,
                     showTagline: true,
                   ),

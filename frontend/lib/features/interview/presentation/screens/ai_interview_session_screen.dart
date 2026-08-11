@@ -30,7 +30,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   late stt.SpeechToText _speechToText;
   bool _speechEnabled = false;
   String _liveSpokenText = '';
-  double _currentSpeechRate = 0.38; // Default natural speech pace
+  double _currentSpeechRate = 0.50; // Default natural 1.0x speech pace
 
   // Typewriter Subtitle State
   String _displayedQuestionText = '';
@@ -41,9 +41,14 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   bool _isListening = false;
 
   // Real-Time Live Telemetry HUD State
-  final int _liveCadenceWpm = 145;
-  final int _liveFillerCount = 0;
-  final int _liveStarClarity = 92;
+  int _liveCadenceWpm = 145;
+  int _liveFillerCount = 0;
+  int _liveStarClarity = 92;
+
+  // Real-Time Answer Evaluation Feedback Banner State
+  double _lastAnswerScore = 0.0;
+  String? _lastAnswerFeedback;
+  bool _showFeedbackBanner = false;
 
   // Hint & Interruption State
   String? _activeHintText;
@@ -52,6 +57,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   // Backend Integration State
   bool _isInitializing = true;
   bool _isTerminatingSession = false;
+  bool _isAiSystemUnderService = false;
   String _initializationStatus = 'Connecting to Render AI Engine...';
   String? _sessionId;
   bool _backendConnected = false;
@@ -96,11 +102,69 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     final setupConfig = ref.read(interviewSetupProvider);
     _currentSpeechRate = setupConfig.speechRate;
 
+    final persona = setupConfig.voicePersona.toLowerCase();
+
     try {
-      await _flutterTts.setLanguage('en-US');
+      // Set iOS audio category for loud speaker output even if ringer is silent
+      await _flutterTts.setIosAudioCategory(
+        IosTextToSpeechAudioCategory.playback,
+        [
+          IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
+          IosTextToSpeechAudioCategoryOptions.allowBluetooth,
+        ],
+      );
+
+      if (persona == 'ryan') {
+        await _flutterTts.setLanguage('en-GB');
+        await _flutterTts.setPitch(0.96);
+      } else if (persona == 'aria') {
+        await _flutterTts.setLanguage('en-US');
+        await _flutterTts.setPitch(1.05);
+      } else if (persona == 'guy') {
+        await _flutterTts.setLanguage('en-US');
+        await _flutterTts.setPitch(0.98);
+      } else {
+        // Christopher — Executive Director (Natural deep American male pitch)
+        await _flutterTts.setLanguage('en-US');
+        await _flutterTts.setPitch(0.95);
+      }
+
+      // Explicit Android/iOS TTS Voice Discovery for High Quality Neural Voices
+      final dynamic rawVoices = await _flutterTts.getVoices;
+      if (rawVoices is List && rawVoices.isNotEmpty) {
+        Map<String, String>? selectedVoice;
+        final bool wantsFemale = (persona == 'aria');
+
+        for (var item in rawVoices) {
+          if (item is Map) {
+            final String name = (item['name'] ?? '').toString().toLowerCase();
+            final String locale = (item['locale'] ?? '').toString().toLowerCase();
+
+            if (!locale.startsWith('en')) continue;
+
+            if (wantsFemale) {
+              if (name.contains('female') || name.contains('woman') || name.contains('zira') || name.contains('sfd') || name.contains('sfg') || name.contains('tpd') || name.contains('network')) {
+                selectedVoice = {'name': item['name'].toString(), 'locale': item['locale'].toString()};
+                break;
+              }
+            } else {
+              // Male requested (Christopher, Guy, Ryan)
+              if (name.contains('male') || name.contains('man') || name.contains('guy') || name.contains('david') || name.contains('george') || name.contains('iom') || name.contains('iol') || name.contains('iob') || name.contains('tpf') || name.contains('sfc') || name.contains('network')) {
+                selectedVoice = {'name': item['name'].toString(), 'locale': item['locale'].toString()};
+                break;
+              }
+            }
+          }
+        }
+
+        if (selectedVoice != null) {
+          debugPrint('🎙️ Setting High-Quality TTS Voice: ${selectedVoice['name']} (${selectedVoice['locale']})');
+          await _flutterTts.setVoice(selectedVoice);
+        }
+      }
+
       await _flutterTts.setSpeechRate(_currentSpeechRate);
       await _flutterTts.setVolume(1.0);
-      await _flutterTts.setPitch(1.0);
     } catch (e) {
       debugPrint('TTS init warning: $e');
     }
@@ -111,6 +175,15 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
           _isAiSpeaking = false;
         });
         _start3SecondMicCountdown();
+      }
+    });
+
+    _flutterTts.setErrorHandler((msg) {
+      debugPrint('TTS playback error: $msg');
+      if (mounted) {
+        setState(() {
+          _isAiSpeaking = false;
+        });
       }
     });
   }
@@ -166,24 +239,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     } catch (_) {}
   }
 
-  void _cycleSpeechRate() async {
-    double nextRate = 0.38;
-    if ((_currentSpeechRate - 0.38).abs() < 0.02) {
-      nextRate = 0.50;
-    } else if ((_currentSpeechRate - 0.50).abs() < 0.02) {
-      nextRate = 0.30;
-    } else {
-      nextRate = 0.38;
-    }
 
-    setState(() {
-      _currentSpeechRate = nextRate;
-    });
-
-    try {
-      await _flutterTts.setSpeechRate(_currentSpeechRate);
-    } catch (_) {}
-  }
 
   /// Synchronized Word-by-Word Typewriter Animation as AI speaks out loud
   void _startTypewriterAnimation(String fullText) {
@@ -197,7 +253,8 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       _displayedQuestionText = '';
     });
 
-    _typewriterTimer = Timer.periodic(const Duration(milliseconds: 140), (timer) {
+    // 220ms per word matches natural 1.0x speech pace (~140-160 WPM)
+    _typewriterTimer = Timer.periodic(const Duration(milliseconds: 220), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
@@ -218,17 +275,22 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   }
 
   void _speakAiText(String text) async {
-    if (text.trim().isEmpty || _isMuted) return;
+    if (text.trim().isEmpty) return;
     _stopSpeechListening();
+    _autoMicTimer?.cancel();
+
     setState(() {
+      _isMuted = false; // Unmute on explicit speech request
       _isAiSpeaking = true;
       _isListening = false;
+      _autoMicCountdown = 0;
     });
 
     _startTypewriterAnimation(text);
 
     try {
       await _flutterTts.stop();
+      await _flutterTts.setSpeechRate(_currentSpeechRate);
       await _flutterTts.speak(text);
     } catch (e) {
       debugPrint('TTS error: $e');
@@ -238,6 +300,8 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       }
     }
   }
+
+
 
   /// Interrupt AI speech immediately (Barge-in) and start mic recording
   void _interruptSpeechAndListen() async {
@@ -307,31 +371,41 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     }
   }
 
-  /// Initializes live interview session with Render backend
+  /// Initializes live interview session with Render FastAPI backend
   Future<void> _initBackendSession() async {
     setState(() {
       _isInitializing = true;
-      _initializationStatus = 'Connecting to Render AI Engine...';
+      _initializationStatus = 'Waking up AI Engine on Render...';
     });
 
     final api = ref.read(aiInterviewServiceProvider);
+    final setupConfig = ref.read(interviewSetupProvider);
 
-    final online = await api.checkHealth();
+    final online = await api.waitForBackendReady(
+      maxWaitSeconds: 90,
+      onPhaseUpdate: (phase, message) {
+        if (mounted) {
+          setState(() {
+            _initializationStatus = message;
+            if (phase >= 4) _backendConnected = true;
+          });
+        }
+      },
+    );
+
     if (mounted) {
       setState(() {
         _backendConnected = online;
         _initializationStatus = online
-            ? 'Initializing Groq Llama-3 70B AI Interviewer...'
-            : 'Connecting to Cloud Engine (Warming Up)...';
+            ? 'Initializing AI Interviewer...'
+            : 'Starting Local Fallback Session...';
       });
     }
 
-    final setupConfig = ref.read(interviewSetupProvider);
-
-    final sessionData = await api.startInterview(
-      candidateName: setupConfig.candidateName,
-      jobRole: setupConfig.jobRole,
-      experienceLevel: setupConfig.experienceLevel,
+    final request = StartInterviewRequest(
+      candidateName: setupConfig.candidateName.trim().isNotEmpty ? setupConfig.candidateName : 'Candidate',
+      jobRole: setupConfig.jobRole.trim().isNotEmpty ? setupConfig.jobRole : 'Full-Stack Developer',
+      experienceLevel: setupConfig.experienceLevel.trim().isNotEmpty ? setupConfig.experienceLevel : 'Mid-Level',
       interviewType: setupConfig.interviewType,
       difficulty: setupConfig.difficulty,
       targetQuestionCount: setupConfig.targetQuestionCount,
@@ -341,8 +415,10 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       resumePath: setupConfig.resumePath,
     );
 
+    final sessionData = await api.startInterview(request);
+
     if (mounted) {
-      if (sessionData != null) {
+      if (sessionData != null && sessionData.sessionId.isNotEmpty) {
         setState(() {
           _sessionId = sessionData.sessionId;
           _currentQuestionText = sessionData.currentQuestion;
@@ -367,27 +443,11 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
         _speakAiText('${sessionData.initialGreeting}. ${sessionData.currentQuestion}');
       } else {
-        // Dynamic Fallback mode with candidate name
+        // AI System Under Service Mode
         setState(() {
           _isInitializing = false;
-          _currentQuestionText = 'Tell me about your experience as a ${setupConfig.jobRole} and how your projects align with key technical fundamentals.';
-          final greeting = 'Welcome ${setupConfig.candidateName}! Let us begin your ${setupConfig.difficulty} ${setupConfig.interviewType} interview session for ${setupConfig.jobRole}.';
-
-          _transcriptHistory.add({
-            'speaker': 'AI Interviewer (${setupConfig.voicePersona.toUpperCase()})',
-            'time': '00:02',
-            'text': greeting,
-            'isAi': 'true',
-          });
-          _transcriptHistory.add({
-            'speaker': 'AI Interviewer (${setupConfig.voicePersona.toUpperCase()})',
-            'time': '00:05',
-            'text': _currentQuestionText,
-            'isAi': 'true',
-          });
+          _isAiSystemUnderService = true;
         });
-
-        _speakAiText('Welcome ${setupConfig.candidateName}! Let us begin your interview. $_currentQuestionText');
       }
     }
   }
@@ -421,7 +481,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         ? typedAnswer.trim()
         : (_liveSpokenText.trim().isNotEmpty
             ? _liveSpokenText.trim()
-            : 'Candidate provided a detailed response addressing technical trade-offs.');
+            : 'Candidate provided an answer.');
 
     if (candidateResponseText.toLowerCase() == 'skip this' || candidateResponseText.toLowerCase() == 'skip') {
       candidateResponseText = 'Candidate requested to skip this question.';
@@ -437,14 +497,14 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     });
 
     final api = ref.read(aiInterviewServiceProvider);
-    final setupConfig = ref.read(interviewSetupProvider);
 
     if (_sessionId != null) {
-      final nextData = await api.submitAnswer(
+      final req = AnswerRequest(
         sessionId: _sessionId!,
         candidateAnswer: candidateResponseText,
         speakingDurationSec: (150 - _secondsRemaining).toDouble(),
       );
+      final nextData = await api.submitAnswer(req);
 
       if (mounted && nextData != null) {
         if (nextData.isCompleted || nextData.turnNumber > nextData.totalTargetQuestions) {
@@ -455,14 +515,26 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         setState(() {
           _currentQuestionIndex = nextData.turnNumber;
           _totalQuestions = nextData.totalTargetQuestions;
-          if (nextData.currentQuestion.isNotEmpty) {
-            _currentQuestionText = nextData.currentQuestion;
+          if (nextData.currentQuestion != null && nextData.currentQuestion!.isNotEmpty) {
+            _currentQuestionText = nextData.currentQuestion!;
           }
           if (nextData.transitionPhrase.isNotEmpty) {
             _transitionPhrase = nextData.transitionPhrase;
           }
           _isSubmittingAnswer = false;
 
+          // Update Live Telemetry & Real-Time Feedback Banner from backend
+          if (nextData.speechAnalytics != null) {
+            _liveCadenceWpm = nextData.speechAnalytics!['wpm'] ?? 145;
+            _liveFillerCount = nextData.speechAnalytics!['filler_count'] ?? 0;
+            _liveStarClarity = nextData.speechAnalytics!['clarity_score'] ?? 85;
+          }
+          if (nextData.lastEvaluationScore != null) {
+            _lastAnswerScore = nextData.lastEvaluationScore!;
+            _lastAnswerFeedback = nextData.lastFeedback;
+            _showFeedbackBanner = true;
+          }
+
           _transcriptHistory.add({
             'speaker': 'Candidate (You)',
             'time': _formatTimer(150 - _secondsRemaining),
@@ -475,84 +547,27 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
             'text': _currentQuestionText,
             'isAi': 'true',
           });
+        });
+
+        // Auto-hide feedback banner after 8 seconds
+        Future.delayed(const Duration(seconds: 8), () {
+          if (mounted) setState(() => _showFeedbackBanner = false);
         });
 
         _speakAiText('$_transitionPhrase. $_currentQuestionText');
       } else {
-        if (_currentQuestionIndex >= _totalQuestions) {
-          _finishInterviewSession(isCompleted: true);
-          return;
-        }
-
-        final fallbackQuestions = [
-          'What is the difference between a GET and POST HTTP request, and provide an example use case for each?',
-          'In your work on ${setupConfig.jobRole}, how do you manage database transactions, indexing, and high-concurrency caching?',
-          'How do you evaluate trade-offs between microservices vs monolithic architecture under high traffic in ${setupConfig.jobRole}?',
-          'How do you handle JWT token authentication, refresh flows, and security encryption in production?',
-          'What strategy do you use for CI/CD automated testing, container deployment, and monitoring error spikes?',
-        ];
-
-        final nextQText = fallbackQuestions[(_currentQuestionIndex) % fallbackQuestions.length];
-
         setState(() {
-          _currentQuestionIndex++;
           _isSubmittingAnswer = false;
-          _currentQuestionText = nextQText;
-          _transitionPhrase = 'Understood. Moving to the next technical topic.';
-
-          _transcriptHistory.add({
-            'speaker': 'Candidate (You)',
-            'time': _formatTimer(150 - _secondsRemaining),
-            'text': candidateResponseText,
-            'isAi': 'false',
-          });
-          _transcriptHistory.add({
-            'speaker': 'AI Interviewer',
-            'time': '00:10',
-            'text': _currentQuestionText,
-            'isAi': 'true',
-          });
+          _isAiSpeaking = false;
+          _isAiSystemUnderService = true;
         });
-
-        _speakAiText('$_transitionPhrase. $_currentQuestionText');
       }
     } else {
-      if (_currentQuestionIndex >= _totalQuestions) {
-        _finishInterviewSession(isCompleted: true);
-        return;
-      }
-
-      final fallbackQuestions = [
-        'What is the difference between a GET and POST HTTP request, and provide an example use case for each?',
-        'In your work on ${setupConfig.jobRole}, how do you manage database transactions, indexing, and high-concurrency caching?',
-        'How do you evaluate trade-offs between microservices vs monolithic architecture under high traffic in ${setupConfig.jobRole}?',
-        'How do you handle JWT token authentication, refresh flows, and security encryption in production?',
-        'What strategy do you use for CI/CD automated testing, container deployment, and monitoring error spikes?',
-      ];
-
-      final nextQText = fallbackQuestions[(_currentQuestionIndex) % fallbackQuestions.length];
-
       setState(() {
-        _currentQuestionIndex++;
         _isSubmittingAnswer = false;
-        _currentQuestionText = nextQText;
-        _transitionPhrase = 'Understood. Let us move to the next scenario.';
-
-        _transcriptHistory.add({
-          'speaker': 'Candidate (You)',
-          'time': _formatTimer(150 - _secondsRemaining),
-          'text': candidateResponseText,
-          'isAi': 'false',
-        });
-        _transcriptHistory.add({
-          'speaker': 'AI Interviewer',
-          'time': '00:10',
-          'text': _currentQuestionText,
-          'isAi': 'true',
-        });
+        _isAiSpeaking = false;
+        _isAiSystemUnderService = true;
       });
-
-      _speakAiText('$_transitionPhrase. $_currentQuestionText');
     }
   }
 
@@ -571,20 +586,20 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     final router = GoRouter.of(context);
 
     Map<String, dynamic> reportData = {
-      'session_id': _sessionId ?? 'completed_session',
+      'session_id': _sessionId ?? 'session_end',
       'is_terminated_early': !isCompleted,
       'completed_turns': isCompleted ? _totalQuestions : (_currentQuestionIndex - 1),
       'target_turns': _totalQuestions,
-      'overall_score': isCompleted ? 88.0 : 78.0,
-      'technical_score': isCompleted ? 90.0 : 80.0,
-      'communication_score': isCompleted ? 86.0 : 76.0,
-      'problem_solving_score': isCompleted ? 88.0 : 78.0,
-      'hiring_readiness': isCompleted ? 'STRONG CANDIDATE' : 'SESSION REVOKED EARLY',
+      'overall_score': 0.0,
+      'technical_score': 0.0,
+      'communication_score': 0.0,
+      'problem_solving_score': 0.0,
+      'hiring_readiness': isCompleted ? 'COMPLETED' : 'SESSION REVOKED EARLY',
       'summary': isCompleted
-          ? 'Candidate successfully completed all target interview rounds demonstrating strong technical mastery.'
-          : 'Interview session revoked early by candidate. Performance evaluated up to completed turns.',
-      'strong_areas': ['Comprehensive problem solving', 'Clean architectural patterns', 'Effective trade-off explanations'],
-      'areas_for_improvement': ['Deep numerical benchmarking under ultra-high load'],
+          ? 'Session completed by candidate.'
+          : 'Interview session revoked early by candidate.',
+      'strong_areas': <String>[],
+      'areas_for_improvement': <String>[],
     };
 
     if (_sessionId != null) {
@@ -592,7 +607,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         final api = ref.read(aiInterviewServiceProvider);
         final remoteReport = await api.finishInterview(_sessionId!);
         if (remoteReport != null) {
-          reportData = remoteReport;
+          reportData = remoteReport.toJson();
           if (isCompleted) {
             reportData['is_terminated_early'] = false;
           }
@@ -671,6 +686,88 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
                     style: AppTypography.bodyMedium.copyWith(
                       color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
                     ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_isAiSystemUnderService) {
+      return Scaffold(
+        backgroundColor: isDark ? AppColors.credDarkBackground : AppColors.background,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(28.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.error.withValues(alpha: 0.12),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.cloud_off_rounded, color: AppColors.error, size: 50),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  Text(
+                    'AI System Under Service 🛠️',
+                    style: AppTypography.headlineMobile.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : AppColors.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'The AI Interview Engine is currently under maintenance or warming up. Predefined questions are disabled to guarantee authentic AI evaluation.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 36),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _isAiSystemUnderService = false;
+                      });
+                      _initBackendSession();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                    ),
+                    icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
+                    label: const Text(
+                      'Retry AI Connection 🔄',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => GoRouter.of(context).pop(),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: isDark ? Colors.white : AppColors.onSurface,
+                      side: BorderSide(
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                    ),
+                    icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                    label: const Text('Back to Setup'),
                   ),
                 ],
               ),
@@ -774,10 +871,6 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       );
     }
 
-    String speedLabel = '0.38x';
-    if ((_currentSpeechRate - 0.30).abs() < 0.02) speedLabel = '0.3x';
-    if ((_currentSpeechRate - 0.50).abs() < 0.02) speedLabel = '0.5x';
-
     final questionTextToDisplay = _displayedQuestionText.isNotEmpty ? _displayedQuestionText : _currentQuestionText;
 
     return Scaffold(
@@ -832,34 +925,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
             ),
           ],
         ),
-        actions: [
-          // Voice Speed Selector Action
-          TextButton.icon(
-            onPressed: _cycleSpeechRate,
-            style: TextButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-            ),
-            icon: const Icon(Icons.speed_rounded, size: 16),
-            label: Text(
-              speedLabel,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-            ),
-          ),
-          IconButton(
-            icon: Icon(_isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded),
-            color: _isMuted ? AppColors.error : AppColors.primary,
-            tooltip: _isMuted ? 'Unmute Audio' : 'Mute Audio',
-            onPressed: () {
-              setState(() {
-                _isMuted = !_isMuted;
-                if (_isMuted) {
-                  _flutterTts.stop();
-                }
-              });
-            },
-          ),
-        ],
+        actions: const [],
       ),
       body: SafeArea(
         child: Column(
@@ -1124,6 +1190,9 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
                     ),
 
                     const SizedBox(height: 12),
+
+                    // REAL-TIME POST-ANSWER FEEDBACK BANNER
+                    _buildFeedbackBanner(isDark),
 
                     // Question Box with Typewriter Subtitles & Hint Button
                     GlassCard(
@@ -1618,14 +1687,14 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
                 'is_terminated_early': true,
                 'completed_turns': _currentQuestionIndex - 1,
                 'target_turns': _totalQuestions,
-                'overall_score': 78.0,
-                'technical_score': 80.0,
-                'communication_score': 76.0,
-                'problem_solving_score': 78.0,
+                'overall_score': 0.0,
+                'technical_score': 0.0,
+                'communication_score': 0.0,
+                'problem_solving_score': 0.0,
                 'hiring_readiness': 'SESSION REVOKED EARLY',
-                'summary': 'Interview session revoked early by candidate. Performance evaluated up to completed turns.',
-                'strong_areas': ['Proactive candidate participation', 'Clear technical framing'],
-                'areas_for_improvement': ['Complete full target question set for comprehensive evaluation'],
+                'summary': 'Interview session revoked early by candidate.',
+                'strong_areas': <String>[],
+                'areas_for_improvement': <String>[],
               };
 
               if (_sessionId != null) {
@@ -1633,7 +1702,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
                   final api = ref.read(aiInterviewServiceProvider);
                   final remoteReport = await api.finishInterview(_sessionId!);
                   if (remoteReport != null) {
-                    reportData = remoteReport;
+                    reportData = remoteReport.toJson();
                     reportData['is_terminated_early'] = true;
                   }
                 } catch (e) {
@@ -1644,6 +1713,78 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
               router.go('/interview/analysis/${_sessionId ?? 'latest'}', extra: reportData);
             },
             child: const Text('End & View Results', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeedbackBanner(bool isDark) {
+    if (!_showFeedbackBanner) return const SizedBox.shrink();
+
+    final scoreColor = _lastAnswerScore >= 7.5
+        ? const Color(0xFF10B981)
+        : (_lastAnswerScore >= 6.0 ? AppColors.credGold : AppColors.error);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scoreColor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scoreColor.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: scoreColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '${_lastAnswerScore.toStringAsFixed(1)} / 10',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 11,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Groq AI Turn Evaluation',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: scoreColor,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _lastAnswerFeedback ?? 'Answer evaluated successfully.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.white : AppColors.onSurface,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close_rounded, size: 14),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            color: scoreColor,
+            onPressed: () => setState(() => _showFeedbackBanner = false),
           ),
         ],
       ),
