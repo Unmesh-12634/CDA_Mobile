@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:audioplayers/audioplayers.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../data/ai_interview_service.dart';
 import '../../data/interview_setup_provider.dart';
+import '../../../auth/data/auth_provider.dart';
 
 class AiInterviewSessionScreen extends ConsumerStatefulWidget {
   const AiInterviewSessionScreen({super.key});
@@ -25,7 +27,8 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
   final TextEditingController _chatAnswerCtrl = TextEditingController();
 
-  // TTS & Speech State
+  // TTS & Audio Player State
+  late AudioPlayer _audioPlayer;
   late FlutterTts _flutterTts;
   late stt.SpeechToText _speechToText;
   bool _speechEnabled = false;
@@ -92,6 +95,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
 
+    _audioPlayer = AudioPlayer();
     _initTts();
     _initSpeechToText();
     _initBackendSession();
@@ -289,11 +293,29 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     _startTypewriterAnimation(text);
 
     try {
+      final api = ref.read(aiInterviewServiceProvider);
+      final setupConfig = ref.read(interviewSetupProvider);
+
+      // 1. Attempt to synthesize voice audio bytes from Render Backend (/api/v1/tts/synthesize)
+      final audioBytes = await api.synthesizeSpeech(text, setupConfig.voicePersona);
+      if (audioBytes != null && audioBytes.isNotEmpty) {
+        await _audioPlayer.stop();
+        await _audioPlayer.play(BytesSource(audioBytes));
+        _audioPlayer.onPlayerComplete.first.then((_) {
+          if (mounted) {
+            setState(() => _isAiSpeaking = false);
+            _start3SecondMicCountdown();
+          }
+        });
+        return;
+      }
+
+      // 2. Fallback to local high-quality FlutterTts if backend TTS bytes are null
       await _flutterTts.stop();
       await _flutterTts.setSpeechRate(_currentSpeechRate);
       await _flutterTts.speak(text);
     } catch (e) {
-      debugPrint('TTS error: $e');
+      debugPrint('TTS playback error: $e');
       if (mounted) {
         setState(() => _isAiSpeaking = false);
         _start3SecondMicCountdown();
@@ -402,10 +424,16 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       });
     }
 
+    final authState = ref.read(authProvider);
+
+    final String candidateName = setupConfig.candidateName.trim().isNotEmpty
+        ? setupConfig.candidateName.trim()
+        : (authState.fullName.trim().isNotEmpty ? authState.fullName.trim() : 'Arjun Verma');
+
     final request = StartInterviewRequest(
-      candidateName: setupConfig.candidateName.trim().isNotEmpty ? setupConfig.candidateName : 'Candidate',
-      jobRole: setupConfig.jobRole.trim().isNotEmpty ? setupConfig.jobRole : 'Full-Stack Developer',
-      experienceLevel: setupConfig.experienceLevel.trim().isNotEmpty ? setupConfig.experienceLevel : 'Mid-Level',
+      candidateName: candidateName,
+      jobRole: setupConfig.jobRole.trim().isNotEmpty ? setupConfig.jobRole : 'Senior AI & Full-Stack Engineer',
+      experienceLevel: setupConfig.experienceLevel.trim().isNotEmpty ? setupConfig.experienceLevel : '1 - 3 Years',
       interviewType: setupConfig.interviewType,
       difficulty: setupConfig.difficulty,
       targetQuestionCount: setupConfig.targetQuestionCount,
@@ -628,6 +656,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     _flutterTts.stop();
     _autoMicTimer?.cancel();
     _countdownTimer?.cancel();
+    _audioPlayer.dispose();
     _chatAnswerCtrl.dispose();
     _aiPulseController.dispose();
     _waveController.dispose();
