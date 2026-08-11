@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_typography.dart';
@@ -67,7 +66,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
   final List<String> _stepNames = [
     'Role Selection',
     'Interview Type',
-    'Difficulty, Voice & Duration',
+    'Difficulty & Duration',
     'Resume',
     'Ready to Go',
   ];
@@ -735,11 +734,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
             ),
           ),
 
-          const SizedBox(height: 24),
-
-          _buildVoicePersonaSelector(cs),
-
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
 
           _buildSectionChip(Icons.timer_rounded, 'SESSION DURATION', AppColors.secondary),
           const SizedBox(height: 14),
@@ -1394,175 +1389,4 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
 
 
 
-  FlutterTts? _previewTts;
-  String? _playingVoicePersona;
-
-  Future<void> _previewVoiceSample(String persona) async {
-    _previewTts ??= FlutterTts();
-    await _previewTts!.stop();
-
-    setState(() {
-      _playingVoicePersona = persona;
-    });
-
-    final p = persona.toLowerCase();
-    final samples = {
-      'christopher': "Hello! I am Christopher, Executive Director. I will be your AI Interviewer today.",
-      'guy': "Hey! I am Guy, Senior Tech Lead. Let's tackle some practical software engineering problems.",
-      'aria': "Welcome! I am Aria, Engineering Lead. I am excited to assess your system design background.",
-      'ryan': "Good day! I am Ryan, Engineering Director. Let's begin our technical evaluation round.",
-    };
-    final sampleText = samples[p] ?? "Hello! I am your AI interviewer today.";
-
-    try {
-      if (p == 'ryan') {
-        await _previewTts!.setLanguage('en-GB');
-        await _previewTts!.setPitch(0.88);
-      } else if (p == 'aria') {
-        await _previewTts!.setLanguage('en-US');
-        await _previewTts!.setPitch(1.15);
-      } else if (p == 'guy') {
-        await _previewTts!.setLanguage('en-US');
-        await _previewTts!.setPitch(0.95);
-      } else {
-        await _previewTts!.setLanguage('en-US');
-        await _previewTts!.setPitch(0.80);
-      }
-      await _previewTts!.setSpeechRate(_selectedSpeechRate);
-      await _previewTts!.setVolume(1.0);
-
-      final dynamic rawVoices = await _previewTts!.getVoices;
-      if (rawVoices is List && rawVoices.isNotEmpty) {
-        Map<String, String>? selectedVoice;
-        final bool wantsFemale = (p == 'aria');
-
-        for (var item in rawVoices) {
-          if (item is Map) {
-            final String name = (item['name'] ?? '').toString().toLowerCase();
-            final String locale = (item['locale'] ?? '').toString().toLowerCase();
-
-            if (!locale.startsWith('en')) continue;
-
-            if (wantsFemale) {
-              if (name.contains('female') || name.contains('woman') || name.contains('zira') || name.contains('sfd') || name.contains('sfg') || name.contains('tpd')) {
-                selectedVoice = {'name': item['name'].toString(), 'locale': item['locale'].toString()};
-                break;
-              }
-            } else {
-              if (name.contains('male') || name.contains('man') || name.contains('guy') || name.contains('david') || name.contains('george') || name.contains('iom') || name.contains('iol') || name.contains('iob') || name.contains('tpf') || name.contains('sfc')) {
-                selectedVoice = {'name': item['name'].toString(), 'locale': item['locale'].toString()};
-                break;
-              }
-            }
-          }
-        }
-
-        if (selectedVoice != null) {
-          await _previewTts!.setVoice(selectedVoice);
-        }
-      }
-
-      _previewTts!.setCompletionHandler(() {
-        if (mounted) setState(() => _playingVoicePersona = null);
-      });
-      await _previewTts!.speak(sampleText);
-    } catch (e) {
-      debugPrint('Fallback TTS error: $e');
-      if (mounted) setState(() => _playingVoicePersona = null);
-    }
-  }
-
-  // ─────────────────────────────────────────────────────────
-  // Voice Persona Selector (used in Step 3)
-  // ─────────────────────────────────────────────────────────
-  Widget _buildVoicePersonaSelector(ColorScheme cs) {
-    final voices = [
-      ('christopher', '👨‍💼', 'Christopher', 'Executive Director', 'American Male'),
-      ('guy',         '🎙️', 'Guy',         'Senior Tech Lead',    'American Male'),
-      ('aria',        '👩‍💼', 'Aria',        'Engineering Lead',    'American Female'),
-      ('ryan',        '🎩',  'Ryan',        'Engineering Director', 'British Male'),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionChip(Icons.record_voice_over_rounded, 'AI INTERVIEWER VOICE', AppColors.secondary),
-        const SizedBox(height: 10),
-        ...voices.map((v) {
-          final isSelected = _selectedVoicePersona == v.$1;
-          final isPlaying = _playingVoicePersona == v.$1;
-
-          return GestureDetector(
-            onTap: () => setState(() => _selectedVoicePersona = v.$1),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.secondary.withValues(alpha: 0.10)
-                    : cs.surfaceContainer,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isSelected ? AppColors.secondary : cs.outlineVariant,
-                  width: isSelected ? 2 : 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Text(v.$2, style: const TextStyle(fontSize: 22)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          v.$3,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: isSelected ? AppColors.secondary : cs.onSurface,
-                          ),
-                        ),
-                        Text(
-                          '${v.$4} · ${v.$5}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isSelected
-                                ? AppColors.secondary.withValues(alpha: 0.8)
-                                : cs.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      isPlaying ? Icons.stop_circle_rounded : Icons.volume_up_rounded,
-                      color: isPlaying ? AppColors.error : (isSelected ? AppColors.secondary : cs.primary),
-                      size: 22,
-                    ),
-                    tooltip: 'Test Voice Sample',
-                    onPressed: () {
-                      if (isPlaying) {
-                        _previewTts?.stop();
-                        setState(() => _playingVoicePersona = null);
-                      } else {
-                        _previewVoiceSample(v.$1);
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 4),
-                  if (isSelected)
-                    const Icon(Icons.check_circle_rounded,
-                        color: AppColors.secondary, size: 20),
-                ],
-              ),
-            ),
-          );
-        }),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
 }
