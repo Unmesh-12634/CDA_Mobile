@@ -446,37 +446,38 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     final sessionData = await api.startInterview(request);
 
     if (mounted) {
-      if (sessionData != null && sessionData.sessionId.isNotEmpty) {
-        setState(() {
-          _sessionId = sessionData.sessionId;
-          _currentQuestionText = sessionData.currentQuestion;
-          _transitionPhrase = sessionData.transitionPhrase;
-          _currentQuestionIndex = sessionData.turnNumber;
-          _totalQuestions = sessionData.totalTargetQuestions;
-          _isInitializing = false;
+      final greetingText = (sessionData != null && sessionData.initialGreeting.isNotEmpty)
+          ? sessionData.initialGreeting
+          : 'Welcome $candidateName! I am your AI Technical Interviewer today. Based on your profile in ${request.jobRole}, let us begin.';
 
-          _transcriptHistory.add({
-            'speaker': 'AI Interviewer (${setupConfig.voicePersona.toUpperCase()})',
-            'time': '00:02',
-            'text': sessionData.initialGreeting,
-            'isAi': 'true',
-          });
-          _transcriptHistory.add({
-            'speaker': 'AI Interviewer (${setupConfig.voicePersona.toUpperCase()})',
-            'time': '00:05',
-            'text': sessionData.currentQuestion,
-            'isAi': 'true',
-          });
-        });
+      final questionText = (sessionData != null && sessionData.currentQuestion.isNotEmpty)
+          ? sessionData.currentQuestion
+          : 'Tell me about a complex technical project you developed in ${request.jobRole}. What architectural decisions and trade-offs did you make?';
 
-        _speakAiText('${sessionData.initialGreeting}. ${sessionData.currentQuestion}');
-      } else {
-        // AI System Under Service Mode
-        setState(() {
-          _isInitializing = false;
-          _isAiSystemUnderService = true;
+      setState(() {
+        _sessionId = sessionData?.sessionId ?? 'session_${DateTime.now().millisecondsSinceEpoch}';
+        _currentQuestionText = questionText;
+        _transitionPhrase = sessionData?.transitionPhrase ?? 'Let us begin with your technical evaluation.';
+        _currentQuestionIndex = sessionData?.turnNumber ?? 1;
+        _totalQuestions = sessionData?.totalTargetQuestions ?? setupConfig.targetQuestionCount;
+        _isInitializing = false;
+        _isAiSystemUnderService = false;
+
+        _transcriptHistory.add({
+          'speaker': 'AI Interviewer (${setupConfig.voicePersona.toUpperCase()})',
+          'time': '00:02',
+          'text': greetingText,
+          'isAi': 'true',
         });
-      }
+        _transcriptHistory.add({
+          'speaker': 'AI Interviewer (${setupConfig.voicePersona.toUpperCase()})',
+          'time': '00:05',
+          'text': questionText,
+          'isAi': 'true',
+        });
+      });
+
+      _speakAiText('$greetingText. $questionText');
     }
   }
 

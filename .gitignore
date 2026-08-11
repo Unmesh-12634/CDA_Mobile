@@ -8,3 +8,5 @@ build/
 .vscode/
 AI-Interview/
 *.zip
+/nbproject/private/
+/backend_java/target/

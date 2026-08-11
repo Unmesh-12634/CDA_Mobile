@@ -11,7 +11,7 @@ export 'models/ai_interview_models.dart';
 /// Legacy alias for compatibility with existing riverpod bindings
 typedef AiInterviewSessionData = StartInterviewResponse;
 
-/// Dedicated Production API Client for FastAPI Engine on Render
+/// Dedicated API Client for Java Spring Boot AI Backend
 class AiInterviewApiClient {
   final Dio _dio;
 
@@ -118,13 +118,13 @@ class AiInterviewApiClient {
       final elapsed = stopwatch.elapsed.inSeconds;
 
       if (elapsed < 10) {
-        onPhaseUpdate?.call(0, 'Waking up AI Engine on Render...');
+        onPhaseUpdate?.call(0, 'Connecting to Java AI Backend...');
       } else if (elapsed < 25) {
         onPhaseUpdate?.call(1, 'Loading Groq Llama-3 70B Engine...');
       } else if (elapsed < 40) {
-        onPhaseUpdate?.call(2, 'Configuring Voice Persona...');
+        onPhaseUpdate?.call(2, 'Configuring AI Voice Persona...');
       } else {
-        onPhaseUpdate?.call(3, 'Finalizing Render connection... (${maxWaitSeconds - elapsed}s)');
+        onPhaseUpdate?.call(3, 'Waiting for Java Backend... (${maxWaitSeconds - elapsed}s remaining)');
       }
 
       final health = await healthCheck();
@@ -138,7 +138,7 @@ class AiInterviewApiClient {
     return false;
   }
 
-  /// Pre-warms the Render backend on app startup
+  /// Pre-warms the Java backend on app startup
   Future<void> preWarmBackend() async {
     try {
       await _dio.get('/health').timeout(const Duration(seconds: 8));
@@ -252,13 +252,16 @@ class AiInterviewApiClient {
           'text': text,
           'voice_persona': voicePersona,
         },
-        options: Options(responseType: ResponseType.bytes),
+        options: Options(
+          responseType: ResponseType.bytes,
+          validateStatus: (status) => status != null && status < 500,
+        ),
       );
       if (response.statusCode == 200 && response.data != null) {
         return Uint8List.fromList(response.data);
       }
     } catch (e) {
-      debugPrint('synthesizeSpeech error: $e');
+      debugPrint('synthesizeSpeech fallback to local device TTS: $e');
     }
     return null;
   }
