@@ -247,6 +247,141 @@ class InterviewAnalysisScreen extends StatelessWidget {
                     const SizedBox(height: 28),
                   ],
 
+                  // 🚀 CDA Recommended Learning Section
+                  _buildSectionHeader('RECOMMENDED CDA LEARNING PATH', Icons.auto_awesome_rounded, AppColors.primary, isDark),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Targeted CDA courses recommended based on your interview gap analysis:',
+                    style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 14),
+
+                  ...((data['cda_learning_recommendations'] as List?) ?? [
+                    {
+                      'course_id': 'cda-py-101',
+                      'title': 'Python Architecture, Memory & Multithreading',
+                      'category': 'Python',
+                      'reason': 'Targeted practice for identified Python GIL and concurrency concepts.',
+                      'priority': 'HIGH',
+                      'cda_learning_url': 'https://cranesdigitalacademy.com/courses/python-mastery',
+                      'estimated_duration': '4.5 Hours',
+                    },
+                    {
+                      'course_id': 'cda-sys-401',
+                      'title': 'System Design: Microservices & Production Scaling',
+                      'category': 'System Design',
+                      'reason': 'Production readiness optimization for distributed systems.',
+                      'priority': 'HIGH',
+                      'cda_learning_url': 'https://cranesdigitalacademy.com/courses/system-design-microservices',
+                      'estimated_duration': '8.0 Hours',
+                    },
+                  ]).map((rec) {
+                    final recMap = rec as Map<String, dynamic>;
+                    final title = (recMap['title'] as String?) ?? 'CDA Masterclass';
+                    final category = (recMap['category'] as String?) ?? 'Engineering';
+                    final reason = (recMap['reason'] as String?) ?? 'Fills technical gap identified during interview.';
+                    final priority = (recMap['priority'] as String?) ?? 'HIGH';
+                    final url = (recMap['cda_learning_url'] as String?) ?? 'https://cranesdigitalacademy.com/courses';
+                    final duration = (recMap['estimated_duration'] as String?) ?? '5.0 Hours';
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: priority == 'HIGH'
+                              ? AppColors.primary.withValues(alpha: 0.3)
+                              : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                          width: priority == 'HIGH' ? 1.5 : 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(100),
+                                ),
+                                child: Text(
+                                  category,
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(100),
+                                ),
+                                child: Text(
+                                  'PRIORITY: $priority',
+                                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Color(0xFFEF4444)),
+                                ),
+                              ),
+                              const Spacer(),
+                              Icon(Icons.schedule_rounded, size: 14, color: isDark ? Colors.white54 : AppColors.outline),
+                              const SizedBox(width: 4),
+                              Text(
+                                duration,
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isDark ? Colors.white54 : AppColors.outline),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            title,
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppColors.onSurface),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            reason,
+                            style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.onSurfaceVariant, height: 1.4),
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
+                              ),
+                              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                              label: const Text(
+                                'CONTINUE LEARNING ON CDA WEBSITE',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                              ),
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                  content: Text('Opening CDA Learning Portal: $url'),
+                                  backgroundColor: AppColors.primary,
+                                  behavior: SnackBarBehavior.floating,
+                                ));
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 28),
+
                   // Bottom Action Buttons
                   Row(
                     children: [

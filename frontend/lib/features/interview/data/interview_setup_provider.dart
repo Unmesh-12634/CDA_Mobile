@@ -12,6 +12,12 @@ class InterviewSetupConfig {
   final List<String> enrolledCourses;
   final List<String> skills;
   final String? resumePath;
+  final String? resumeText;
+  final String? primarySkillId;
+  final String? primarySkillName;
+  final String? jobId;
+  final String? jobDescriptionText;
+  final List<String> jobRequiredSkills;
 
   const InterviewSetupConfig({
     this.candidateName = '',
@@ -25,6 +31,12 @@ class InterviewSetupConfig {
     this.enrolledCourses = const [],
     this.skills = const [],
     this.resumePath,
+    this.resumeText,
+    this.primarySkillId,
+    this.primarySkillName,
+    this.jobId,
+    this.jobDescriptionText,
+    this.jobRequiredSkills = const [],
   });
 
   InterviewSetupConfig copyWith({
@@ -39,6 +51,12 @@ class InterviewSetupConfig {
     List<String>? enrolledCourses,
     List<String>? skills,
     String? resumePath,
+    String? resumeText,
+    String? primarySkillId,
+    String? primarySkillName,
+    String? jobId,
+    String? jobDescriptionText,
+    List<String>? jobRequiredSkills,
   }) {
     return InterviewSetupConfig(
       candidateName: candidateName ?? this.candidateName,
@@ -52,6 +70,12 @@ class InterviewSetupConfig {
       enrolledCourses: enrolledCourses ?? this.enrolledCourses,
       skills: skills ?? this.skills,
       resumePath: resumePath ?? this.resumePath,
+      resumeText: resumeText ?? this.resumeText,
+      primarySkillId: primarySkillId ?? this.primarySkillId,
+      primarySkillName: primarySkillName ?? this.primarySkillName,
+      jobId: jobId ?? this.jobId,
+      jobDescriptionText: jobDescriptionText ?? this.jobDescriptionText,
+      jobRequiredSkills: jobRequiredSkills ?? this.jobRequiredSkills,
     );
   }
 }
@@ -71,6 +95,12 @@ class InterviewSetupNotifier extends StateNotifier<InterviewSetupConfig> {
     List<String>? enrolledCourses,
     List<String>? skills,
     String? resumePath,
+    String? resumeText,
+    String? primarySkillId,
+    String? primarySkillName,
+    String? jobId,
+    String? jobDescriptionText,
+    List<String>? jobRequiredSkills,
   }) {
     state = state.copyWith(
       candidateName: candidateName,
@@ -84,6 +114,12 @@ class InterviewSetupNotifier extends StateNotifier<InterviewSetupConfig> {
       enrolledCourses: enrolledCourses,
       skills: skills,
       resumePath: resumePath,
+      resumeText: resumeText,
+      primarySkillId: primarySkillId,
+      primarySkillName: primarySkillName,
+      jobId: jobId,
+      jobDescriptionText: jobDescriptionText,
+      jobRequiredSkills: jobRequiredSkills,
     );
   }
 }
@@ -92,3 +128,4 @@ final interviewSetupProvider =
     StateNotifierProvider<InterviewSetupNotifier, InterviewSetupConfig>((ref) {
   return InterviewSetupNotifier();
 });
+

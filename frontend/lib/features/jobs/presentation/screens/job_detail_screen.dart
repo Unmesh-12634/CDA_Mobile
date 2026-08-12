@@ -6,6 +6,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../../../shared/widgets/gradient_button.dart';
+import '../../../interview/data/interview_setup_provider.dart';
 import '../../data/mock_jobs.dart';
 import '../../data/saved_jobs_provider.dart';
 
@@ -462,7 +463,17 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
                   style: const TextStyle(
                       color: AppColors.primary, fontWeight: FontWeight.bold),
                 ),
-                onPressed: () => context.push('/interview/setup'),
+                onPressed: () {
+                  ref.read(interviewSetupProvider.notifier).updateConfig(
+                    jobId: job.id,
+                    jobRole: job.title,
+                    jobDescriptionText: job.description,
+                    jobRequiredSkills: job.requirements,
+                    primarySkillName: job.requirements.isNotEmpty ? job.requirements.first : job.title,
+                    skills: job.requirements,
+                  );
+                  context.push('/interview/setup');
+                },
               ),
               const SizedBox(height: 10),
               GradientButton(

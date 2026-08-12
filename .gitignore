@@ -6,7 +6,6 @@ build/
 .flutter-plugins-dependencies
 .idea/
 .vscode/
-AI-Interview/
 *.zip
 /nbproject/private/
 /backend_java/target/

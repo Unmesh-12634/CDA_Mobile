@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../shared/providers/selected_skill_provider.dart';
+import '../../../interview/data/interview_setup_provider.dart';
 import '../../../jobs/data/mock_jobs.dart';
 import '../../../subscription/data/subscription_provider.dart';
 import '../../../subscription/presentation/widgets/cda_paywall_sheet.dart';
@@ -896,6 +898,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _launchAIInterview() {
+    final activeSkill = ref.read(selectedSkillProvider);
+    if (activeSkill.isNotEmpty && activeSkill != 'All') {
+      ref.read(interviewSetupProvider.notifier).updateConfig(
+        primarySkillName: activeSkill,
+        skills: [activeSkill],
+        jobRole: '$activeSkill Engineer',
+      );
+    }
     final sub = ref.read(subscriptionProvider);
     if (sub.isPremium) {
       context.push('/interview/setup');
@@ -989,6 +999,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             onTap: () {
               if (_selectedSkillIndex != i) {
                 setState(() => _selectedSkillIndex = i);
+                ref.read(selectedSkillProvider.notifier).selectSkill(_skills[i]);
               }
             },
             child: AnimatedScale(

@@ -7,6 +7,8 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../core/utils/snackbar_utils.dart';
 
+import '../../../../core/storage/local_cache_service.dart';
+
 class LearnScreen extends StatefulWidget {
   const LearnScreen({super.key});
 
@@ -24,6 +26,29 @@ class _LearnScreenState extends State<LearnScreen> {
   final Map<int, bool> _likedMap = {};
   final Map<int, bool> _savedMap = {};
   final Map<int, bool> _followingMap = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCachedReelsState();
+  }
+
+  void _loadCachedReelsState() {
+    final cache = LocalCacheService();
+    final liked = cache.getLikedReels();
+    final saved = cache.getBookmarkedReels();
+
+    for (final reel in _allReelsData) {
+      final key = reel['id'].hashCode;
+      final reelId = reel['id']!;
+      if (liked.containsKey(reelId)) {
+        _likedMap[key] = liked[reelId]!;
+      }
+      if (saved.containsKey(reelId)) {
+        _savedMap[key] = saved[reelId]!;
+      }
+    }
+  }
 
   final List<String> _categories = [
     'All Topics',
@@ -223,14 +248,18 @@ class _LearnScreenState extends State<LearnScreen> {
                         isFollowing: isFollowing,
                         overlayBottomMargin: overlayBottomMargin,
                         onLikeToggle: () {
-                          setState(() => _likedMap[reelKey] = !isLiked);
+                          final newLiked = !isLiked;
+                          setState(() => _likedMap[reelKey] = newLiked);
+                          LocalCacheService().saveLikedReel(reel['id']!, newLiked);
                         },
                         onSaveToggle: () {
-                          setState(() => _savedMap[reelKey] = !isSaved);
+                          final newSaved = !isSaved;
+                          setState(() => _savedMap[reelKey] = newSaved);
+                          LocalCacheService().saveBookmarkedReel(reel['id']!, newSaved);
                           ScaffoldMessenger.of(context).clearSnackBars();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(!isSaved
+                              content: Text(newSaved
                                   ? 'Reel saved to Bookmarks 🔖'
                                   : 'Removed from Bookmarks'),
                               duration: const Duration(seconds: 2),

@@ -1,6 +1,6 @@
 class AppConfig {
-  /// Primary Java Spring Boot Backend Host on Wi-Fi (Port 8000)
-  static const String javaBackendHost = 'http://192.168.1.92:8000';
+  /// Primary AI Backend Host on Wi-Fi (Port 8000)
+  static const String javaBackendHost = 'http://192.168.1.129:8000';
 
   static String activeHost = javaBackendHost;
 
