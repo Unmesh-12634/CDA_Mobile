@@ -28,8 +28,9 @@ class AiInterviewApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
+          options.baseUrl = AppConfig.apiBaseUrl;
           options.extra['startTime'] = DateTime.now().millisecondsSinceEpoch;
-          debugPrint('🌐 [API REQ] ${options.method} ${options.path}');
+          debugPrint('🌐 [API REQ] ${options.method} ${options.baseUrl}${options.path}');
           return handler.next(options);
         },
         onResponse: (response, handler) {
@@ -66,17 +67,45 @@ class AiInterviewApiClient {
     );
   }
 
+  /// Automatically discovers and sets working backend host across network interfaces
+  Future<String?> autoDiscoverWorkingHost() async {
+    debugPrint('🔍 Auto-discovering reachable backend host...');
+    for (final host in AppConfig.candidateHosts) {
+      try {
+        final testDio = Dio(
+          BaseOptions(
+            baseUrl: host.endsWith('/') ? '${host}api/v1' : '$host/api/v1',
+            connectTimeout: const Duration(milliseconds: 2500),
+            receiveTimeout: const Duration(milliseconds: 2500),
+          ),
+        );
+        final res = await testDio.get('/health');
+        if (res.statusCode == 200) {
+          AppConfig.setActiveHost(host);
+          debugPrint('✅ Connected to working backend host: $host');
+          return host;
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
   /// GET /api/v1/health — Checks Render backend reachability and calculates latency
   Future<HealthResponse?> healthCheck() async {
     final stopwatch = Stopwatch()..start();
     try {
-      final response = await _dio.get('/health').timeout(const Duration(seconds: 15));
+      final response = await _dio.get('/health').timeout(const Duration(seconds: 10));
       stopwatch.stop();
       if (response.statusCode == 200 && response.data != null) {
         return HealthResponse.fromJson(response.data, stopwatch.elapsedMilliseconds);
       }
     } catch (e) {
       stopwatch.stop();
+      // Try auto-discovering working host if primary failed
+      final discovered = await autoDiscoverWorkingHost();
+      if (discovered != null) {
+        return healthCheck();
+      }
       debugPrint('healthCheck error: $e');
     }
     return null;
@@ -86,7 +115,7 @@ class AiInterviewApiClient {
   Future<Map<String, dynamic>> testDetailedHealth() async {
     final stopwatch = Stopwatch()..start();
     try {
-      final response = await _dio.get('/health').timeout(const Duration(seconds: 15));
+      final response = await _dio.get('/health').timeout(const Duration(seconds: 10));
       stopwatch.stop();
       if (response.statusCode == 200 && response.data != null) {
         final data = Map<String, dynamic>.from(response.data);
@@ -96,6 +125,11 @@ class AiInterviewApiClient {
       }
     } catch (e) {
       stopwatch.stop();
+      // Auto-discover host if primary timed out
+      final discovered = await autoDiscoverWorkingHost();
+      if (discovered != null) {
+        return testDetailedHealth();
+      }
       return {
         'is_healthy': false,
         'status': 'offline',

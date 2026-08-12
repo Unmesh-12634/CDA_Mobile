@@ -1,8 +1,38 @@
-class AppConfig {
-  /// Primary AI Backend Host on Wi-Fi (Port 8000)
-  static const String javaBackendHost = 'http://192.168.1.129:8000';
+import 'package:flutter/foundation.dart';
 
-  static String activeHost = javaBackendHost;
+class AppConfig {
+  /// Default Wi-Fi IP address of host computer (Port 8000 for Python AI Engine)
+  static const String defaultWifiHostPort8000 = 'http://192.168.1.129:8000';
+  static const String defaultWifiHostPort8080 = 'http://192.168.1.129:8080';
+  static const String hotspotHostPort8000 = 'http://192.168.137.1:8000';
+  static const String hotspotHostPort8080 = 'http://192.168.137.1:8080';
+  static const String emulatorHostPort8000 = 'http://10.0.2.2:8000';
+  static const String emulatorHostPort8080 = 'http://10.0.2.2:8080';
+  static const String localhost8000 = 'http://127.0.0.1:8000';
+
+  static const List<String> candidateHosts = [
+    defaultWifiHostPort8000,
+    defaultWifiHostPort8080,
+    hotspotHostPort8000,
+    hotspotHostPort8080,
+    emulatorHostPort8000,
+    emulatorHostPort8080,
+    localhost8000,
+  ];
+
+  static String activeHost = defaultWifiHostPort8000;
+
+  static void setActiveHost(String newHost) {
+    var cleaned = newHost.trim();
+    if (!cleaned.startsWith('http://') && !cleaned.startsWith('https://')) {
+      cleaned = 'http://$cleaned';
+    }
+    if (cleaned.endsWith('/')) {
+      cleaned = cleaned.substring(0, cleaned.length - 1);
+    }
+    activeHost = cleaned;
+    debugPrint('🌐 AppConfig activeHost set to: $activeHost');
+  }
 
   /// Environment-aware API Base URL
   static String get apiBaseUrl {

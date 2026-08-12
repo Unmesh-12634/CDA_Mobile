@@ -263,6 +263,82 @@ class _BackendConnectionDiagnosticsScreenState
                     ),
                   ),
 
+                  const SizedBox(height: 14),
+
+                  // Quick Host Selector & Auto-Discover Controls
+                  GlassCard(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'QUICK HOST SELECTOR / AUTO-DISCOVER',
+                              style: AppTypography.codeMono.copyWith(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.secondary,
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () async {
+                                final api = ref.read(aiInterviewServiceProvider);
+                                final discovered = await api.autoDiscoverWorkingHost();
+                                if (discovered != null && mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Connected to: $discovered 🚀')),
+                                  );
+                                  _runFullDiagnostics();
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+                                ),
+                                child: const Text('Auto-Detect 🚀', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            for (final host in AppConfig.candidateHosts)
+                              InkWell(
+                                onTap: () {
+                                  AppConfig.setActiveHost(host);
+                                  setState(() {});
+                                  _runFullDiagnostics();
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppConfig.activeHost == host ? AppColors.primary : cs.surfaceContainerHighest,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    host.replaceAll('http://', ''),
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppConfig.activeHost == host ? Colors.white : cs.onSurface,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
                   const SizedBox(height: 20),
 
                   Row(
