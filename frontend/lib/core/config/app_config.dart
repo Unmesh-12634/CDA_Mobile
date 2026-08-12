@@ -1,26 +1,30 @@
 import 'package:flutter/foundation.dart';
 
 class AppConfig {
-  /// Default Wi-Fi IP address of host computer (Port 8000 for Python AI Engine)
+  /// USB Reverse Port Forwarding & Localhost (Port 8000 for Python AI Engine)
+  static const String usbLocalhost8000 = 'http://127.0.0.1:8000';
+  static const String usbLocalhost8080 = 'http://127.0.0.1:8080';
+
+  /// Primary Wi-Fi IP address of host computer
   static const String defaultWifiHostPort8000 = 'http://192.168.1.129:8000';
   static const String defaultWifiHostPort8080 = 'http://192.168.1.129:8080';
   static const String hotspotHostPort8000 = 'http://192.168.137.1:8000';
   static const String hotspotHostPort8080 = 'http://192.168.137.1:8080';
   static const String emulatorHostPort8000 = 'http://10.0.2.2:8000';
   static const String emulatorHostPort8080 = 'http://10.0.2.2:8080';
-  static const String localhost8000 = 'http://127.0.0.1:8000';
 
   static const List<String> candidateHosts = [
+    usbLocalhost8000,
+    usbLocalhost8080,
     defaultWifiHostPort8000,
     defaultWifiHostPort8080,
     hotspotHostPort8000,
     hotspotHostPort8080,
     emulatorHostPort8000,
     emulatorHostPort8080,
-    localhost8000,
   ];
 
-  static String activeHost = defaultWifiHostPort8000;
+  static String activeHost = usbLocalhost8000;
 
   static void setActiveHost(String newHost) {
     var cleaned = newHost.trim();
