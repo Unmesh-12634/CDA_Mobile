@@ -24,9 +24,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _phoneCtrl;
   late TextEditingController _emailCtrl;
   late TextEditingController _collegeCtrl;
+  late TextEditingController _degreeCtrl;
+  late TextEditingController _branchCtrl;
   late TextEditingController _bioCtrl;
   late TextEditingController _customSkillCtrl;
   late TextEditingController _salaryCtrl;
+  late TextEditingController _expCtrl;
+  late TextEditingController _githubCtrl;
+  late TextEditingController _linkedinCtrl;
+  late TextEditingController _portfolioCtrl;
 
   String? _selectedGradYear = '2026';
   String _selectedJobType = 'Full-Time';
@@ -63,13 +69,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     _nameCtrl = TextEditingController(text: profile.name);
     _headlineCtrl = TextEditingController(text: profile.targetRole);
-    _phoneCtrl = TextEditingController(text: '+91 98765 43210');
-    _emailCtrl = TextEditingController(text: 'arjun.verma@cda.edu');
+    _phoneCtrl = TextEditingController(text: profile.phone);
+    _emailCtrl = TextEditingController(text: profile.email);
     _collegeCtrl = TextEditingController(text: profile.college);
-    _bioCtrl = TextEditingController(
-        text: 'Passionate software developer specializing in scalable Java backends & cross-platform Flutter mobile applications. Building real-world AI tools.');
+    _degreeCtrl = TextEditingController(text: profile.degree);
+    _branchCtrl = TextEditingController(text: profile.branch);
+    _bioCtrl = TextEditingController(text: profile.aboutSummary);
     _customSkillCtrl = TextEditingController();
-    _salaryCtrl = TextEditingController(text: '12');
+    _salaryCtrl = TextEditingController(text: profile.targetAnnualPackage);
+    _expCtrl = TextEditingController(text: profile.experienceYears > 0 ? profile.experienceYears.toString() : '');
+    _githubCtrl = TextEditingController(text: profile.githubUrl);
+    _linkedinCtrl = TextEditingController(text: profile.linkedinUrl);
+    _portfolioCtrl = TextEditingController(text: profile.portfolioUrl);
+    _selectedGradYear = profile.yearOfPassing.isNotEmpty ? profile.yearOfPassing : '2026';
+    _selectedJobType = profile.careerPreference.isNotEmpty ? profile.careerPreference : 'Full-Time';
   }
 
   Future<void> _checkLostImage() async {
@@ -97,9 +110,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
     _collegeCtrl.dispose();
+    _degreeCtrl.dispose();
+    _branchCtrl.dispose();
     _bioCtrl.dispose();
     _customSkillCtrl.dispose();
     _salaryCtrl.dispose();
+    _expCtrl.dispose();
+    _githubCtrl.dispose();
+    _linkedinCtrl.dispose();
+    _portfolioCtrl.dispose();
     super.dispose();
   }
 
@@ -374,17 +393,26 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isSaving = true);
       
-      // Update Riverpod Provider state
-      ref.read(userProfileProvider.notifier).updateProfile(
+      await ref.read(userProfileProvider.notifier).updateFullProfile(
         name: _nameCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        phone: _phoneCtrl.text.trim(),
         college: _collegeCtrl.text.trim(),
+        degree: _degreeCtrl.text.trim(),
+        branch: _branchCtrl.text.trim(),
+        yearOfPassing: _selectedGradYear ?? '',
         targetRole: _headlineCtrl.text.trim(),
-        avatarInitials: _avatarInitials,
+        aboutSummary: _bioCtrl.text.trim(),
+        careerPreference: _selectedJobType,
+        targetAnnualPackage: _salaryCtrl.text.trim(),
+        experienceYears: double.tryParse(_expCtrl.text.trim()) ?? 0.0,
+        githubUrl: _githubCtrl.text.trim(),
+        linkedinUrl: _linkedinCtrl.text.trim(),
+        portfolioUrl: _portfolioCtrl.text.trim(),
         avatarImagePath: _avatarImagePath,
       );
-      ref.read(userProfileProvider.notifier).updateSkills(_userSkills);
+      await ref.read(userProfileProvider.notifier).updateSkills(_userSkills);
 
-      await Future.delayed(const Duration(milliseconds: 900));
       if (!mounted) return;
       setState(() => _isSaving = false);
 
@@ -576,16 +604,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
                 _buildTextField(
                   controller: _emailCtrl,
-                  label: 'Email Address',
+                  label: 'Email Address (Linked to Account)',
                   icon: Icons.email_outlined,
                   keyboardType: TextInputType.emailAddress,
                   isDark: isDark,
-                  validator: (val) {
-                    if (val == null || val.trim().isEmpty) return 'Email address is required';
-                    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-                    if (!emailRegex.hasMatch(val.trim())) return 'Enter a valid email address';
-                    return null;
-                  },
+                  enabled: false,
                 ),
                 const SizedBox(height: 14),
 
@@ -606,13 +629,29 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Section 2: Education
-                _buildSectionTitle('Education & Institute', isDark),
+                // Section 2: Education & Degree
+                _buildSectionTitle('Education & Degree', isDark),
                 const SizedBox(height: 12),
 
                 _buildTextField(
+                  controller: _degreeCtrl,
+                  label: 'Degree (e.g. B.Tech, M.Tech, BCA, MCA)',
+                  icon: Icons.school_outlined,
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 14),
+
+                _buildTextField(
+                  controller: _branchCtrl,
+                  label: 'Branch / Specialization (e.g. Computer Science, AI/ML)',
+                  icon: Icons.account_tree_outlined,
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 14),
+
+                _buildTextField(
                   controller: _collegeCtrl,
-                  label: 'College / Institute',
+                  label: 'College / Institute Name',
                   icon: Icons.account_balance_outlined,
                   isDark: isDark,
                 ),
@@ -653,14 +692,50 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
                     ),
                   ),
-                  items: ['2024', '2025', '2026', '2027', '2028']
+                  items: ['2024', '2025', '2026', '2027', '2028', '2029', '2030']
                       .map((y) => DropdownMenuItem(value: y, child: Text(y)))
                       .toList(),
                   onChanged: (val) => setState(() => _selectedGradYear = val),
-                  validator: (val) {
-                    if (val == null || val.isEmpty) return 'Please select graduation year';
-                    return null;
-                  },
+                ),
+                const SizedBox(height: 24),
+
+                // Section 3: Professional Experience & Social Links
+                _buildSectionTitle('Experience & Social Portfolio', isDark),
+                const SizedBox(height: 12),
+
+                _buildTextField(
+                  controller: _expCtrl,
+                  label: 'Experience (in Years, e.g. 1.5)',
+                  icon: Icons.work_history_outlined,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 14),
+
+                _buildTextField(
+                  controller: _githubCtrl,
+                  label: 'GitHub Profile URL (https://github.com/...)',
+                  icon: Icons.code_rounded,
+                  keyboardType: TextInputType.url,
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 14),
+
+                _buildTextField(
+                  controller: _linkedinCtrl,
+                  label: 'LinkedIn Profile URL (https://linkedin.com/in/...)',
+                  icon: Icons.link_rounded,
+                  keyboardType: TextInputType.url,
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 14),
+
+                _buildTextField(
+                  controller: _portfolioCtrl,
+                  label: 'Portfolio / Website URL (https://...)',
+                  icon: Icons.language_rounded,
+                  keyboardType: TextInputType.url,
+                  isDark: isDark,
                 ),
                 const SizedBox(height: 24),
 
@@ -944,7 +1019,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   Widget _buildResumeSection(bool isDark) {
     final profile = ref.watch(userProfileProvider);
-    final hasResume = profile.resumeFileName != null;
+    final hasResume = (profile.resumeFileName != null && profile.resumeFileName!.isNotEmpty) ||
+                     (profile.resumeUrl != null && profile.resumeUrl!.isNotEmpty);
+    final resumeDisplayName = (profile.resumeFileName != null && profile.resumeFileName!.isNotEmpty)
+        ? profile.resumeFileName!
+        : (profile.resumeUrl != null && profile.resumeUrl!.isNotEmpty
+            ? profile.resumeUrl!.split('/').last
+            : 'No resume uploaded yet');
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -1022,7 +1103,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          profile.resumeFileName!,
+                          resumeDisplayName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -1144,15 +1225,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     required IconData icon,
     required bool isDark,
     TextInputType keyboardType = TextInputType.text,
+    bool enabled = true,
     String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      enabled: enabled,
       validator: validator,
       style: TextStyle(
         fontSize: 13,
-        color: isDark ? Colors.white : AppColors.onSurface,
+        color: enabled
+            ? (isDark ? Colors.white : AppColors.onSurface)
+            : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
       ),
       decoration: InputDecoration(
         labelText: label,
@@ -1162,8 +1247,26 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         ),
         prefixIcon: Icon(icon,
             size: 18, color: isDark ? const Color(0xFF94A3B8) : AppColors.outline),
+        suffixIcon: !enabled
+            ? Container(
+                margin: const EdgeInsets.only(right: 12),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.lock_outline_rounded, size: 15, color: Color(0xFF10B981)),
+                    SizedBox(width: 4),
+                    Text(
+                      'Account Email',
+                      style: TextStyle(fontSize: 10.5, color: Color(0xFF10B981), fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              )
+            : null,
         filled: true,
-        fillColor: isDark ? AppColors.credDarkCard : Colors.white,
+        fillColor: enabled
+            ? (isDark ? AppColors.credDarkCard : Colors.white)
+            : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
@@ -1174,6 +1277,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
               color: isDark ? AppColors.credDarkBorder : const Color(0xFFE2E8F0)),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),

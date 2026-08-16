@@ -3,10 +3,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/config/app_config.dart';
+import '../../../../core/network/java_api_service.dart';
 import 'models/ai_interview_models.dart';
+import 'models/interview_block_model.dart';
 
 // Re-export models for convenient imports across feature widgets
 export 'models/ai_interview_models.dart';
+export 'models/interview_block_model.dart';
 
 /// Legacy alias for compatibility with existing riverpod bindings
 typedef AiInterviewSessionData = StartInterviewResponse;
@@ -240,6 +243,58 @@ class AiInterviewApiClient {
     return null;
   }
 
+  /// GET /api/v1/interview/history — Fetches candidate's past interview session reports
+  Future<List<Map<String, dynamic>>> fetchInterviewHistory({String email = 'unii12634@gmail.com'}) async {
+    // 1. Try Java Enterprise Backend
+    try {
+      final javaReports = await JavaApiService.fetchInterviewReports(email: email);
+      if (javaReports != null && javaReports.isNotEmpty) {
+        debugPrint('✅ Java Backend fetched ${javaReports.length} past interview reports!');
+        return javaReports;
+      }
+    } catch (e) {
+      debugPrint('Java backend history notice: $e');
+    }
+
+    // 2. Direct Supabase REST DB query
+    try {
+      final supabaseDio = Dio();
+      final response = await supabaseDio.get(
+        '$_supabaseUrl/rest/v1/ai_interview_reports?order=created_at.desc&limit=50',
+        options: Options(
+          headers: {
+            'apikey': _supabaseAnonKey,
+            'Authorization': 'Bearer $_supabaseAnonKey',
+          },
+        ),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200 && response.data != null) {
+        final list = response.data as List;
+        if (list.isNotEmpty) {
+          debugPrint('✅ Direct Supabase query fetched ${list.length} past interview reports!');
+          return list.map((item) => Map<String, dynamic>.from(item)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('Direct Supabase history query fallback to API: $e');
+    }
+
+    // 3. Fallback to API gateway
+    try {
+      final response = await _dio.get('/interview/history').timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200 && response.data != null) {
+        final reports = response.data['reports'] as List?;
+        if (reports != null) {
+          return reports.map((item) => Map<String, dynamic>.from(item)).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('fetchInterviewHistory API error: $e');
+    }
+    return [];
+  }
+
   /// POST /api/v1/resume/parse — Parses candidate PDF resume using multipart form-data
   Future<ResumeParseResponse?> parseResume(String filePath, String candidateName) async {
     try {
@@ -298,6 +353,101 @@ class AiInterviewApiClient {
       debugPrint('synthesizeSpeech fallback to local device TTS: $e');
     }
     return null;
+  }
+
+  static const String _supabaseUrl = 'https://jbauuvxeybakihedeskj.supabase.co';
+  static const String _supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpiYXV1dnhleWJha2loZWRlc2tqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5MDMxNTgsImV4cCI6MjEwMDQ3OTE1OH0.FBLtZxjOt8UG-W1vUw67V43D3mB22UhPBKSltqj2dTg';
+
+  /// GET /interview/blocks — Fetches dynamic database-driven JD interview blocks directly from Supabase DB or API
+  Future<List<InterviewBlockModel>> fetchInterviewBlocks() async {
+    // 1. Try Direct Supabase REST DB query
+    try {
+      final supabaseDio = Dio();
+      final response = await supabaseDio.get(
+        '$_supabaseUrl/rest/v1/interview_blocks?is_active=eq.true&order=created_at.desc',
+        options: Options(
+          headers: {
+            'apikey': _supabaseAnonKey,
+            'Authorization': 'Bearer $_supabaseAnonKey',
+          },
+        ),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200 && response.data != null) {
+        final list = response.data as List;
+        if (list.isNotEmpty) {
+          debugPrint('✅ Direct Supabase DB query fetched ${list.length} dynamic JDs!');
+          return list.map((item) => InterviewBlockModel.fromJson(Map<String, dynamic>.from(item))).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('Direct Supabase REST query fallback to API: $e');
+    }
+
+    // 2. Fallback to AI Backend gateway
+    try {
+      final response = await _dio.get('/interview/blocks').timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200 && response.data != null) {
+        final list = response.data as List;
+        return list.map((item) => InterviewBlockModel.fromJson(Map<String, dynamic>.from(item))).toList();
+      }
+    } catch (e) {
+      debugPrint('fetchInterviewBlocks API gateway error: $e');
+    }
+    return [];
+  }
+
+  /// POST /interview/blocks — Creates a new JD block directly in Supabase DB or backend
+  Future<InterviewBlockModel?> createInterviewBlock(InterviewBlockModel block) async {
+    // 1. Try direct insert into Supabase DB
+    try {
+      final supabaseDio = Dio();
+      final response = await supabaseDio.post(
+        '$_supabaseUrl/rest/v1/interview_blocks',
+        data: block.toJson()..remove('id'),
+        options: Options(
+          headers: {
+            'apikey': _supabaseAnonKey,
+            'Authorization': 'Bearer $_supabaseAnonKey',
+            'Prefer': 'return=representation',
+          },
+        ),
+      ).timeout(const Duration(seconds: 10));
+
+      if ((response.statusCode == 200 || response.statusCode == 201) && response.data != null) {
+        final list = response.data as List;
+        if (list.isNotEmpty) {
+          debugPrint('✅ Created new JD directly in Supabase DB: ${block.title}');
+          return InterviewBlockModel.fromJson(Map<String, dynamic>.from(list[0]));
+        }
+      }
+    } catch (e) {
+      debugPrint('Direct Supabase insert fallback to API gateway: $e');
+    }
+
+    // 2. Fallback to API gateway
+    try {
+      final response = await _dio
+          .post('/interview/blocks', data: block.toJson())
+          .timeout(const Duration(seconds: 15));
+      if ((response.statusCode == 200 || response.statusCode == 201) && response.data != null) {
+        return InterviewBlockModel.fromJson(Map<String, dynamic>.from(response.data));
+      }
+    } catch (e) {
+      debugPrint('createInterviewBlock error: $e');
+    }
+    return null;
+  }
+
+  /// DELETE /interview/blocks/{id} — Removes/deactivates a JD block
+  Future<bool> deleteInterviewBlock(String blockId) async {
+    try {
+      final response = await _dio.delete('/interview/blocks/$blockId').timeout(const Duration(seconds: 15));
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('deleteInterviewBlock error: $e');
+      return false;
+    }
   }
 }
 

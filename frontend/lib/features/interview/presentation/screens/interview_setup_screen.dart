@@ -10,8 +10,10 @@ import '../../../../shared/widgets/glass_card.dart';
 import '../../../../shared/widgets/gradient_button.dart';
 import '../../../subscription/data/subscription_provider.dart';
 import '../../../subscription/presentation/widgets/cda_paywall_sheet.dart';
+import '../../../auth/data/auth_provider.dart';
 import '../../data/interview_setup_provider.dart';
 import '../../data/ai_interview_service.dart';
+import '../../data/interview_blocks_provider.dart';
 
 // ─────────────────────────────────────────────────
 // Models & Enums (100% Aligned with Backend main.py)
@@ -33,11 +35,11 @@ enum InterviewType { technical, hr, behavioral, resumeBased, mixed }
 
 enum InterviewDuration { short, standard, detailed }
 
-const _profileName = 'Arjun Vardhan';
-const _profileResume = 'Arjun_Vardhan_Resume.pdf';
+// Candidate name and resume are loaded from the authenticated user — no hardcoding.
 
 class InterviewSetupScreen extends ConsumerStatefulWidget {
-  const InterviewSetupScreen({super.key});
+  final int initialStep;
+  const InterviewSetupScreen({super.key, this.initialStep = 0});
 
   @override
   ConsumerState<InterviewSetupScreen> createState() => _InterviewSetupScreenState();
@@ -45,17 +47,16 @@ class InterviewSetupScreen extends ConsumerStatefulWidget {
 
 class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
     with TickerProviderStateMixin {
-  int _currentStep = 0;
+  late int _currentStep;
   InterviewRole? _selectedRole = InterviewRole.fullstack;
-  String _customRoleText = '';
   final TextEditingController _customRoleCtrl = TextEditingController();
 
   InterviewType? _selectedType = InterviewType.technical;
   double _difficulty = 2; // 1-Beginner, 2-Intermediate, 3-Advanced
   InterviewDuration _selectedDuration = InterviewDuration.standard;
   final double _selectedSpeechRate = 0.50;
-  String _selectedVoicePersona = 'christopher'; // Default: Christopher — Executive Director
-  String? _resumeFileName = _profileResume;
+  final String _selectedVoicePersona = 'christopher'; // Default: Christopher — Executive Director
+  String? _resumeFileName;
 
   late final PageController _pageController;
   late final AnimationController _progressAnim;
@@ -74,16 +75,26 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
+    _currentStep = widget.initialStep.clamp(0, _totalSteps - 1);
+    _pageController = PageController(initialPage: _currentStep);
     _progressAnim = AnimationController(
         vsync: this, duration: AppConstants.animationNormal);
+    final initialProgress = (_currentStep + 1) / _totalSteps;
     _progressValue =
-        Tween<double>(begin: 1 / _totalSteps, end: 1 / _totalSteps).animate(
+        Tween<double>(begin: initialProgress, end: initialProgress).animate(
             CurvedAnimation(
                 parent: _progressAnim, curve: Curves.easeOutCubic));
     _progressAnim.forward();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // ✅ FIX 1: Write candidateName to provider immediately at setup open
+      final authState = ref.read(authProvider);
+      final realName = authState.fullName.trim().isNotEmpty
+          ? authState.fullName.trim()
+          : 'Candidate';
+      ref.read(interviewSetupProvider.notifier).updateConfig(
+        candidateName: realName,
+      );
       ref.read(aiInterviewServiceProvider).preWarmBackend();
     });
   }
@@ -129,6 +140,8 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
   }
 
   String get _roleLabel {
+    final selectedBlock = ref.watch(interviewBlocksProvider).selectedBlock;
+    if (selectedBlock != null) return selectedBlock.title;
     switch (_selectedRole) {
       case InterviewRole.java:
         return 'Java Developer';
@@ -149,7 +162,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
       case InterviewRole.devops:
         return 'DevOps Engineer';
       case InterviewRole.customRole:
-        return _customRoleText.isNotEmpty ? _customRoleText : 'Custom Job Role';
+        return _customRoleCtrl.text.isNotEmpty ? _customRoleCtrl.text : 'Custom Job Role';
       default:
         return 'Full Stack Developer';
     }
@@ -458,111 +471,328 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
   }
 
   // ─────────────────────────────────────────────────────────
-  // STEP 1 — Role Selection (10 Predefined Backend Roles)
+  // STEP 1 — JD Grid (2 columns, DB blocks + fallback)
   // ─────────────────────────────────────────────────────────
+
+  /// Returns a consistent accent color per block based on title keywords
+  Color _accentForBlock(InterviewBlockModel block) {
+    final t = block.title.toLowerCase();
+    if (t.contains('java'))     return const Color(0xFFE76F00);
+    if (t.contains('python'))   return const Color(0xFF3572A5);
+    if (t.contains('flutter') || t.contains('mobile')) return const Color(0xFF54C5F8);
+    if (t.contains('react') || t.contains('frontend') || t.contains('next')) return const Color(0xFF61DAFB);
+    if (t.contains('ai') || t.contains('ml') || t.contains('data science')) return const Color(0xFF10B981);
+    if (t.contains('devops') || t.contains('cloud') || t.contains('aws') || t.contains('kubernetes')) return const Color(0xFFFF9900);
+    if (t.contains('data') || t.contains('analyst')) return const Color(0xFF906BD8);
+    if (t.contains('full') || t.contains('stack')) return const Color(0xFF4648D4);
+    if (t.contains('backend') || t.contains('node') || t.contains('go')) return const Color(0xFF4648D4);
+    return AppColors.primary;
+  }
+
   Widget _buildStep1Role(ColorScheme cs) {
-    final roles = [
-      (InterviewRole.java, Icons.coffee_rounded, 'Java Developer'),
-      (InterviewRole.fullstack, Icons.layers_rounded, 'Full Stack'),
-      (InterviewRole.frontend, Icons.code_rounded, 'Frontend'),
-      (InterviewRole.backend, Icons.terminal_rounded, 'Backend'),
-      (InterviewRole.python, Icons.data_object_rounded, 'Python Developer'),
-      (InterviewRole.aiMl, Icons.psychology_rounded, 'AI/ML Engineer'),
-      (InterviewRole.dataScience, Icons.analytics_rounded, 'Data Scientist'),
-      (InterviewRole.dataAnalyst, Icons.insert_chart_rounded, 'Data Analyst'),
-      (InterviewRole.devops, Icons.cloud_done_rounded, 'DevOps Engineer'),
-      (InterviewRole.customRole, Icons.edit_note_rounded, 'Custom Role'),
-    ];
+    final blocksState = ref.watch(interviewBlocksProvider);
+    final blocksNotifier = ref.read(interviewBlocksProvider.notifier);
+
+    // Always show blocks — fallback to defaults if DB empty
+    final allBlocks = blocksState.blocks.isNotEmpty
+        ? blocksState.blocks
+        : defaultFallbackBlocks;
+
+    final selectedId = blocksState.selectedBlock?.id;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppConstants.marginMobile),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('What role are you targeting?',
-              style: AppTypography.headlineMobile
-                  .copyWith(fontWeight: FontWeight.bold, color: cs.onSurface)),
-          const SizedBox(height: 6),
-          Text('Choose from all 10 official engineering roles',
-              style: AppTypography.bodySmall
-                  .copyWith(color: AppColors.primary, fontWeight: FontWeight.w600)),
+          // ── Header ───────────────────────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Select Your Role',
+                      style: AppTypography.headlineMobile.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${allBlocks.length} tracks available',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Loading spinner while DB fetch is in progress
+              if (blocksState.isLoading)
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primary,
+                  ),
+                )
+              else
+                GestureDetector(
+                  onTap: () => _showAddJdDialog(context, blocksNotifier),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.add_rounded, size: 14, color: Colors.black),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Add JD',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
           const SizedBox(height: 16),
-          GridView.count(
-            crossAxisCount: 2,
+
+          // ── 2-Column Compact Domain Cards Grid ───────────
+          GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 1.3,
-            children: roles
-                .map((r) => _buildRoleCard(r.$1, r.$2, r.$3, cs))
-                .toList(),
-          ),
-          if (_selectedRole == InterviewRole.customRole) ...[
-            const SizedBox(height: 16),
-            TextField(
-              controller: _customRoleCtrl,
-              decoration: InputDecoration(
-                labelText: 'Enter Custom Job Role',
-                hintText: 'e.g. Senior iOS Architect',
-                prefixIcon: const Icon(Icons.work_outline_rounded),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              onChanged: (val) => setState(() => _customRoleText = val),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 1.55,
             ),
-          ],
+            itemCount: allBlocks.length,
+            itemBuilder: (context, index) {
+              final block = allBlocks[index];
+              final isSelected = selectedId == block.id;
+              final accent = _accentForBlock(block);
+
+              return _buildJdGridCard(
+                cs: cs,
+                block: block,
+                isSelected: isSelected,
+                accent: accent,
+                onTap: () {
+                  setState(() => _selectedRole = InterviewRole.customRole);
+                  blocksNotifier.selectBlock(block);
+                  ref.read(interviewSetupProvider.notifier).updateConfig(
+                    jobRole: block.title,
+                    jobDescriptionText: block.description,
+                    jobRequiredSkills: block.requiredSkills,
+                    skills: block.requiredSkills,
+                    difficulty: block.difficulty.isNotEmpty ? block.difficulty : _difficultyLabel,
+                    experienceLevel: block.experienceLevel.isNotEmpty ? block.experienceLevel : _experienceLevel,
+                    interviewType: block.interviewType.isNotEmpty ? block.interviewType : _typeLabel,
+                    targetQuestionCount: block.targetQuestionCount > 0 ? block.targetQuestionCount : _targetQuestionCount,
+                  );
+                  _nextStep();
+                },
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildRoleCard(InterviewRole role, IconData icon, String label, ColorScheme cs) {
-    final isSelected = _selectedRole == role;
+  Widget _buildJdGridCard({
+    required ColorScheme cs,
+    required InterviewBlockModel block,
+    required bool isSelected,
+    required Color accent,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
-      onTap: () => _selectAndAdvance(() => setState(() => _selectedRole = role)),
+      onTap: onTap,
       child: AnimatedContainer(
-        duration: AppConstants.animationFast,
+        duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primary.withValues(alpha: 0.09)
-              : cs.surfaceContainer,
-          borderRadius: BorderRadius.circular(16),
+              ? accent.withValues(alpha: 0.12)
+              : cs.surfaceContainerLow.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-              color: isSelected ? AppColors.primary : cs.outlineVariant,
-              width: isSelected ? 2 : 1),
+            color: isSelected ? accent : cs.outlineVariant.withValues(alpha: 0.3),
+            width: isSelected ? 2.0 : 1.0,
+          ),
           boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.12),
-                      blurRadius: 10)
-                ]
-              : [],
+              ? [BoxShadow(color: accent.withValues(alpha: 0.18), blurRadius: 10, offset: const Offset(0, 3))]
+              : [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 4, offset: const Offset(0, 2))],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
           children: [
-            Icon(icon,
-                size: 26,
-                color: isSelected
-                    ? AppColors.primary
-                    : cs.onSurfaceVariant),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: AppTypography.titleMedium.copyWith(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected
-                      ? AppColors.primary
-                      : cs.onSurface),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            // Domain Icon
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: isSelected ? 0.22 : 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(block.iconData, color: accent, size: 20),
             ),
+            const SizedBox(width: 10),
+
+            // Domain Name & Details
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    block.title,
+                    style: AppTypography.titleMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: isSelected ? accent : cs.onSurface,
+                      height: 1.15,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    block.badgeTag.toUpperCase(),
+                    style: AppTypography.codeMono.copyWith(
+                      color: isSelected ? accent : cs.outline,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.3,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+
+            // Selection Check Circle
+            if (isSelected)
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: accent,
+                ),
+                child: const Icon(Icons.check_rounded, size: 12, color: Colors.white),
+              ),
           ],
         ),
       ),
+    );
+  }
+
+
+
+
+  void _showAddJdDialog(BuildContext context, InterviewBlocksNotifier notifier) {
+    final titleCtrl = TextEditingController();
+    final companyCtrl = TextEditingController(text: 'Cranes Varsity');
+    final descCtrl = TextEditingController();
+    final skillsCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: AppColors.surfaceContainerLow,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.post_add_rounded, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text('Create New JD Track', style: AppTypography.titleMedium.copyWith(color: AppColors.onSurface)),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Job Title (e.g. Flutter Engineer)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: companyCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Company Name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descCtrl,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Tech Requirements & Description',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: skillsCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Required Skills (comma separated)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.black),
+              onPressed: () async {
+                if (titleCtrl.text.trim().isEmpty || descCtrl.text.trim().isEmpty) return;
+                final skills = skillsCtrl.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+                final newBlock = InterviewBlockModel(
+                  id: '',
+                  title: titleCtrl.text.trim(),
+                  companyName: companyCtrl.text.trim(),
+                  description: descCtrl.text.trim(),
+                  requiredSkills: skills,
+                  badgeTag: 'NEW JD',
+                  iconName: 'code',
+                );
+                await notifier.addNewBlock(newBlock);
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: const Text('Save & Create Block'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -637,8 +867,17 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
       String subtitle, Color color, ColorScheme cs) {
     final isSelected = _selectedType == type;
     return GestureDetector(
-      onTap: () =>
-          _selectAndAdvance(() => setState(() => _selectedType = type)),
+      onTap: () => _selectAndAdvance(() {
+        setState(() => _selectedType = type);
+        // ✅ FIX 3: Sync interview type to provider immediately
+        ref.read(interviewSetupProvider.notifier).updateConfig(
+          interviewType: title.contains('Technical') ? 'Technical'
+            : title.contains('Behavioral') ? 'Behavioral'
+            : title.contains('Resume') ? 'Resume Based'
+            : title.contains('HR') ? 'HR'
+            : 'Mixed',
+        );
+      }),
       child: AnimatedContainer(
         duration: AppConstants.animationFast,
         padding: const EdgeInsets.all(16),
@@ -814,7 +1053,16 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
       String subtitle, Color color, ColorScheme cs) {
     final isSelected = _difficulty.round() == level;
     return GestureDetector(
-      onTap: () => setState(() => _difficulty = level.toDouble()),
+      onTap: () {
+        setState(() => _difficulty = level.toDouble());
+        // ✅ FIX 4a: Sync difficulty + experience to provider on tap
+        final diffLabel = level == 1 ? 'Beginner' : level == 3 ? 'Advanced' : 'Intermediate';
+        final expLabel = level == 1 ? 'Entry-Level' : level == 3 ? 'Senior' : 'Mid-Level';
+        ref.read(interviewSetupProvider.notifier).updateConfig(
+          difficulty: diffLabel,
+          experienceLevel: expLabel,
+        );
+      },
       child: AnimatedContainer(
         duration: AppConstants.animationFast,
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
@@ -847,7 +1095,15 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
       String label, String qCount, IconData icon, ColorScheme cs) {
     final isSelected = _selectedDuration == duration;
     return GestureDetector(
-      onTap: () => setState(() => _selectedDuration = duration),
+      onTap: () {
+        setState(() => _selectedDuration = duration);
+        // ✅ FIX 4b: Sync target question count to provider on duration tap
+        final count = duration == InterviewDuration.short ? 3
+            : duration == InterviewDuration.detailed ? 8 : 5;
+        ref.read(interviewSetupProvider.notifier).updateConfig(
+          targetQuestionCount: count,
+        );
+      },
       child: AnimatedContainer(
         duration: AppConstants.animationFast,
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
@@ -954,7 +1210,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _resumeFileName ?? _profileResume,
+                        _resumeFileName ?? 'No resume uploaded',
                         style: AppTypography.titleMedium.copyWith(
                             fontWeight: FontWeight.bold, color: cs.onSurface),
                         overflow: TextOverflow.ellipsis,
@@ -1226,7 +1482,8 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
 
         if (path != null) {
           final api = ref.read(aiInterviewServiceProvider);
-          final resData = await api.parseResume(path, 'Candidate');
+          final candidateName = ref.read(authProvider).fullName.trim();
+          final resData = await api.parseResume(path, candidateName.isNotEmpty ? candidateName : 'Candidate');
           if (mounted && resData != null) {
             setState(() {
               _isAnalyzingResume = false;
@@ -1235,6 +1492,16 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
               _parsedResumeHackathons = resData.hackathons;
               _parsedResumeCertifications = resData.certifications;
             });
+            // ✅ FIX 5: Merge parsed resume skills with JD skills in provider
+            final currentSetup = ref.read(interviewSetupProvider);
+            final mergedSkills = {
+              ...currentSetup.skills,
+              ...resData.skills,
+            }.toList();
+            ref.read(interviewSetupProvider.notifier).updateConfig(
+              resumePath: _resumeFileName,
+              skills: mergedSkills,
+            );
           } else {
             if (mounted) setState(() => _isAnalyzingResume = false);
           }
@@ -1276,9 +1543,13 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                       color: Colors.white, size: 32),
                 ),
                 const SizedBox(height: 12),
-                Text('Ready, $_profileName?',
-                    style: AppTypography.headlineMobile
-                        .copyWith(fontWeight: FontWeight.bold, color: cs.onSurface)),
+                Builder(builder: (context) {
+                  final authName = ref.watch(authProvider).fullName;
+                  final displayName = authName.trim().isNotEmpty ? authName.split(' ').first : 'Candidate';
+                  return Text('Ready, $displayName?',
+                      style: AppTypography.headlineMobile
+                          .copyWith(fontWeight: FontWeight.bold, color: cs.onSurface));
+                }),
                 const SizedBox(height: 4),
                 Text('Review your session configuration',
                     style: AppTypography.bodyMedium
@@ -1300,7 +1571,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
           _buildSummaryRow('DURATION', '$_durationMinutesLabel min · $_durationNameLabel',
               Icons.timer_rounded, cs.onSurface, cs),
           const SizedBox(height: 8),
-          _buildSummaryRow('RESUME', _resumeFileName ?? _profileResume,
+          _buildSummaryRow('RESUME', _resumeFileName ?? 'No resume uploaded',
               Icons.picture_as_pdf_rounded, AppColors.error, cs),
           const SizedBox(height: 8),
           const SizedBox(height: 20),
@@ -1308,22 +1579,49 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
           GradientButton(
             text: 'Start AI Interview',
             icon: Icons.bolt_rounded,
-            onPressed: () {
+            onPressed: () async {
+              // ✅ FIX 6: Final write — fills any gaps from skipped steps
+              final authState = ref.read(authProvider);
+              final realName = authState.fullName.trim().isNotEmpty
+                  ? authState.fullName.trim()
+                  : 'Candidate';
+              final selectedBlock = ref.read(interviewBlocksProvider).selectedBlock;
+              final currentSetup = ref.read(interviewSetupProvider);
+
+              // Merge parsed resume skills with JD skills (deduped)
+              final mergedSkills = {
+                ...currentSetup.skills,
+                ..._parsedResumeSkills,
+                ...(selectedBlock?.requiredSkills ?? []),
+              }.toList();
+
               ref.read(interviewSetupProvider.notifier).updateConfig(
-                    candidateName: 'Candidate',
-                    jobRole: _roleLabel,
-                    experienceLevel: _experienceLevel,
-                    difficulty: _difficultyLabel,
-                    interviewType: _typeLabel,
-                    targetQuestionCount: _targetQuestionCount,
-                    voicePersona: _selectedVoicePersona,
-                    speechRate: _selectedSpeechRate,
-                    resumePath: _resumeFileName,
-                    enrolledCourses: const [],
-                    skills: const [],
-                  );
+                candidateName: realName,
+                jobRole: currentSetup.jobRole.isNotEmpty
+                    ? currentSetup.jobRole
+                    : (selectedBlock?.title ?? _roleLabel),
+                jobDescriptionText: currentSetup.jobDescriptionText ?? selectedBlock?.description,
+                experienceLevel: currentSetup.experienceLevel.isNotEmpty
+                    ? currentSetup.experienceLevel
+                    : (selectedBlock?.experienceLevel ?? _experienceLevel),
+                difficulty: currentSetup.difficulty.isNotEmpty
+                    ? currentSetup.difficulty
+                    : (selectedBlock?.difficulty ?? _difficultyLabel),
+                interviewType: currentSetup.interviewType.isNotEmpty
+                    ? currentSetup.interviewType
+                    : (selectedBlock?.interviewType ?? _typeLabel),
+                targetQuestionCount: currentSetup.targetQuestionCount > 0
+                    ? currentSetup.targetQuestionCount
+                    : (selectedBlock?.targetQuestionCount ?? _targetQuestionCount),
+                voicePersona: _selectedVoicePersona,
+                speechRate: _selectedSpeechRate,
+                resumePath: _resumeFileName,
+                skills: mergedSkills,
+                enrolledCourses: const [],
+              );
               final success =
-                  ref.read(subscriptionProvider.notifier).consumeTrial();
+                  await ref.read(subscriptionProvider.notifier).consumeTrial();
+              if (!mounted) return;
               if (success) {
                 context.push('/interview/session');
               } else {

@@ -150,10 +150,10 @@ class _BackendConnectionDiagnosticsScreenState
   void _copyMonitorUrl() {
     Clipboard.setData(ClipboardData(text: AppConfig.apiBaseUrl));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Backend API Host copied to clipboard 📋'),
+      const SnackBar(
+        content: Text('Backend API Host copied to clipboard 📋'),
         behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
+        duration: Duration(seconds: 2),
       ),
     );
   }
@@ -286,8 +286,9 @@ class _BackendConnectionDiagnosticsScreenState
                               onTap: () async {
                                 final api = ref.read(aiInterviewServiceProvider);
                                 final discovered = await api.autoDiscoverWorkingHost();
-                                if (discovered != null && mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
+                                if (!mounted) return;
+                                if (discovered != null) {
+                                  ScaffoldMessenger.of(this.context).showSnackBar(
                                     SnackBar(content: Text('Connected to: $discovered 🚀')),
                                   );
                                   _runFullDiagnostics();

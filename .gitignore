@@ -1,11 +1,43 @@
-
 # Flutter build artifacts
 build/
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
+frontend/build/
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+*.apk
+
+# IDE & Editor files
 .idea/
 .vscode/
-*.zip
 /nbproject/private/
-/backend_java/target/
+*.iml
+
+# Java build artifacts
+target/
+backend_java/target/
+*.class
+
+# Python environment & cache
+.venv/
+backend_ai/.venv/
+__pycache__/
+backend_ai/__pycache__/
+*.pyc
+.pytest_cache/
+
+# Node modules & Archives
+node_modules/
+*.zip
+*.tar.gz
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+backend_ai/.env
+

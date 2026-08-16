@@ -291,6 +291,7 @@ Examples:
     start_time = datetime.now()
     # Detect agent directory dynamically (default to .agents if exists, fallback to .agent)
     agent_dir_name = ".agents" if (project_path / ".agents").exists() else ".agent"
+    results = []
     
     # Run all verification categories
     for suite in VERIFICATION_SUITE:

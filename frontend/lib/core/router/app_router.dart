@@ -142,12 +142,16 @@ final _router = GoRouter(
     GoRoute(
       path: '/interview/setup',
       parentNavigatorKey: _rootNavigatorKey,
-      pageBuilder: (context, state) => _buildAppleTransitionPage(
-        context: context,
-        state: state,
-        isSlide: true,
-        child: const InterviewSetupScreen(),
-      ),
+      pageBuilder: (context, state) {
+        final stepParam = state.uri.queryParameters['initialStep'];
+        final initialStep = int.tryParse(stepParam ?? '0') ?? 0;
+        return _buildAppleTransitionPage(
+          context: context,
+          state: state,
+          isSlide: true,
+          child: InterviewSetupScreen(initialStep: initialStep),
+        );
+      },
     ),
     GoRoute(
       path: '/interview/reports',
@@ -205,6 +209,16 @@ final _router = GoRouter(
           child: JobDetailScreen(jobId: id),
         );
       },
+    ),
+    GoRoute(
+      path: '/application-tracker',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const ApplicationTrackerScreen(),
+      ),
     ),
 
     // ── Main Shell with Floating Navigation Bar ───────────────────────────────

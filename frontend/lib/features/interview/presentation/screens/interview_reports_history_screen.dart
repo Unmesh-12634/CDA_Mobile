@@ -1,130 +1,58 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/glass_card.dart';
+import '../../data/ai_interview_service.dart';
 
-class InterviewReportsHistoryScreen extends StatelessWidget {
+class InterviewReportsHistoryScreen extends ConsumerStatefulWidget {
   const InterviewReportsHistoryScreen({super.key});
 
-  static final List<Map<String, dynamic>> _mockReports = [
-    {
-      'id': 'rep-101',
-      'role': 'Senior Flutter Architect',
-      'date': 'Feb 10, 2026 · 14:30',
-      'type': 'Technical & Architecture',
-      'score': 92.0,
-      'techScore': 94.0,
-      'commScore': 90.0,
-      'probScore': 92.0,
-      'hiringReadiness': 'STRONG CANDIDATE',
-      'turns': 5,
-      'skills': ['Flutter 3.27', 'Riverpod', 'Clean Architecture', 'Dart'],
-      'data': {
-        'overall_score': 92.0,
-        'technical_score': 94.0,
-        'communication_score': 90.0,
-        'problem_solving_score': 92.0,
-        'hiring_readiness': 'STRONG CANDIDATE',
-        'completed_turns': 5,
-        'target_turns': 5,
-        'strong_areas': [
-          'Mastery over Flutter widget tree optimization and state management.',
-          'Demonstrated excellent grasp of Riverpod reactivity and dynamic dependency injection.',
-          'Clear communication of architectural boundaries and clean code principles.',
-        ],
-        'areas_for_improvement': [
-          'Elaborate further on native platform channels (iOS Swift & Android Kotlin integration).',
-          'Provide concrete frame render metrics (120Hz Jank analysis).',
-        ],
-      },
-    },
-    {
-      'id': 'rep-102',
-      'role': 'Full-Stack Engineer (Python & React)',
-      'date': 'Feb 8, 2026 · 18:15',
-      'type': 'System Design & REST API',
-      'score': 88.0,
-      'techScore': 90.0,
-      'commScore': 86.0,
-      'probScore': 88.0,
-      'hiringReadiness': 'STRONG CANDIDATE',
-      'turns': 5,
-      'skills': ['FastAPI', 'Groq LLM', 'React 19', 'PostgreSQL'],
-      'data': {
-        'overall_score': 88.0,
-        'technical_score': 90.0,
-        'communication_score': 86.0,
-        'problem_solving_score': 88.0,
-        'hiring_readiness': 'STRONG CANDIDATE',
-        'completed_turns': 5,
-        'target_turns': 5,
-        'strong_areas': [
-          'Solid understanding of async Python FastAPI request lifecycle.',
-          'Effective application of LLM prompt engineering and Groq API cascades.',
-        ],
-        'areas_for_improvement': [
-          'Include Redis caching strategies for database query optimization under high concurrency.',
-        ],
-      },
-    },
-    {
-      'id': 'rep-103',
-      'role': 'JVM / Java Backend Developer',
-      'date': 'Feb 5, 2026 · 11:00',
-      'type': 'Algorithms & Concurrency',
-      'score': 84.0,
-      'techScore': 85.0,
-      'commScore': 82.0,
-      'probScore': 85.0,
-      'hiringReadiness': 'DEVELOPING CANDIDATE',
-      'turns': 5,
-      'skills': ['Java 21', 'Spring Boot 3', 'Virtual Threads', 'Microservices'],
-      'data': {
-        'overall_score': 84.0,
-        'technical_score': 85.0,
-        'communication_score': 82.0,
-        'problem_solving_score': 85.0,
-        'hiring_readiness': 'DEVELOPING CANDIDATE',
-        'completed_turns': 5,
-        'target_turns': 5,
-        'strong_areas': [
-          'Good grasp of Java 21 Virtual Threads and ExecutorService concurrency.',
-          'Solid understanding of Spring Security filter chains.',
-        ],
-        'areas_for_improvement': [
-          'Deepen knowledge of JVM garbage collector tuning (ZGC vs G1GC).',
-        ],
-      },
-    },
-    {
-      'id': 'rep-104',
-      'role': 'AI / ML Systems Engineer',
-      'date': 'Jan 28, 2026 · 16:45',
-      'type': 'RAG & Vector Search',
-      'score': 79.0,
-      'techScore': 80.0,
-      'commScore': 78.0,
-      'probScore': 79.0,
-      'hiringReadiness': 'DEVELOPING CANDIDATE',
-      'turns': 4,
-      'skills': ['Python', 'LangChain', 'Pinecone', 'RAG Pipelines'],
-      'data': {
-        'overall_score': 79.0,
-        'technical_score': 80.0,
-        'communication_score': 78.0,
-        'problem_solving_score': 79.0,
-        'hiring_readiness': 'DEVELOPING CANDIDATE',
-        'completed_turns': 4,
-        'target_turns': 5,
-        'strong_areas': [
-          'Clear explanation of embedding chunking strategies and cosine similarity.',
-        ],
-        'areas_for_improvement': [
-          'Elaborate on hybrid search (BM25 + Dense vector retrieval).',
-        ],
-      },
-    },
-  ];
+  @override
+  ConsumerState<InterviewReportsHistoryScreen> createState() => _InterviewReportsHistoryScreenState();
+}
+
+class _InterviewReportsHistoryScreenState extends ConsumerState<InterviewReportsHistoryScreen> {
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _reports = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    final api = ref.read(aiInterviewServiceProvider);
+    final fetched = await api.fetchInterviewHistory();
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _reports = fetched.map((item) {
+          final qaJson = item['detailed_qa_json'] as Map<String, dynamic>? ?? item;
+          final score = (item['overall_score'] as num?)?.toDouble() ?? (qaJson['overall_score'] as num?)?.toDouble() ?? 85.0;
+          final role = item['target_role'] ?? 'Software Developer';
+          final dateStr = item['created_at'] != null
+              ? item['created_at'].toString().split('T').first
+              : 'Recent Session';
+          final dynamicSkills = (item['strengths'] as List?)?.map((e) => e.toString()).toList() ??
+              (qaJson['skills'] as List?)?.map((e) => e.toString()).toList() ??
+              ['Technical', 'System Design'];
+
+          return {
+            'id': item['id']?.toString() ?? 'rep-${DateTime.now().millisecondsSinceEpoch}',
+            'role': role,
+            'date': dateStr,
+            'type': qaJson['interview_type'] ?? 'Technical Session',
+            'score': score,
+            'hiringReadiness': score >= 80 ? 'STRONG CANDIDATE' : 'DEVELOPING CANDIDATE',
+            'skills': dynamicSkills,
+            'data': qaJson,
+          };
+        }).toList();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -187,7 +115,7 @@ class InterviewReportsHistoryScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '4 Sessions Evaluated',
+                        '${_reports.length} Sessions Evaluated',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -196,8 +124,8 @@ class InterviewReportsHistoryScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        'Avg. Technical Score: 87.5% · Strong Candidate',
-                        style: TextStyle(
+                        'Avg. Technical Score: ${(_reports.isNotEmpty ? (_reports.fold<double>(0, (sum, r) => sum + (r['score'] as double)) / _reports.length) : 85.0).toStringAsFixed(1)}% · Strong Candidate',
+                        style: const TextStyle(
                           fontSize: 11.5,
                           color: AppColors.primary,
                           fontWeight: FontWeight.w700,
@@ -222,8 +150,47 @@ class InterviewReportsHistoryScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // ── Report Cards ──────────────────────────────────────
-          ..._mockReports.map((report) {
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.all(40),
+              child: Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              ),
+            )
+          else if (_reports.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.assignment_turned_in_outlined,
+                        size: 48,
+                        color: isDark ? const Color(0xFF64748B) : AppColors.outline),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No AI interview reports yet',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : AppColors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Start an AI interview to get real-time feedback and score breakdown.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            // ── Report Cards ──────────────────────────────────────
+            ..._reports.map((report) {
             final double score = report['score'] as double;
             final Color scoreColor = score >= 85
                 ? const Color(0xFF10B981)
@@ -328,7 +295,7 @@ class InterviewReportsHistoryScreen extends StatelessWidget {
                               letterSpacing: 0.5,
                             ),
                           ),
-                          Row(
+                          const Row(
                             children: [
                               Text(
                                 'View Full Analysis',
@@ -338,8 +305,8 @@ class InterviewReportsHistoryScreen extends StatelessWidget {
                                   color: AppColors.primary,
                                 ),
                               ),
-                              const SizedBox(width: 4),
-                              const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.primary, size: 12),
+                              SizedBox(width: 4),
+                              Icon(Icons.arrow_forward_ios_rounded, color: AppColors.primary, size: 12),
                             ],
                           ),
                         ],

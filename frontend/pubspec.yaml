@@ -18,12 +18,17 @@ dependencies:
   cupertino_icons: ^1.0.8
   file_picker: ^8.0.0+1
   image_picker: ^1.1.2
+  http: ^1.2.0
   flutter_tts: ^4.0.2
   speech_to_text: ^7.0.0
   web_socket_channel: ^3.0.0
   audioplayers: ^6.6.0
   video_player: ^2.8.6
   share_plus: ^10.0.0
+  # ── Real Authentication & Utilities ───────────────────────
+  supabase_flutter: ^2.8.4
+  google_sign_in: ^6.2.1
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:

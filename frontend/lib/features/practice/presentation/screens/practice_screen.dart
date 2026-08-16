@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../shared/widgets/glass_card.dart';
 import '../../../../shared/widgets/gradient_button.dart';
+import '../../../interview/data/interview_blocks_provider.dart';
 
-class PracticeScreen extends StatelessWidget {
+class PracticeScreen extends ConsumerWidget {
   const PracticeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final blocksState = ref.watch(interviewBlocksProvider);
+    final blocksNotifier = ref.read(interviewBlocksProvider.notifier);
+    final blocks = blocksState.blocks;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -77,16 +83,16 @@ class PracticeScreen extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Interview Tracks',
+                    'Interview Tracks (JDs)',
                     style: AppTypography.titleMedium.copyWith(
                       fontWeight: FontWeight.bold,
                       color: AppColors.onSurface,
                     ),
                   ),
                   Text(
-                    '3 TRACKS AVAILABLE',
+                    '${blocks.length} TRACKS AVAILABLE',
                     style: AppTypography.codeMono.copyWith(
-                      color: AppColors.outline,
+                      color: AppColors.primary,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
@@ -95,32 +101,28 @@ class PracticeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 12),
 
-              _buildTrackCard(
-                icon: Icons.code_rounded,
-                title: 'Technical',
-                description: 'System design, algorithms, and engineering challenges.',
-                duration: '45-60 MINS',
-                iconColor: AppColors.primary,
-                onTap: () => context.push('/interview/setup'),
-              ),
-              const SizedBox(height: 10),
-              _buildTrackCard(
-                icon: Icons.groups_rounded,
-                title: 'Cultural Fit',
-                description: 'Values alignment, team dynamics, and soft-skill assessments.',
-                duration: '20-30 MINS',
-                iconColor: AppColors.secondary,
-                onTap: () => context.push('/interview/setup'),
-              ),
-              const SizedBox(height: 10),
-              _buildTrackCard(
-                icon: Icons.psychology_rounded,
-                title: 'Behavioral',
-                description: 'STAR method coaching and leadership scenario simulations.',
-                duration: '30-45 MINS',
-                iconColor: AppColors.tertiary,
-                onTap: () => context.push('/interview/setup'),
-              ),
+              if (blocksState.isLoading && blocks.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else
+                ...blocks.map((block) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: _buildTrackCard(
+                      icon: block.iconData,
+                      title: block.title,
+                      description: block.description,
+                      duration: '${block.targetQuestionCount * 8}-${block.targetQuestionCount * 12} MINS',
+                      iconColor: AppColors.primary,
+                      onTap: () {
+                        blocksNotifier.selectBlock(block);
+                        context.push('/interview/setup');
+                      },
+                    ),
+                  );
+                }),
 
               const SizedBox(height: AppConstants.stackLg),
 

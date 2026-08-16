@@ -5,6 +5,7 @@
 class StartInterviewRequest {
   final String candidateName;
   final String jobRole;
+  final String? jobDescription;
   final String experienceLevel;
   final String interviewType;
   final String difficulty;
@@ -18,6 +19,7 @@ class StartInterviewRequest {
   StartInterviewRequest({
     required this.candidateName,
     required this.jobRole,
+    this.jobDescription,
     required this.experienceLevel,
     required this.interviewType,
     required this.difficulty,
@@ -33,6 +35,7 @@ class StartInterviewRequest {
     return {
       'candidate_name': candidateName,
       'job_role': jobRole,
+      if (jobDescription != null && jobDescription!.isNotEmpty) 'job_description': jobDescription,
       'experience_level': experienceLevel,
       'interview_type': interviewType,
       'difficulty': difficulty,

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../shared/widgets/gradient_button.dart';
+import '../../../home/data/weekly_goal_provider.dart';
 
-class InterviewAnalysisScreen extends StatelessWidget {
+class InterviewAnalysisScreen extends ConsumerStatefulWidget {
   final String reportId;
   final Map<String, dynamic>? reportData;
 
@@ -15,11 +17,25 @@ class InterviewAnalysisScreen extends StatelessWidget {
   });
 
   @override
+  ConsumerState<InterviewAnalysisScreen> createState() => _InterviewAnalysisScreenState();
+}
+
+class _InterviewAnalysisScreenState extends ConsumerState<InterviewAnalysisScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Complete today's daily mission for taking an AI Interview
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(weeklyGoalProvider.notifier).completeToday();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     // Extract dynamic report properties with robust fallbacks
-    final data = reportData ?? {};
+    final data = widget.reportData ?? {};
     final bool isTerminatedEarly = data['is_terminated_early'] == true;
     final int completedTurns = (data['completed_turns'] as num?)?.toInt() ?? 2;
     final int targetTurns = (data['target_turns'] as num?)?.toInt() ?? 5;

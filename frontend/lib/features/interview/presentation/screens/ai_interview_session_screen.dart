@@ -76,9 +76,8 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   bool _isAiSpeaking = false;
   bool _isSubmittingAnswer = false;
 
-  String _currentQuestionText =
-      'Tell me about a time you had to handle a high-pressure situation in a team environment. How did you prioritize tasks?';
-  String _transitionPhrase = 'Great. Let\'s begin with your technical scenario.';
+  String _currentQuestionText = '';
+  String _transitionPhrase = '';
 
   final List<Map<String, String>> _transcriptHistory = [];
 
@@ -428,11 +427,12 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
     final String candidateName = setupConfig.candidateName.trim().isNotEmpty
         ? setupConfig.candidateName.trim()
-        : (authState.fullName.trim().isNotEmpty ? authState.fullName.trim() : 'Arjun Verma');
+        : (authState.fullName.trim().isNotEmpty ? authState.fullName.trim() : 'Candidate');
 
     final request = StartInterviewRequest(
       candidateName: candidateName,
       jobRole: setupConfig.jobRole.trim().isNotEmpty ? setupConfig.jobRole : 'Senior AI & Full-Stack Engineer',
+      jobDescription: setupConfig.jobDescriptionText,
       experienceLevel: setupConfig.experienceLevel.trim().isNotEmpty ? setupConfig.experienceLevel : '1 - 3 Years',
       interviewType: setupConfig.interviewType,
       difficulty: setupConfig.difficulty,

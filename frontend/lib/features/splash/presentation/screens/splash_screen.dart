@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/config/supabase_config.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/cda_app_logo.dart';
 
@@ -36,12 +37,18 @@ class _SplashScreenState extends State<SplashScreen>
 
     _animCtrl.forward();
 
-    _timer = Timer(const Duration(milliseconds: 2000), () {
+    _timer = Timer(const Duration(milliseconds: 1800), () {
       if (mounted) {
-        context.go('/login');
+        final session = SupabaseConfig.client.auth.currentSession;
+        if (session != null) {
+          context.go('/home');
+        } else {
+          context.go('/login');
+        }
       }
     });
   }
+
 
   @override
   void dispose() {
