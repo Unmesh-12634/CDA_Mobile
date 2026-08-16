@@ -133,5 +133,20 @@ flutter run
 
 ---
 
-## 🛡️ License & Credits
-Developed for **CDA (Cranes Digital Academy)**. All rights reserved.
+## 👥 CDA Engineering Team & Contributors
+
+Developed with ❤️ for **CDA (Cranes Digital Academy)**.
+
+| Team Member | Role & Specialization | Key Responsibilities & Contributions |
+| :--- | :--- | :--- |
+| **👑 Unmesh** | **Project Lead & Full-Stack Architect** | • Overall System Architecture & Engineering Leadership<br>• Flutter Mobile Frontend & Core State Management<br>• Java 17 Spring Boot Enterprise Backend & REST APIs<br>• Python AI Fast-API & Edge Neural Voice System<br>• UI Motion, Physics Animations & Cross-Platform Orchestration |
+| **🎨 Kalal Mansi** | **Frontend & UI/UX Specialist** | • Flutter Frontend Feature Development<br>• UI/UX Design System & Mobile Screen Layouts<br>• Interactive Micro-animations, Transitions & Visual Polish |
+| **⚡ Shristi Bapna** | **Backend & Integration Specialist** | • Backend Integration & API Connectivity<br>• Client-Server Service Pipelines & Data Marshalling<br>• Business Logic & Integration Testing |
+| **🗄️ Archi Lodha** | **Database & Data Management Specialist** | • Supabase PostgreSQL Schema Architecture & Migration<br>• Database Modeling, Relationships & Performance Indexing<br>• Row Level Security (RLS) Policy Design & Optimization |
+
+---
+
+## 🛡️ License & Copyright
+© 2026 **CDA (Cranes Digital Academy)**. All rights reserved.
+Unauthorized copying, modification, distribution, or use of this software and associated documentation files is strictly prohibited.
+
