@@ -452,6 +452,7 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
             'portfolio_url': state.portfolioUrl,
             'resume_url': state.resumeUrl ?? state.resumeFilePath,
             'avatar_url': state.avatarImagePath,
+            'profile_strength_score': (state.profileStrengthPercentage * 100).toInt(),
             'updated_at': DateTime.now().toIso8601String(),
           };
 

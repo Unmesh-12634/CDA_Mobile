@@ -56,8 +56,16 @@ CREATE TABLE IF NOT EXISTS public.users (
     experience_years NUMERIC(3,1) DEFAULT 0.0,
     github_url VARCHAR(500),
     linkedin_url VARCHAR(500),
-    portfolio_url VARCHAR(500),
     resume_url VARCHAR(500),
+    profile_strength_score INT DEFAULT 0,
+    
+    -- CDA Pro Subscription & Expiration Tracking
+    is_pro_member BOOLEAN DEFAULT false,
+    pro_plan VARCHAR(50) DEFAULT 'Standard Access',
+    pro_started_at TIMESTAMP WITH TIME ZONE,
+    pro_expires_at TIMESTAMP WITH TIME ZONE,
+    ai_trials_remaining INT DEFAULT 5,
+    ai_trials_total INT DEFAULT 5,
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -270,6 +278,25 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     is_read BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS public.user_subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    user_email VARCHAR(255) NOT NULL,
+    plan_name VARCHAR(100) NOT NULL,
+    billing_cycle VARCHAR(50) NOT NULL, -- '1_hour', '1_day', '1_month', '3_months', '1_year'
+    amount_paid NUMERIC(10,2) DEFAULT 0.00,
+    currency VARCHAR(10) DEFAULT 'INR',
+    payment_method VARCHAR(50) DEFAULT 'UPI',
+    payment_id VARCHAR(255),
+    status VARCHAR(50) DEFAULT 'Active', -- 'Active', 'Expired', 'Cancelled'
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_email ON public.user_subscriptions(user_email);
+CREATE INDEX IF NOT EXISTS idx_user_subscriptions_status ON public.user_subscriptions(status);
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- 7. PERFORMANCE INDEXES

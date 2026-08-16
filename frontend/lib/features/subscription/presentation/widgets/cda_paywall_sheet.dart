@@ -22,21 +22,22 @@ class CDAPaywallSheet extends ConsumerStatefulWidget {
 }
 
 class _CDAPaywallSheetState extends ConsumerState<CDAPaywallSheet> {
-  String _selectedPlan = 'yearly'; // 'yearly' | 'monthly'
+  String _selectedPlan = '1_month'; // '1_hour' | '1_day' | '1_month' | '3_months' | '1_year'
   String _selectedPayment = 'upi'; // 'upi' | 'card' | 'netbanking'
   bool _isProcessing = false;
 
   void _processUpgrade() async {
     setState(() => _isProcessing = true);
-    await Future.delayed(const Duration(milliseconds: 1400));
+    await Future.delayed(const Duration(milliseconds: 1000));
     if (!mounted) return;
 
-    // Trigger state upgrade
-    ref.read(subscriptionProvider.notifier).upgradeToPro(
-          planId: _selectedPlan == 'yearly' ? 'pro_annual' : 'pro_monthly',
+    // Trigger state upgrade with specific duration
+    await ref.read(subscriptionProvider.notifier).upgradeToPro(
+          planId: 'pro_$_selectedPlan',
           billingCycle: _selectedPlan,
         );
 
+    final sub = ref.read(subscriptionProvider);
     Navigator.of(context).pop();
 
     // Show celebration dialog
@@ -65,19 +66,46 @@ class _CDAPaywallSheetState extends ConsumerState<CDAPaywallSheet> {
             ),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Your subscription is now active! You have unlocked:',
-              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+              'Your plan "${sub.planName}" is now active! Valid until:',
+              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
             ),
-            SizedBox(height: 12),
-            _ProFeatureBullet(text: 'Unlimited AI Mock Interviews'),
-            _ProFeatureBullet(text: 'Real-time Voice & Code Evaluation'),
-            _ProFeatureBullet(text: 'Priority Placement on Recruiter Feeds'),
-            _ProFeatureBullet(text: 'Verified CDA Pro Profile Badge'),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFF59E0B)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.timer_outlined, color: Color(0xFFF59E0B), size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      sub.expiryDate != null
+                          ? '${sub.expiryDate!.day}/${sub.expiryDate!.month}/${sub.expiryDate!.year} ${sub.expiryDate!.hour.toString().padLeft(2, '0')}:${sub.expiryDate!.minute.toString().padLeft(2, '0')}'
+                          : 'Active',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            const _ProFeatureBullet(text: 'Unlimited AI Mock Interviews'),
+            const _ProFeatureBullet(text: 'Real-time Voice & Code Evaluation'),
+            const _ProFeatureBullet(text: 'Fast-Track Job Applications'),
+            const _ProFeatureBullet(text: 'Verified CDA Pro Profile Badge'),
           ],
         ),
         actions: [
@@ -91,6 +119,23 @@ class _CDAPaywallSheetState extends ConsumerState<CDAPaywallSheet> {
     );
   }
 
+  String _getButtonPriceLabel() {
+    switch (_selectedPlan) {
+      case '1_hour':
+        return 'Pay ₹9 & Get 1-Hour Test Pass ⚡';
+      case '1_day':
+        return 'Pay ₹49 & Get 1-Day Sprint Pass ⚡';
+      case '1_month':
+        return 'Pay ₹499 & Get 1-Month Pro ⚡';
+      case '3_months':
+        return 'Pay ₹1,199 & Get 3-Month Quarter ⚡';
+      case '1_year':
+        return 'Pay ₹2,999 & Get 1-Year Annual 👑';
+      default:
+        return 'Pay Now & Become a Pro ⚡';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -98,7 +143,7 @@ class _CDAPaywallSheetState extends ConsumerState<CDAPaywallSheet> {
     final bottomInset = MediaQuery.of(context).padding.bottom + 36;
 
     return Container(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.90),
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.92),
       decoration: BoxDecoration(
         color: sheetBg,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
@@ -122,7 +167,7 @@ class _CDAPaywallSheetState extends ConsumerState<CDAPaywallSheet> {
             // Handle bar
             Center(
               child: Container(
-                width: 44,
+                width: 40,
                 height: 4,
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
@@ -130,84 +175,76 @@ class _CDAPaywallSheetState extends ConsumerState<CDAPaywallSheet> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
             // Header Row
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
                     ),
-                    borderRadius: BorderRadius.circular(100),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
+                  child: const Icon(Icons.workspace_premium_rounded,
+                      color: Colors.white, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.star_rounded, color: Colors.white, size: 14),
-                      SizedBox(width: 4),
+                      Row(
+                        children: [
+                          Text(
+                            'CDA PRO MEMBERSHIP',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              color: isDark ? Colors.white : AppColors.onSurface,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'ALL ACCESS',
+                              style: TextStyle(
+                                color: Color(0xFFF59E0B),
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                       Text(
-                        'CDA PRO',
+                        'Unlock unlimited interviews, AI voice, & job fast-tracks',
                         style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.8),
+                          color: isDark
+                              ? const Color(0xFF94A3B8)
+                              : AppColors.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
-
-            // Main Title
-            Text(
-              'Unlock Unlimited AI Mock Interviews',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                color: isDark ? Colors.white : AppColors.onSurface,
-                height: 1.15,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Get unlimited voice-guided technical & HR mock interviews with detailed scorecards.',
-              style: TextStyle(
-                fontSize: 13,
-                color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-              ),
-            ),
             const SizedBox(height: 20),
 
-            // Feature Grid / Checklist
-            const Column(
-              children: [
-                _FeatureRow(
-                    icon: Icons.mic_rounded,
-                    title: 'Unlimited AI Voice Interviews',
-                    desc: 'No trial limits. Practice as many sessions as you need.'),
-                SizedBox(height: 10),
-                _FeatureRow(
-                    icon: Icons.analytics_rounded,
-                    title: 'Detailed AI Scorecard & Tips',
-                    desc: 'Granular evaluation of speech clarity, confidence & answer quality.'),
-                SizedBox(height: 10),
-                _FeatureRow(
-                    icon: Icons.verified_user_rounded,
-                    title: 'Verified Pro Badge on Profile',
-                    desc: 'Stand out to top tech recruiters with a Pro verified profile.'),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Pricing Options Label
+            // Plan Picker (Horizontal / Grid Layout)
             Text(
-              'SELECT MEMBERSHIP PLAN',
+              'SELECT DURATION PLAN',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
@@ -217,34 +254,71 @@ class _CDAPaywallSheetState extends ConsumerState<CDAPaywallSheet> {
             ),
             const SizedBox(height: 10),
 
-            // Pricing Cards Row (Rupees ₹)
+            // Quick Testing Passes (1 Hour & 1 Day)
             Row(
               children: [
-                // Yearly Card (Save 45%)
                 Expanded(
                   child: _PlanCard(
-                    title: 'Annual Pro',
-                    price: '₹1,999',
-                    subtitle: '₹166/mo (Save 45%)',
-                    badge: 'MOST POPULAR',
-                    isSelected: _selectedPlan == 'yearly',
-                    onTap: () => setState(() => _selectedPlan = 'yearly'),
+                    title: '1-Hour Pass',
+                    price: '₹9',
+                    subtitle: 'Instant Test Pass',
+                    badge: 'QUICK',
+                    isSelected: _selectedPlan == '1_hour',
+                    onTap: () => setState(() => _selectedPlan = '1_hour'),
                   ),
                 ),
-                const SizedBox(width: 12),
-                // Monthly Card
+                const SizedBox(width: 10),
                 Expanded(
                   child: _PlanCard(
-                    title: 'Monthly Pro',
-                    price: '₹299',
-                    subtitle: 'Billed monthly',
-                    badge: null,
-                    isSelected: _selectedPlan == 'monthly',
-                    onTap: () => setState(() => _selectedPlan = 'monthly'),
+                    title: '1-Day Pass',
+                    price: '₹49',
+                    subtitle: '24-Hour Sprint',
+                    badge: 'DAILY',
+                    isSelected: _selectedPlan == '1_day',
+                    onTap: () => setState(() => _selectedPlan = '1_day'),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+
+            // Regular Subscriptions (1 Month, 3 Months, 1 Year)
+            Row(
+              children: [
+                Expanded(
+                  child: _PlanCard(
+                    title: '1-Month Pro',
+                    price: '₹499',
+                    subtitle: '30 Days Access',
+                    badge: 'POPULAR',
+                    isSelected: _selectedPlan == '1_month',
+                    onTap: () => setState(() => _selectedPlan = '1_month'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _PlanCard(
+                    title: '3-Month Quarter',
+                    price: '₹1,199',
+                    subtitle: '90 Days Access',
+                    badge: 'SAVE 20%',
+                    isSelected: _selectedPlan == '3_months',
+                    onTap: () => setState(() => _selectedPlan = '3_months'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            _PlanCard(
+              title: '1-Year Annual Pass',
+              price: '₹2,999',
+              subtitle: '365 Days Unlimited Access • Best Value For Students',
+              badge: '👑 BEST VALUE • SAVE 50%',
+              isSelected: _selectedPlan == '1_year',
+              onTap: () => setState(() => _selectedPlan = '1_year'),
+            ),
+
             const SizedBox(height: 20),
 
             // Payment Methods
@@ -282,9 +356,7 @@ class _CDAPaywallSheetState extends ConsumerState<CDAPaywallSheet> {
                 ? const Center(
                     child: CircularProgressIndicator(color: Color(0xFFF59E0B)))
                 : CDAButton(
-                    label: _selectedPlan == 'yearly'
-                        ? 'Pay ₹1,999 & Become a Pro ⚡'
-                        : 'Pay ₹299 & Become a Pro ⚡',
+                    label: _getButtonPriceLabel(),
                     variant: CDAButtonVariant.gold,
                     onTap: _processUpgrade,
                   ),
@@ -292,7 +364,7 @@ class _CDAPaywallSheetState extends ConsumerState<CDAPaywallSheet> {
 
             Center(
               child: Text(
-                '🔒 100% Secure Checkout • Cancel Anytime',
+                '🔒 100% Instant Activation • Safe & Secure',
                 style: TextStyle(
                   fontSize: 11,
                   color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
@@ -302,58 +374,6 @@ class _CDAPaywallSheetState extends ConsumerState<CDAPaywallSheet> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _FeatureRow extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String desc;
-
-  const _FeatureRow(
-      {required this.icon, required this.title, required this.desc});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: const Color(0xFFF59E0B), size: 18),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: isDark ? Colors.white : AppColors.onSurface,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                desc,
-                style: TextStyle(
-                  color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
@@ -380,12 +400,13 @@ class _PlanCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isDark ? const Color(0xFF1E2D4A) : const Color(0xFFEFF6FF))
-              : (isDark ? const Color(0xFF121B2D) : const Color(0xFFF8FAFC)),
+              ? const Color(0xFFF59E0B).withValues(alpha: 0.12)
+              : (isDark ? const Color(0xFF131D31) : const Color(0xFFF8FAFC)),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
@@ -397,50 +418,63 @@ class _PlanCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (badge != null) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF59E0B),
-                  borderRadius: BorderRadius.circular(4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : AppColors.onSurface,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                child: Text(
-                  badge!,
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w900),
-                ),
-              ),
-              const SizedBox(height: 6),
-            ],
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-              ),
+                if (badge != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(0xFFF59E0B)
+                          : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      badge!,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w900,
+                        color: isSelected
+                            ? Colors.black
+                            : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569)),
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(
               price,
               style: TextStyle(
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: FontWeight.w900,
-                color: isDark ? Colors.white : AppColors.onSurface,
+                color: isSelected
+                    ? const Color(0xFFF59E0B)
+                    : (isDark ? Colors.white : AppColors.onSurface),
               ),
             ),
             const SizedBox(height: 2),
             Text(
               subtitle,
               style: TextStyle(
-                fontSize: 10,
-                color: isSelected
-                    ? const Color(0xFFF59E0B)
-                    : (isDark ? const Color(0xFF64748B) : AppColors.outline),
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 10.5,
+                color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -469,17 +503,16 @@ class _PaymentChip extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
           decoration: BoxDecoration(
             color: isSelected
-                ? (isDark ? const Color(0xFF1E2D4A) : const Color(0xFFEFF6FF))
-                : (isDark ? const Color(0xFF121B2D) : const Color(0xFFF8FAFC)),
+                ? const Color(0xFFF59E0B).withValues(alpha: 0.12)
+                : (isDark ? const Color(0xFF131D31) : const Color(0xFFF1F5F9)),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isSelected
-                  ? const Color(0xFF3B82F6)
+                  ? const Color(0xFFF59E0B)
                   : (isDark ? const Color(0xFF1E2D4A) : const Color(0xFFE2E8F0)),
-              width: 1.2,
             ),
           ),
           child: Row(
@@ -488,23 +521,21 @@ class _PaymentChip extends StatelessWidget {
               Icon(icon,
                   size: 16,
                   color: isSelected
-                      ? const Color(0xFF3B82F6)
-                      : (isDark ? const Color(0xFF64748B) : AppColors.outline)),
+                      ? const Color(0xFFF59E0B)
+                      : (isDark ? Colors.white70 : Colors.black87)),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(
                   label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 11,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: FontWeight.bold,
                     color: isSelected
-                        ? (isDark ? Colors.white : AppColors.primary)
-                        : (isDark
-                            ? const Color(0xFF94A3B8)
-                            : AppColors.onSurfaceVariant),
+                        ? const Color(0xFFF59E0B)
+                        : (isDark ? Colors.white : AppColors.onSurface),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -522,7 +553,7 @@ class _ProFeatureBullet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
           const Icon(Icons.check_circle_rounded,
@@ -532,9 +563,10 @@ class _ProFeatureBullet extends StatelessWidget {
             child: Text(
               text,
               style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600),
+                color: Color(0xFFE2E8F0),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

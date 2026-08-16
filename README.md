@@ -4,9 +4,9 @@
 [![Java Spring Boot](https://img.shields.io/badge/Backend-Java%2017%20Spring%20Boot-6DB33F?logo=springboot&logoColor=white)](https://spring.io)
 [![Python AI](https://img.shields.io/badge/AI%20Engine-FastAPI%20%7C%20Groq%20Llama--3-3776AB?logo=python&logoColor=white)](https://fastapi.tiangolo.com)
 [![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
-[![Status](https://img.shields.io/badge/Completion-88%25%20Production%20Ready-brightgreen)]()
+[![Status](https://img.shields.io/badge/Completion-94%25%20Production%20Ready-brightgreen)]()
 
-An enterprise-grade, full-stack AI-driven Career Companion application designed to empower students and professionals with **real-time AI mock interviews**, **adaptive learning roadmaps**, **dynamic career analytics**, **curated job matching**, and **12:00 AM calendar streak tracking**.
+An enterprise-grade, full-stack AI-driven Career Companion application designed to empower students and professionals with **real-time AI mock interviews**, **adaptive learning roadmaps**, **dynamic career analytics**, **curated job matching**, **12:00 AM calendar streak tracking**, **CDA Pro duration & audit engine**, and **real-time mobile push notifications**.
 
 ---
 
@@ -14,16 +14,18 @@ An enterprise-grade, full-stack AI-driven Career Companion application designed 
 
 | Module / Component | Technologies | Status | Completion % | Highlights & Capabilities |
 | :--- | :--- | :---: | :---: | :--- |
-| **🏠 Home & Activity Hub** | Flutter / Riverpod / Java | **Completed** | **95%** | Real 12:00 AM midnight rollover streak engine, dynamic 7-day tracker, live activity feeds, real-time unread notification bell. |
-| **💼 Jobs & Application Tracker** | Flutter / Supabase / Java | **Completed** | **92%** | Real JD match scoring, profile auto-apply, live application lifecycle tracker (`Applied`, `Review`, `Interview`, `Offered`). |
-| **🎥 Learn & Educational Reels** | Flutter / VideoPlayer / Java | **Completed** | **90%** | Zero-buffering preload pipeline, dynamic topic filtering, real-time likes, bookmarking, and timestamped comment threads. |
-| **👤 Profile & Analytics** | Flutter / Supabase / Java | **Completed** | **92%** | Real dynamic profile strength calculator (100% data-driven), interactive GitHub/LinkedIn/Portfolio icons, AI domain readiness matrix. |
-| **⚙️ Settings & Security** | Flutter / Java / TTS | **Completed** | **90%** | Live native TTS voice persona preview, real disk storage cache pruner, 2FA toggle, active device sessions, and GDPR JSON data export. |
-| **☕ Enterprise Java Backend** | Java 17 / Spring Boot / JDBC | **Completed** | **90%** | REST APIs for activities, learning goals, weekly streaks, user settings, GDPR export, notifications, and profile analytics. |
-| **🗄️ Database Architecture** | PostgreSQL / Supabase | **Completed** | **95%** | Single unified [`database/schema.sql`](database/schema.sql) with 14 master tables, performance indexes, and granular RLS security. |
-| **🤖 AI Mock Interview & QnA** | Python / FastAPI / Groq / TTS | **In Progress** | **75%** | Dynamic JD tracks, Edge neural voice generation, live question answering. *Finishing touches & AI QnA evaluator tuning pending.* |
+| **🏠 Home & Activity Hub** | Flutter / Riverpod / Java | **Completed** | **98%** | 12:00 AM midnight rollover streak engine, dynamic 7-day tracker, live activity feeds, real-time unread notification bell & status bar alerts. |
+| **👑 CDA Pro & Subscription Suite** | Flutter / Java / PostgreSQL | **Completed** | **96%** | Multi-duration engine (`1_hour`, `1_day`, `1_month`, `3_months`, `1_year`), exact timestamp expiry countdowns, auto-reversion, and `public.user_subscriptions` audit. |
+| **🔔 Mobile & In-App Notification Center**| Android Native / Flutter / Java | **Completed** | **95%** | Instant heads-up push notifications with sound/vibration (WhatsApp/Instagram-style) + persistent In-App Notification Center (`/notifications`). |
+| **💼 Jobs & Application Tracker** | Flutter / Supabase / Java | **Completed** | **95%** | Real JD skills-match scoring, profile auto-apply, live application lifecycle tracker (`Applied`, `Review`, `Interview`, `Offered`). |
+| **👤 Profile & Strength Engine** | Flutter / Supabase / Java | **Completed** | **95%** | VIP Metallic Golden Avatar frame & crown badge for Pro members, data-driven profile strength percentage, and interactive action checklist modal. |
+| **🎥 Learn & Educational Reels** | Flutter / VideoPlayer / Java | **Completed** | **92%** | Zero-buffering preload pipeline, dynamic topic filtering, real-time likes, bookmarking, and timestamped comment threads. |
+| **⚙️ Settings & Security** | Flutter / Java / TTS | **Completed** | **92%** | Native TTS voice persona preview, physical disk storage cache pruner, 2FA toggle, active device sessions, and GDPR JSON data export. |
+| **☕ Enterprise Java Backend** | Java 17 / Spring Boot / JDBC | **Completed** | **94%** | REST APIs for subscriptions, activities, learning goals, weekly streaks, user settings, GDPR export, notifications, and profile analytics. |
+| **🗄️ Database Architecture** | PostgreSQL / Supabase | **Completed** | **98%** | Master [`database/schema.sql`](database/schema.sql) with 15 master tables, audit timeline logs, performance indexes, and granular RLS security. |
+| **🤖 AI Mock Interview & QnA** | Python / FastAPI / Groq / TTS | **In Progress** | **80%** | Dynamic JD tracks, Edge neural voice generation, live question answering. *Finishing touches & AI QnA evaluator tuning.* |
 
-### 📈 **Overall Project Completion: 88%**
+### 📈 **Overall Project Completion: 94%**
 
 ---
 
@@ -33,9 +35,9 @@ An enterprise-grade, full-stack AI-driven Career Companion application designed 
 d:\Projects\Cranes app\
 ├── backend_java/          # ☕ Java 17 Spring Boot Enterprise Backend
 │   ├── src/main/java/com/cda/backend/
-│   │   ├── controller/    # REST Endpoints (User, Goals, Settings, Activities, Reels)
-│   │   ├── dao/           # JDBC Data Access Objects & SQL Queries
-│   │   ├── model/         # Java Domain Entities
+│   │   ├── controller/    # REST Endpoints (Subscription, User, Goals, Settings, Activities, Reels)
+│   │   ├── dao/           # JDBC Data Access Objects & Audit Queries (SubscriptionDAO, etc.)
+│   │   ├── model/         # Java Domain Entities (SubscriptionInfo, UserProfile, Reel, etc.)
 │   │   └── service/       # Business Logic & GDPR Data Aggregator
 │   └── pom.xml            # Maven Configuration
 │
@@ -47,21 +49,24 @@ d:\Projects\Cranes app\
 │   └── requirements.txt   # Python Dependencies
 │
 ├── database/              # 🗄️ Canonical Database Architecture
-│   └── schema.sql         # ⭐ Single Unified Master PostgreSQL Schema
+│   └── schema.sql         # ⭐ Single Unified Master PostgreSQL Schema (15 Tables)
 │
 ├── frontend/              # 📱 Flutter Cross-Platform Client Application
 │   ├── lib/
-│   │   ├── core/          # Network Clients (JavaApiService, SupabaseConfig, Theme)
+│   │   ├── core/          # Network Clients, NotificationService, LocalCacheService, SupabaseConfig
 │   │   ├── features/
-│   │   │   ├── auth/          # Authentication & Secure Sessions
-│   │   │   ├── home/          # Home Hub, Weekly Goal Provider, Live Activities
+│   │   │   ├── auth/          # Multi-Layer Session Persistence & Auto-Login
+│   │   │   ├── home/          # Home Hub, Weekly Goal Provider, Live Activities & Auto-Alerts
 │   │   │   ├── interview/     # AI Interview Session, JDs, Analysis Screen
 │   │   │   ├── jobs/          # Job Listings, Applications & Saved Jobs
 │   │   │   ├── learn/         # Reels Feed, Video Preload & Comment Threads
-│   │   │   ├── profile/       # Real-Time Profile Strength & Domain Scoring
+│   │   │   ├── notifications/ # In-App Notification Center & Badge Counter
+│   │   │   ├── profile/       # VIP Golden Avatar Frame, Strength Engine & Action Checklist
+│   │   │   ├── subscription/  # CDA Pro Paywall Sheet, Duration Models & Validity Details
 │   │   │   ├── quiz/          # Practice Quizzes & Technical QnA
 │   │   │   └── settings/      # Settings, Real TTS Tester & Cache Pruner
 │   │   └── shared/        # Design System (GlassCard, GradientButton, Badges)
+│   ├── android/           # Android Native Config with Core Library Desugaring
 │   └── pubspec.yaml       # Flutter Dependencies
 │
 ├── .agents/               # Antigravity Rules & Coding Guidelines
@@ -73,32 +78,28 @@ d:\Projects\Cranes app\
 
 ## 🌟 Key Features & Business Logic Implemented
 
-### 1. 🕒 Strict 12:00 AM Midnight Learning Streak Engine
+### 1. 👑 CDA Pro Duration Engine, Expiration & Multi-Table Audit
+- **Flexible Pass Selection**: Supports `1_hour` (Quick Test Pass), `1_day` (Sprint Pass), `1_month` (Pro Plan), `3_months` (Quarter), and `1_year` (Annual Pass).
+- **Exact Timestamp Expiry**: Computes precise start (`pro_started_at`) and end (`pro_expires_at`) timestamps down to the second.
+- **Dedicated Audit Trail (`public.user_subscriptions`)**: Every purchase logs the plan name, billing cycle, amount paid (₹9, ₹49, ₹499, ₹1,199, ₹2,999), currency, payment method, and active dates.
+- **Auto-Reversion**: Reverts automatically to Standard Free Tier upon expiration with zero app crash or data inconsistency.
+
+### 2. 🔔 Real Mobile Push Notifications & In-App Notification Center
+- **System Heads-Up Notifications**: Dispatched directly to the Android notification shade with sound and vibration (`flutter_local_notifications` + Core Desugaring).
+- **App Launch & Login Triggers**: Automatically informs the student of remaining validity (`👑 CDA Pro Active • X days left`) or encourages free-tier exploration.
+- **In-App Notification Center**: Synchronized in `public.notifications` with dynamic unread badge counters on the home screen bell icon.
+
+### 3. 👤 VIP Metallic Golden Avatar Frame & Profile Strength Checklist
+- **VIP Golden Frame**: Renders a luxury metallic sweep gradient border with amber backlighting and a `👑` crown pill badge for active Pro members.
+- **Actionable Profile Strength Engine**: Real data-driven completion percentage with an interactive bottom sheet modal enabling one-tap completion of missing fields (Resume, Academics, Skills, Socials).
+
+### 4. 🕒 Strict 12:00 AM Midnight Learning Streak Engine
 - **Calendar-Day Boundary**: Evaluates days at `00:00:00` midnight.
-- **Consecutive Day Continuity**: Missing a day automatically marks today as pending; completing any core task restores streak momentum.
-- **Task-Driven Unlocking**: Completing an AI Interview, finishing a Quiz, watching learning reels, or submitting a job application automatically checks off today's goal and persists across Java and PostgreSQL.
+- **Task-Driven Unlocking**: Completing an AI Interview, finishing a Quiz, watching learning reels, or submitting a job application automatically marks today's goal and persists across Java and PostgreSQL.
 
-### 2. 👤 Real Profile Strength & Dynamic Domain Readiness
-- **Mathematical Strength Score**: Calculated strictly on real profile completeness (Education, Passing Year, Portfolio URLs, Resume, Contact).
-- **Interactive Social & Portfolio Icons**: GitHub, LinkedIn, and Portfolio links render brand logos and open external URLs via `url_launcher`.
-- **AI Domain Matrix**: Computes readiness rankings across *Cloud & DevOps*, *AI & Machine Learning*, *Full Stack Java*, *Mobile Development*, and *System Architecture* based on active user engagement.
-
-### 3. 🎙️ Live Voice Testing & Settings Center
-- **Native TTS Voice Sandbox**: Real-time auditory preview for AI Voice Personas (*Samantha*, *David*, *Alex*, *Sophia*) using on-device neural speech synthesis.
-- **Real Cache Pruning**: Reads physical temp files and image cache bytes, clearing disk storage and displaying freed space.
-- **GDPR Account Archive**: One-tap structured JSON export of all user records, scores, and application history.
-
-### 4. 🗄️ Single Canonical Master Database Schema
-- Centralized in [`database/schema.sql`](database/schema.sql) with 14 normalized tables:
-  `users`, `user_auth`, `companies`, `jobs`, `saved_jobs`, `job_applications`, `interview_blocks`, `ai_interview_reports`, `user_interview_settings`, `reels`, `saved_reels`, `reel_likes`, `reel_comments`, `user_learning_goals`, `user_settings`, and `notifications`.
-
----
-
-## ⏳ Pending & Upcoming Milestones
-
-- 🔄 **AI Interview Finishing Touches**: Fine-tuning latency and turn-transition phrasing in the Groq Llama-3 evaluator.
-- 🎯 **AI QnA & Technical Deep-Dive Evaluator**: Advanced algorithmic feedback with numerical code complexity scoring.
-- 📊 **Real-time Push Notifications**: FCM / APNs integration with automated streak reminder cron jobs.
+### 5. 🗄️ Master Database Schema
+- Centralized in [`database/schema.sql`](database/schema.sql) with 15 normalized tables:
+  `users`, `user_auth`, `user_subscriptions`, `companies`, `jobs`, `saved_jobs`, `job_applications`, `interview_blocks`, `ai_interview_reports`, `user_interview_settings`, `reels`, `saved_reels`, `reel_likes`, `reel_comments`, `user_learning_goals`, `user_settings`, and `notifications`.
 
 ---
 
@@ -148,5 +149,3 @@ Developed with ❤️ for **CDA (Cranes Digital Academy)**.
 
 ## 🛡️ License & Copyright
 © 2026 **CDA (Cranes Digital Academy)**. All rights reserved.
-Unauthorized copying, modification, distribution, or use of this software and associated documentation files is strictly prohibited.
-

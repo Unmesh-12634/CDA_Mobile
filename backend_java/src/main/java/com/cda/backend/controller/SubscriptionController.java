@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/v1/subscription")
 @CrossOrigin(origins = "*")
@@ -28,8 +30,19 @@ public class SubscriptionController {
     }
 
     @PostMapping("/upgrade-pro")
-    public ResponseEntity<ApiResponse<Boolean>> upgradePro(@RequestParam(defaultValue = "unii12634@gmail.com") String email) {
-        boolean ok = subscriptionService.upgradeToPro(email);
-        return ResponseEntity.ok(ApiResponse.success("User upgraded to Pro successfully", ok));
+    public ResponseEntity<ApiResponse<Boolean>> upgradePro(
+            @RequestParam(defaultValue = "unii12634@gmail.com") String email,
+            @RequestParam(defaultValue = "1_month") String planCycle,
+            @RequestBody(required = false) Map<String, String> body) {
+        
+        String targetEmail = email;
+        String cycle = planCycle;
+        if (body != null) {
+            if (body.containsKey("email")) targetEmail = body.get("email");
+            if (body.containsKey("planCycle")) cycle = body.get("planCycle");
+        }
+
+        boolean ok = subscriptionService.upgradeToPro(targetEmail, cycle);
+        return ResponseEntity.ok(ApiResponse.success("User upgraded to Pro successfully (" + cycle + ")", ok));
     }
 }

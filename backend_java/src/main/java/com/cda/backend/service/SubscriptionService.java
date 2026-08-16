@@ -19,7 +19,7 @@ public class SubscriptionService {
         return subscriptionDAO.consumeTrial(email);
     }
 
-    public boolean upgradeToPro(String email) {
-        return subscriptionDAO.upgradeToPro(email);
+    public boolean upgradeToPro(String email, String planCycle) {
+        return subscriptionDAO.upgradeToPro(email, planCycle);
     }
 }

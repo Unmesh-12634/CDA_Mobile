@@ -139,10 +139,10 @@ class JavaApiService {
     return false;
   }
 
-  static Future<bool> upgradeToPro(String email) async {
+  static Future<bool> upgradeToPro(String email, {String planCycle = '1_month'}) async {
     try {
-      final url = Uri.parse('$baseUrl/subscription/upgrade-pro?email=$email');
-      final res = await http.post(url).timeout(const Duration(seconds: 2));
+      final url = Uri.parse('$baseUrl/subscription/upgrade-pro?email=${Uri.encodeComponent(email)}&planCycle=${Uri.encodeComponent(planCycle)}');
+      final res = await http.post(url).timeout(const Duration(seconds: 3));
       if (res.statusCode == 200) {
         final json = jsonDecode(res.body) as Map<String, dynamic>;
         return json['success'] == true;

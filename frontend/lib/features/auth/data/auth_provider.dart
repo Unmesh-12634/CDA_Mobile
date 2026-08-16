@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:dio/dio.dart';
 import '../../../../core/config/supabase_config.dart';
+import '../../../../core/storage/local_cache_service.dart';
 import '../../profile/data/user_profile_provider.dart';
 
 
@@ -76,7 +77,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final session = _supabase.auth.currentSession;
     if (session != null) {
       _applySession(session.user);
-      debugPrint('[Auth] Restored session for ${session.user.email}');
+      debugPrint('[Auth] Restored Supabase session for ${session.user.email}');
+      return;
+    }
+
+    // Fallback to local encrypted cache
+    try {
+      final isLoggedIn = LocalCacheService().get<bool>('cda_auth_logged_in') ?? false;
+      final cachedEmail = LocalCacheService().get<String>('cda_auth_email');
+      final cachedName = LocalCacheService().get<String>('cda_auth_name') ?? 'Learner';
+
+      if (isLoggedIn && cachedEmail != null && cachedEmail.isNotEmpty) {
+        state = state.copyWith(
+          isAuthenticated: true,
+          email: cachedEmail,
+          fullName: cachedName,
+          isLoading: false,
+          errorMessage: null,
+        );
+        debugPrint('[Auth] Restored offline/cached session for $cachedEmail');
+      }
+    } catch (e) {
+      debugPrint('[Auth] Restore session notice: $e');
     }
   }
 
@@ -89,6 +111,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (event == AuthChangeEvent.signedIn && user != null) {
         _applySession(user);
       } else if (event == AuthChangeEvent.signedOut) {
+        LocalCacheService().remove('cda_auth_logged_in');
+        LocalCacheService().remove('cda_auth_email');
+        LocalCacheService().remove('cda_auth_name');
         state = const AuthState(isAuthenticated: false);
       } else if (event == AuthChangeEvent.tokenRefreshed && user != null) {
         _applySession(user);
@@ -96,17 +121,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
     });
   }
 
-  /// Extracts user info from Supabase User object and updates state
+  /// Extracts user info from Supabase User object and updates state & persistent cache
   void _applySession(User user) {
     final meta = user.userMetadata ?? {};
-    final name = (meta['full_name'] ?? meta['name'] ?? user.email?.split('@').first ?? 'User').toString();
+    final name = (meta['full_name'] ?? meta['name'] ?? user.email?.split('@').first ?? 'Learner').toString();
     final phone = (meta['phone'] ?? user.phone ?? '').toString();
     final role = (meta['target_role'] ?? '').toString();
     final exp = (meta['experience_level'] ?? '').toString();
+    final email = user.email ?? '';
+
+    // Persist login state to local cache for instant cold start
+    if (email.isNotEmpty) {
+      LocalCacheService().set('cda_auth_logged_in', true);
+      LocalCacheService().set('cda_auth_email', email);
+      LocalCacheService().set('cda_auth_name', name);
+    }
 
     state = state.copyWith(
       isAuthenticated: true,
-      email: user.email ?? '',
+      email: email,
       fullName: name,
       phone: phone,
       targetRole: role,

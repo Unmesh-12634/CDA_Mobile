@@ -43,7 +43,7 @@ class NotificationItem {
       id: map['id']?.toString() ?? '',
       userEmail: map['user_email']?.toString() ?? map['userEmail']?.toString() ?? '',
       title: map['title']?.toString() ?? 'CDA Notification',
-      message: map['message']?.toString() ?? '',
+      message: map['message']?.toString() ?? map['body']?.toString() ?? '',
       type: map['type']?.toString() ?? 'SYSTEM',
       actionUrl: map['action_url']?.toString() ?? map['actionUrl']?.toString(),
       isRead: map['is_read'] == true || map['isRead'] == true || map['read'] == true,

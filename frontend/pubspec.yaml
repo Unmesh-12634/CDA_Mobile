@@ -29,6 +29,7 @@ dependencies:
   supabase_flutter: ^2.8.4
   google_sign_in: ^6.2.1
   url_launcher: ^6.3.0
+  flutter_local_notifications: ^17.2.2
 
 dev_dependencies:
   flutter_test:

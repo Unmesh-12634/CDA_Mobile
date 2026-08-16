@@ -440,19 +440,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   // ── Hero Card ──────────────────────────────────────────────────────────────
   Widget _buildHeroCard(BuildContext context, UserProfile profile, bool isDark) {
+    final sub = ref.watch(subscriptionProvider);
+    final isPro = sub.isPremium;
     final cardBg = isDark ? AppColors.credDarkCard : Colors.white;
-    final borderColor = isDark ? AppColors.credDarkBorder : const Color(0xFFE2E8F0);
+    final borderColor = isPro
+        ? const Color(0xFFF59E0B).withValues(alpha: 0.6)
+        : (isDark ? AppColors.credDarkBorder : const Color(0xFFE2E8F0));
 
     return Container(
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: borderColor, width: 1.2),
+        border: Border.all(color: borderColor, width: isPro ? 1.6 : 1.2),
         boxShadow: [
           BoxShadow(
-            color: isDark
-                ? const Color(0xFF4648D4).withValues(alpha: 0.12)
-                : Colors.black.withValues(alpha: 0.05),
+            color: isPro
+                ? const Color(0xFFF59E0B).withValues(alpha: 0.18)
+                : (isDark
+                    ? const Color(0xFF4648D4).withValues(alpha: 0.12)
+                    : Colors.black.withValues(alpha: 0.05)),
             blurRadius: 24,
             offset: const Offset(0, 6),
           ),
@@ -464,40 +470,84 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // VIP Golden Frame Avatar Container
               Stack(
                 alignment: Alignment.bottomRight,
+                clipBehavior: Clip.none,
                 children: [
                   Container(
-                    width: 82,
-                    height: 82,
+                    width: 86,
+                    height: 86,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: AppColors.primaryGradient,
-                      border: Border.all(
-                        color: isDark ? const Color(0xFF38BDF8) : Colors.white,
-                        width: 3,
-                      ),
+                      gradient: isPro
+                          ? const SweepGradient(
+                              colors: [
+                                Color(0xFFFFDF00),
+                                Color(0xFFD4AF37),
+                                Color(0xFFF59E0B),
+                                Color(0xFFFFE57F),
+                                Color(0xFFFFDF00),
+                              ],
+                            )
+                          : AppColors.primaryGradient,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.35),
-                          blurRadius: 18,
+                          color: isPro
+                              ? const Color(0xFFF59E0B).withValues(alpha: 0.50)
+                              : AppColors.primary.withValues(alpha: 0.35),
+                          blurRadius: isPro ? 22 : 18,
+                          spreadRadius: isPro ? 2 : 0,
                           offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                    child: _buildAvatarWidget(profile, isDark),
+                    padding: const EdgeInsets.all(3.5),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isDark ? AppColors.credDarkCard : Colors.white,
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                          width: 2,
+                        ),
+                      ),
+                      child: _buildAvatarWidget(profile, isDark),
+                    ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isDark ? const Color(0xFF1C2541) : Colors.white,
-                        width: 2.5,
+                  Positioned(
+                    bottom: -2,
+                    right: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(4.5),
+                      decoration: BoxDecoration(
+                        gradient: isPro
+                            ? const LinearGradient(
+                                colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+                              )
+                            : const LinearGradient(
+                                colors: [Color(0xFF10B981), Color(0xFF059669)],
+                              ),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF1C2541) : Colors.white,
+                          width: 2.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isPro
+                                ? const Color(0xFFF59E0B).withValues(alpha: 0.5)
+                                : Colors.transparent,
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        isPro ? Icons.workspace_premium_rounded : Icons.check,
+                        size: isPro ? 13 : 11,
+                        color: Colors.white,
                       ),
                     ),
-                    child: const Icon(Icons.check, size: 10, color: Colors.white),
                   ),
                 ],
               ),
@@ -643,123 +693,427 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final double progress = profile.profileStrengthPercentage;
     final int percent = (progress * 100).toInt();
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.credDarkSurface : const Color(0xFFEEF2FF),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? AppColors.credDarkBorder : const Color(0xFFC7D2FE),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.military_tech_rounded, color: AppColors.primary, size: 18),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Profile Strength',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: isDark ? Colors.white : AppColors.onSurface,
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '$percent% Complete',
-                  style: const TextStyle(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-            ],
+    final Color badgeColor = percent >= 90
+        ? const Color(0xFF10B981)
+        : (percent >= 60 ? const Color(0xFF0EA5E9) : const Color(0xFFF59E0B));
+
+    return InkWell(
+      onTap: () => _showProfileStrengthChecklistModal(context, profile),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.credDarkSurface : const Color(0xFFEEF2FF),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? AppColors.credDarkBorder : const Color(0xFFC7D2FE),
           ),
-          const SizedBox(height: 12),
-          TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 1000),
-            curve: Curves.easeOutCubic,
-            tween: Tween<double>(begin: 0, end: progress),
-            builder: (context, value, _) => ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: LinearProgressIndicator(
-                value: value,
-                minHeight: 8,
-                backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
-                color: AppColors.primary,
-              ),
+          boxShadow: [
+            BoxShadow(
+              color: badgeColor.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
             ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  profile.profileStrengthMissingHint,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
-                  ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.military_tech_rounded, color: badgeColor, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Profile Strength',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: isDark ? Colors.white : AppColors.onSurface,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              InkWell(
-                onTap: () => _showEditProfileModal(context),
-                borderRadius: BorderRadius.circular(8),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: badgeColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: badgeColor.withValues(alpha: 0.4), width: 1),
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Complete Now',
+                        '$percent% Complete',
                         style: TextStyle(
-                          fontSize: 11.5,
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
+                          color: badgeColor,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12.5,
                         ),
                       ),
-                      Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.primary),
+                      const SizedBox(width: 4),
+                      Icon(Icons.info_outline_rounded, size: 13, color: badgeColor),
                     ],
                   ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 1000),
+              curve: Curves.easeOutCubic,
+              tween: Tween<double>(begin: 0, end: progress),
+              builder: (context, value, _) => ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: LinearProgressIndicator(
+                  value: value,
+                  minHeight: 8,
+                  backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
+                  color: badgeColor,
+                ),
               ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    profile.profileStrengthMissingHint,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      percent >= 100 ? 'View Details' : 'Improve (+)',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: badgeColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded, size: 16, color: badgeColor),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  void _showProfileStrengthChecklistModal(BuildContext context, UserProfile profile) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cleanPhone = profile.phone.replaceAll(RegExp(r'\D'), '');
+    final hasPhone = cleanPhone.length >= 10;
+    final hasResume = (profile.resumeFileName != null && profile.resumeFileName!.trim().isNotEmpty) ||
+        (profile.resumeUrl != null && profile.resumeUrl!.trim().isNotEmpty) ||
+        (profile.resumeFilePath != null && profile.resumeFilePath!.trim().isNotEmpty) ||
+        profile.isCvVerified;
+    final hasRole = profile.targetRole.trim().isNotEmpty;
+    final hasAcademics = profile.college.trim().isNotEmpty && profile.degree.trim().isNotEmpty;
+    final hasSkills = profile.skills.length >= 3;
+    final hasSocial = profile.githubUrl.trim().isNotEmpty || profile.linkedinUrl.trim().isNotEmpty || profile.portfolioUrl.trim().isNotEmpty;
+    final hasPhoto = profile.avatarImagePath != null && profile.avatarImagePath!.isNotEmpty;
+    final int percent = (profile.profileStrengthPercentage * 100).toInt();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.88),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border.all(
+            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
+            width: 1.5,
+          ),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.speed_rounded, color: AppColors.primary, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Profile Strength: $percent%',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: isDark ? Colors.white : AppColors.onSurface,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (percent >= 90)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'ALL-STAR 🌟',
+                                style: TextStyle(
+                                  color: Color(0xFF10B981),
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      Text(
+                        'Complete all sections for 4.5x faster recruiter shortlisting',
+                        style: TextStyle(
+                          color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: ListView(
+                physics: const BouncingScrollPhysics(),
+                children: [
+                  _buildChecklistItem(
+                    title: 'Resume & ATS CV Upload',
+                    desc: hasResume ? 'Resume verified & active' : 'Upload PDF/Doc for instant ATS scan (+20%)',
+                    isDone: hasResume,
+                    weight: '+20%',
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showEditProfileModal(context);
+                    },
+                  ),
+                  _buildChecklistItem(
+                    title: 'Target Career Role & CTC',
+                    desc: hasRole ? '${profile.targetRole} (${profile.targetAnnualPackage})' : 'Define target domain & expected package (+15%)',
+                    isDone: hasRole,
+                    weight: '+15%',
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showEditProfileModal(context);
+                    },
+                  ),
+                  _buildChecklistItem(
+                    title: 'Academics & College',
+                    desc: hasAcademics ? '${profile.college} • ${profile.degree}' : 'Add your college, degree, and branch (+15%)',
+                    isDone: hasAcademics,
+                    weight: '+15%',
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showEditProfileModal(context);
+                    },
+                  ),
+                  _buildChecklistItem(
+                    title: 'Core Technical Skills',
+                    desc: hasSkills ? '${profile.skills.length} skills listed' : 'Add at least 3 skills to show competency (+10%)',
+                    isDone: hasSkills,
+                    weight: '+10%',
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showAddSkillDialog(context, ref);
+                    },
+                  ),
+                  _buildChecklistItem(
+                    title: 'Portfolio & Professional Socials',
+                    desc: hasSocial ? 'GitHub / LinkedIn connected' : 'Link your GitHub or LinkedIn profile (+10%)',
+                    isDone: hasSocial,
+                    weight: '+10%',
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showEditProfileModal(context);
+                    },
+                  ),
+                  _buildChecklistItem(
+                    title: 'Contact Phone Number',
+                    desc: hasPhone ? profile.phone : 'Add verified mobile number for recruiter calls (+10%)',
+                    isDone: hasPhone,
+                    weight: '+10%',
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showEditProfileModal(context);
+                    },
+                  ),
+                  _buildChecklistItem(
+                    title: 'Profile Picture / Avatar',
+                    desc: hasPhoto ? 'Custom photo uploaded' : 'Upload professional headshot (+10%)',
+                    isDone: hasPhoto,
+                    weight: '+10%',
+                    isDark: isDark,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showEditProfileModal(context);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChecklistItem({
+    required String title,
+    required String desc,
+    required bool isDone,
+    required String weight,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDone
+              ? const Color(0xFF10B981).withValues(alpha: 0.4)
+              : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+        ),
+      ),
+      child: ListTile(
+        dense: true,
+        onTap: onTap,
+        leading: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: isDone
+                ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+            color: isDone ? const Color(0xFF10B981) : (isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8)),
+            size: 20,
+          ),
+        ),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: isDark ? Colors.white : AppColors.onSurface,
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: isDone
+                    ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                    : AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                weight,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: isDone ? const Color(0xFF10B981) : AppColors.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        subtitle: Text(
+          desc,
+          style: TextStyle(
+            fontSize: 11,
+            color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: Icon(
+          isDone ? Icons.done_all_rounded : Icons.arrow_forward_ios_rounded,
+          size: 14,
+          color: isDone ? const Color(0xFF10B981) : AppColors.primary,
+        ),
+      ),
+    );
+  }
+
 
   // ── Pro Membership Card ─────────────────────────────────────────────────────
   Widget _buildProMembershipCard(BuildContext context, WidgetRef ref, bool isDark) {
     final sub = ref.watch(subscriptionProvider);
     if (sub.isPremium) {
+      final Duration diff = sub.expiryDate != null
+          ? sub.expiryDate!.difference(DateTime.now())
+          : Duration.zero;
+
+      final String timeLabel = diff.isNegative
+          ? 'Expired'
+          : diff.inDays > 0
+              ? '${diff.inDays} days remaining'
+              : '${diff.inHours}h ${diff.inMinutes % 60}m remaining';
+
       return Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
@@ -788,20 +1142,44 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 22),
             ),
             const SizedBox(width: 14),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'CDA Pro Membership Active 👑',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          sub.planName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFFF59E0B), width: 0.8),
+                        ),
+                        child: Text(
+                          timeLabel,
+                          style: const TextStyle(
+                            color: Color(0xFFF59E0B),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 2),
-                  Text(
+                  const SizedBox(height: 2),
+                  const Text(
                     'Unlimited AI Mock Interviews & Priority Placement',
                     style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
                   ),

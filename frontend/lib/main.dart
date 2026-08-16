@@ -5,11 +5,13 @@ import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/storage/local_cache_service.dart';
 import 'core/config/supabase_config.dart';
+import 'core/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LocalCacheService().init();
   await SupabaseConfig.initialize();
+  await NotificationService().init();
   runApp(const ProviderScope(child: CdaCareerCompanionApp()));
 }
 

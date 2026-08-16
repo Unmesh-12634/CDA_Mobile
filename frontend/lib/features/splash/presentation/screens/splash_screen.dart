@@ -1,18 +1,22 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/config/supabase_config.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/storage/local_cache_service.dart';
+import '../../../../core/storage/secure_storage_service.dart';
 import '../../../../shared/widgets/cda_app_logo.dart';
+import '../../../auth/data/auth_provider.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
+class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
   Timer? _timer;
   late AnimationController _animCtrl;
@@ -37,14 +41,30 @@ class _SplashScreenState extends State<SplashScreen>
 
     _animCtrl.forward();
 
-    _timer = Timer(const Duration(milliseconds: 1800), () {
-      if (mounted) {
-        final session = SupabaseConfig.client.auth.currentSession;
-        if (session != null) {
-          context.go('/home');
-        } else {
-          context.go('/login');
-        }
+    _checkSessionAndNavigate();
+  }
+
+  Future<void> _checkSessionAndNavigate() async {
+    _timer = Timer(const Duration(milliseconds: 1400), () async {
+      if (!mounted) return;
+
+      final session = SupabaseConfig.client.auth.currentSession;
+      final authState = ref.read(authProvider);
+      final isLocalLoggedIn = LocalCacheService().get<bool>('cda_auth_logged_in') ?? false;
+      final cachedEmail = LocalCacheService().get<String>('cda_auth_email');
+      final secureProfile = await ref.read(secureStorageProvider).getUserProfile();
+
+      final bool hasActiveSession = session != null ||
+          authState.isAuthenticated ||
+          (isLocalLoggedIn && cachedEmail != null && cachedEmail.isNotEmpty) ||
+          (secureProfile != null && secureProfile.isNotEmpty);
+
+      if (hasActiveSession) {
+        debugPrint('🚀 [Auto-Login] Active session found. Directing to /home');
+        context.go('/home');
+      } else {
+        debugPrint('🔒 [Auth Required] No active session. Directing to /login');
+        context.go('/login');
       }
     });
   }

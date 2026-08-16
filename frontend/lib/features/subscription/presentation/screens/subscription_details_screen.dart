@@ -18,12 +18,19 @@ class SubscriptionDetailsScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final String expiryString = sub.expiryDate != null
-        ? DateFormat('dd MMMM yyyy').format(sub.expiryDate!)
-        : (sub.isPremium ? '08 September 2026' : 'N/A (Free Tier)');
+        ? DateFormat('dd MMMM yyyy, hh:mm a').format(sub.expiryDate!)
+        : (sub.isPremium ? 'Active' : 'N/A (Free Tier)');
 
-    final int daysRemaining = sub.expiryDate != null
-        ? sub.expiryDate!.difference(DateTime.now()).inDays.clamp(0, 365)
-        : (sub.isPremium ? 30 : 0);
+    final Duration diff = sub.expiryDate != null
+        ? sub.expiryDate!.difference(DateTime.now())
+        : Duration.zero;
+
+    final int daysRemaining = diff.isNegative ? 0 : diff.inDays;
+    final String remainingLabel = diff.isNegative
+        ? 'Expired'
+        : diff.inDays > 0
+            ? '${diff.inDays} days left'
+            : '${diff.inHours}h ${diff.inMinutes % 60}m left';
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.credDarkBackground : AppColors.background,

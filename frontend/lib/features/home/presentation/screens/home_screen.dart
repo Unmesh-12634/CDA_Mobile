@@ -18,6 +18,7 @@ import '../../../learn/data/reels_repository.dart';
 import '../../../interview/data/interview_reports_provider.dart';
 import '../../../notifications/data/notifications_provider.dart';
 import '../../data/user_activities_provider.dart';
+import '../../../../core/services/notification_service.dart';
 
 // ─────────────────────────────────────────────────────────────
 // HOME SCREEN — Premium CDA Career Companion
@@ -123,6 +124,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
     _searchAnim = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 280));
+
+    // 🔔 Real Push Notification & In-App Notification Center Sync (WhatsApp/Instagram-style)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 1000), () async {
+        if (!mounted) return;
+        final sub = ref.read(subscriptionProvider);
+
+        // 1. Fire Mobile Status-Bar Push Notification
+        NotificationService().showAppLaunchSubscriptionAlert(
+          isPro: sub.isPremium,
+          planName: sub.planName,
+          expiryDate: sub.expiryDate,
+          trialsRemaining: sub.trialsRemaining,
+        );
+
+        // 2. Add In-App Notification Item if not already present
+        try {
+          String notifTitle;
+          String notifMsg;
+          if (sub.isPremium && sub.expiryDate != null) {
+            final now = DateTime.now();
+            final diff = sub.expiryDate!.difference(now);
+            final timeRemaining = diff.inDays > 0
+                ? '${diff.inDays} days left'
+                : '${diff.inHours}h ${diff.inMinutes % 60}m left';
+            final expStr = '${sub.expiryDate!.day}/${sub.expiryDate!.month}/${sub.expiryDate!.year}';
+            notifTitle = '👑 CDA Pro Active ($timeRemaining)';
+            notifMsg = 'Your membership "${sub.planName}" is active until $expStr. Practice unlimited AI Mock Interviews!';
+          } else {
+            notifTitle = '🚀 Upgrade to CDA Pro';
+            notifMsg = 'Unlock unlimited AI Mock Interviews, FAANG placement passes, and priority placement starting at ₹9!';
+          }
+
+          ref.read(notificationsProvider.notifier).createNotification(
+            title: notifTitle,
+            message: notifMsg,
+            type: 'SYSTEM',
+            actionUrl: sub.isPremium ? '/subscription-details' : '/paywall',
+          );
+        } catch (_) {}
+      });
+    });
   }
 
   @override
