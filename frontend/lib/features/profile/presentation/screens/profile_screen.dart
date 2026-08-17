@@ -38,7 +38,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _loadLiveDatabaseMetrics() async {
     final profile = ref.read(userProfileProvider);
-    final userEmail = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final userEmail = profile.email.isNotEmpty ? profile.email : ref.read(authProvider).email;
+    if (userEmail.isEmpty) return;
 
     // Refresh real-time saved items
     ref.read(savedJobsProvider.notifier).loadSavedJobs();
@@ -574,7 +575,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            profile.name.isNotEmpty ? profile.name : 'Unmesh Learner',
+                            profile.name.isNotEmpty
+                                ? profile.name
+                                : (ref.read(authProvider).fullName.isNotEmpty
+                                    ? ref.read(authProvider).fullName
+                                    : 'Learner'),
                             style: AppTypography.headlineSmall.copyWith(
                               fontWeight: FontWeight.w900,
                               fontSize: 19,
@@ -600,7 +605,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      profile.targetRole.isNotEmpty ? profile.targetRole : 'Full Stack Engineer & AI Specialist',
+                      profile.targetRole.isNotEmpty ? profile.targetRole : 'Engineering Learner',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -611,7 +616,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com',
+                      profile.email.isNotEmpty
+                          ? profile.email
+                          : (ref.read(authProvider).email.isNotEmpty
+                              ? ref.read(authProvider).email
+                              : ''),
                       style: TextStyle(
                         fontSize: 11.5,
                         color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,

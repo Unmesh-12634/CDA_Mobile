@@ -17,8 +17,11 @@ public class UserProfileController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<UserProfile>> getProfile(
-            @RequestParam(defaultValue = "unii12634@gmail.com") String email) {
-        UserProfile profile = userProfileService.getProfileByEmail(email);
+            @RequestParam(required = false, defaultValue = "") String email) {
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.ok(new UserProfile(), "Profile retrieved successfully"));
+        }
+        UserProfile profile = userProfileService.getProfileByEmail(email.trim());
         return ResponseEntity.ok(ApiResponse.ok(profile, "Profile retrieved successfully"));
     }
 
@@ -30,8 +33,11 @@ public class UserProfileController {
 
     @GetMapping("/analytics")
     public ResponseEntity<ApiResponse<ProfileAnalyticsDTO>> getProfileAnalytics(
-            @RequestParam(defaultValue = "unii12634@gmail.com") String email) {
-        ProfileAnalyticsDTO analytics = userProfileService.getProfileAnalytics(email);
+            @RequestParam(required = false, defaultValue = "") String email) {
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.ok(new ProfileAnalyticsDTO(), "Empty analytics"));
+        }
+        ProfileAnalyticsDTO analytics = userProfileService.getProfileAnalytics(email.trim());
         return ResponseEntity.ok(ApiResponse.ok(analytics, "Profile analytics calculated by Java Business Engine"));
     }
 }

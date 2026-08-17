@@ -20,8 +20,11 @@ public class ApplicationsController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<JobApplication>>> getApplications(
-            @RequestParam(defaultValue = "unii12634@gmail.com") String email) {
-        List<JobApplication> apps = applicationService.getUserApplications(email);
+            @RequestParam(required = false, defaultValue = "") String email) {
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.ok(List.of(), "Applications fetched successfully"));
+        }
+        List<JobApplication> apps = applicationService.getUserApplications(email.trim());
         return ResponseEntity.ok(ApiResponse.ok(apps, "Applications fetched successfully"));
     }
 

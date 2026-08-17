@@ -13,8 +13,8 @@ import '../../../../core/network/java_api_service.dart';
 import '../../data/ai_interview_service.dart';
 import '../../data/interview_setup_provider.dart';
 import '../../../auth/data/auth_provider.dart';
+import '../../../profile/data/user_profile_provider.dart';
 import '../../../home/data/weekly_goal_provider.dart';
-import '../../../home/data/user_activities_provider.dart';
 
 class AiInterviewSessionScreen extends ConsumerStatefulWidget {
   const AiInterviewSessionScreen({super.key});
@@ -46,15 +46,11 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   Timer? _autoMicTimer;
   bool _isListening = false;
 
-  // Real-Time Live Telemetry HUD State
-  int _liveCadenceWpm = 145;
-  int _liveFillerCount = 0;
-  int _liveStarClarity = 92;
-
   // Real-Time Answer Evaluation Feedback Banner State
   double _lastAnswerScore = 0.0;
   String? _lastAnswerFeedback;
   bool _showFeedbackBanner = false;
+
 
   // Hint & Interruption State
   String? _activeHintText;
@@ -555,17 +551,12 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
           }
           _isSubmittingAnswer = false;
 
-          // Update Live Telemetry & Real-Time Feedback Banner from backend
-          if (nextData.speechAnalytics != null) {
-            _liveCadenceWpm = nextData.speechAnalytics!['wpm'] ?? 145;
-            _liveFillerCount = nextData.speechAnalytics!['filler_count'] ?? 0;
-            _liveStarClarity = nextData.speechAnalytics!['clarity_score'] ?? 85;
-          }
           if (nextData.lastEvaluationScore != null) {
             _lastAnswerScore = nextData.lastEvaluationScore!;
             _lastAnswerFeedback = nextData.lastFeedback;
             _showFeedbackBanner = true;
           }
+
 
           _transcriptHistory.add({
             'speaker': 'Candidate (You)',
@@ -656,7 +647,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         ref.read(weeklyGoalProvider.notifier).completeToday();
         
         final authState = ref.read(authProvider);
-        final email = authState.email.isNotEmpty ? authState.email : 'unii12634@gmail.com';
+        final email = authState.email.isNotEmpty ? authState.email : ref.read(userProfileProvider).email;
         JavaApiService.recordActivity(
           email: email,
           title: 'Completed AI Mock Interview',
@@ -768,7 +759,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
                   ),
                   const SizedBox(height: 28),
                   Text(
-                    'AI System Under Service 🛠️',
+                    'Service Notice',
                     style: AppTypography.headlineMobile.copyWith(
                       fontWeight: FontWeight.bold,
                       color: isDark ? Colors.white : AppColors.onSurface,
@@ -776,13 +767,15 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'The AI Interview Engine is currently under maintenance or warming up. Predefined questions are disabled to guarantee authentic AI evaluation.',
+                    'The AI Interview is temporarily out of service. Please try again in 10 mins.',
                     textAlign: TextAlign.center,
                     style: AppTypography.bodyMedium.copyWith(
                       color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                      fontSize: 14,
                       height: 1.5,
                     ),
                   ),
+
                   const SizedBox(height: 36),
                   ElevatedButton.icon(
                     onPressed: () {
@@ -1039,14 +1032,10 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
                       ),
                     ),
 
-                    const SizedBox(height: 10),
-
-                    // LIVE CANDIDATE TELEMETRY HUD OVERLAY
-                    _buildLiveTelemetryHUD(isDark),
-
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
 
                     // Central AI Avatar Orb & Mic Status (Tap to Interrupt Speech)
+
                     Center(
                       child: Column(
                         children: [
@@ -1574,96 +1563,8 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     );
   }
 
-  Widget _buildLiveTelemetryHUD(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.speed_rounded, color: AppColors.primary, size: 14),
-              const SizedBox(width: 5),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'PACING (WPM)',
-                    style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: AppColors.outline),
-                  ),
-                  Text(
-                    '$_liveCadenceWpm WPM · Optimal',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : AppColors.onSurface,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Container(width: 1, height: 24, color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-          Row(
-            children: [
-              const Icon(Icons.mic_none_rounded, color: Color(0xFF10B981), size: 14),
-              const SizedBox(width: 5),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'FILLERS',
-                    style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: AppColors.outline),
-                  ),
-                  Text(
-                    '$_liveFillerCount "uh/um"',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF10B981),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Container(width: 1, height: 24, color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
-          Row(
-            children: [
-              const Icon(Icons.stars_rounded, color: AppColors.secondary, size: 14),
-              const SizedBox(width: 5),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'STAR SCORE',
-                    style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: AppColors.outline),
-                  ),
-                  Text(
-                    '$_liveStarClarity% Match',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : AppColors.onSurface,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showEndInterviewDialog(BuildContext context) {
+
     final cs = Theme.of(context).colorScheme;
     final isDark = cs.brightness == Brightness.dark;
 

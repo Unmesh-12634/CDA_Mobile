@@ -23,16 +23,20 @@ public class UserLearningGoalController {
     private JdbcTemplate jdbcTemplate;
 
     @GetMapping
-    public ResponseEntity<UserLearningGoal> getGoals(@RequestParam(name = "email", required = false) String email) {
-        String targetEmail = (email != null && !email.trim().isEmpty()) ? email : "unii12634@gmail.com";
-        UserLearningGoal goal = userLearningGoalService.getLearningGoal(targetEmail);
+    public ResponseEntity<UserLearningGoal> getGoals(@RequestParam(name = "email", required = false, defaultValue = "") String email) {
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.ok(new UserLearningGoal());
+        }
+        UserLearningGoal goal = userLearningGoalService.getLearningGoal(email.trim());
         return ResponseEntity.ok(goal);
     }
 
     @PostMapping("/complete-today")
-    public ResponseEntity<UserLearningGoal> completeToday(@RequestParam(name = "email", required = false) String email) {
-        String targetEmail = (email != null && !email.trim().isEmpty()) ? email : "unii12634@gmail.com";
-        UserLearningGoal updated = userLearningGoalService.completeToday(targetEmail);
+    public ResponseEntity<UserLearningGoal> completeToday(@RequestParam(name = "email", required = false, defaultValue = "") String email) {
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.ok(new UserLearningGoal());
+        }
+        UserLearningGoal updated = userLearningGoalService.completeToday(email.trim());
         return ResponseEntity.ok(updated);
     }
 
@@ -42,14 +46,14 @@ public class UserLearningGoalController {
      */
     @GetMapping("/roadmap")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getRoadmapData(
-            @RequestParam(name = "email", defaultValue = "unii12634@gmail.com") String email) {
+            @RequestParam(name = "email", required = false, defaultValue = "") String email) {
         Map<String, Object> data = new HashMap<>();
 
         // Get target role from users table
         try {
             Map<String, Object> userRow = jdbcTemplate.queryForMap(
                 "SELECT COALESCE(target_role, 'Full-Stack Java Engineer') as target_role FROM public.users WHERE email = ?",
-                email);
+                email.trim());
             data.put("targetRole", userRow.get("target_role"));
         } catch (Exception e) {
             data.put("targetRole", "Full-Stack Java Engineer");

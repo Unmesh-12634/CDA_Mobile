@@ -16,7 +16,15 @@ public class SubscriptionDAO {
     private JdbcTemplate jdbcTemplate;
 
     public SubscriptionInfo getSubscriptionByEmail(String email) {
-        String targetEmail = (email != null && !email.trim().isEmpty()) ? email.trim() : "unii12634@gmail.com";
+        String targetEmail = (email != null && !email.trim().isEmpty()) ? email.trim() : "";
+        if (targetEmail.isEmpty()) {
+            SubscriptionInfo defaultInfo = new SubscriptionInfo();
+            defaultInfo.setPlanName("Standard Access");
+            defaultInfo.setTrialsRemaining(5);
+            defaultInfo.setTrialsTotal(5);
+            defaultInfo.setPro(false);
+            return defaultInfo;
+        }
         String sql = "SELECT ai_trials_remaining, ai_trials_total, is_pro_member, pro_plan, pro_started_at, pro_expires_at FROM public.users WHERE email = ?";
         try {
             return jdbcTemplate.query(sql, rs -> {
@@ -84,7 +92,8 @@ public class SubscriptionDAO {
     }
 
     public boolean upgradeToPro(String email, String planCycle) {
-        String targetEmail = (email != null && !email.trim().isEmpty()) ? email.trim() : "unii12634@gmail.com";
+        String targetEmail = (email != null && !email.trim().isEmpty()) ? email.trim() : "";
+        if (targetEmail.isEmpty()) return false;
         String cycle = (planCycle != null && !planCycle.trim().isEmpty()) ? planCycle.toLowerCase().trim() : "1_month";
 
         Instant now = Instant.now();

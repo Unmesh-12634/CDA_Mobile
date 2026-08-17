@@ -14,7 +14,8 @@ public class InterviewReportService {
     private InterviewReportDAO interviewReportDAO;
 
     public List<InterviewReport> getReports(String email) {
-        return interviewReportDAO.findReportsByEmail(email != null && !email.trim().isEmpty() ? email : "unii12634@gmail.com");
+        if (email == null || email.trim().isEmpty()) return List.of();
+        return interviewReportDAO.findReportsByEmail(email.trim());
     }
 
     public boolean saveReport(String email, String targetRole, double overallScore, String feedbackSummary, List<String> strengths, List<String> improvements, String detailedQaJson, int durationSeconds) {

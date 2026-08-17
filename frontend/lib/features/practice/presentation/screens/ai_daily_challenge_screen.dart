@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/utils/app_haptics.dart';
 import '../../data/ai_daily_challenge_provider.dart';
+
 
 class AiDailyChallengeScreen extends ConsumerWidget {
   const AiDailyChallengeScreen({super.key});
@@ -333,7 +335,13 @@ class AiDailyChallengeScreen extends ConsumerWidget {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: hasAnswered ? null : () => notifier.selectOption(optIdx),
+                  onTap: hasAnswered
+                      ? null
+                      : () {
+                          AppHaptics.lightImpact(ref);
+                          notifier.selectOption(optIdx);
+                        },
+
                   borderRadius: BorderRadius.circular(16),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
@@ -456,7 +464,11 @@ class AiDailyChallengeScreen extends ConsumerWidget {
               width: double.infinity,
               height: 48,
               child: ElevatedButton(
-                onPressed: () => notifier.nextQuestionOrFinish(),
+                onPressed: () {
+                  AppHaptics.mediumImpact(ref);
+                  notifier.nextQuestionOrFinish();
+                },
+
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0284C7),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),

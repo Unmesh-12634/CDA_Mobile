@@ -8,9 +8,10 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../core/storage/local_cache_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/config/supabase_config.dart';
+
 import '../../../../core/network/java_api_service.dart';
+import '../../../auth/data/auth_provider.dart';
 import '../../../profile/data/user_profile_provider.dart';
 import '../../../home/data/weekly_goal_provider.dart';
 import '../../data/reels_repository.dart';
@@ -172,7 +173,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with WidgetsBindingOb
 
   Future<void> _loadUserSavedAndLikedReels() async {
     final profile = ref.read(userProfileProvider);
-    final userEmail = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final userEmail = profile.email.isNotEmpty ? profile.email : ref.read(authProvider).email;
 
     try {
       final savedRes = await SupabaseConfig.client
@@ -454,121 +455,18 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with WidgetsBindingOb
             ),
           ),
 
-          // ── FLOATING CRANES MASTERCLASS BANNER ──
-          Positioned(
-            top: topInset + 52,
-            left: 16,
-            right: 16,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: const Color(0xFFE11D48).withValues(alpha: 0.4),
-                      width: 1.2,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFFE11D48),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.play_arrow_rounded,
-                          color: Colors.white,
-                          size: 14,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              'Cranes Varsity Masterclass on YouTube',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                            Text(
-                              'Watch full course modules & certification syllabus',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      InkWell(
-                        onTap: () async {
-                          const url = 'https://www.youtube.com/watch?v=Uf6PXnagtsg';
-                          final uri = Uri.parse(url);
-                          try {
-                            await launchUrl(uri, mode: LaunchMode.externalApplication);
-                          } catch (_) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                content: Text('Opening Cranes Masterclass: $url'),
-                                behavior: SnackBarBehavior.floating,
-                              ));
-                            }
-                          }
-                        },
-                        borderRadius: BorderRadius.circular(100),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE11D48),
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                'WATCH',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 10,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              SizedBox(width: 2),
-                              Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 12),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
 
 
+
   // ── REAL ACTIONS ──
 
   Future<void> _handleLikeToggle(ReelModel reel) async {
     final profile = ref.read(userProfileProvider);
-    final userEmail = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final userEmail = profile.email.isNotEmpty ? profile.email : ref.read(authProvider).email;
     final isCurrentlyLiked = _likedMap[reel.id] ?? false;
     final currentLikes = _likeCountMap[reel.id] ?? reel.likesCount;
     final nextLiked = !isCurrentlyLiked;
@@ -1197,8 +1095,8 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
     if (text.isEmpty || _isPosting) return;
 
     final profile = ref.read(userProfileProvider);
-    final userEmail = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
-    final userName = profile.name.isNotEmpty ? profile.name : 'Learner';
+    final userEmail = profile.email.isNotEmpty ? profile.email : ref.read(authProvider).email;
+    final userName = profile.name.isNotEmpty ? profile.name : (ref.read(authProvider).fullName.isNotEmpty ? ref.read(authProvider).fullName : 'Learner');
 
     setState(() => _isPosting = true);
 
@@ -1300,8 +1198,9 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
     final bottomInset = mediaQuery.viewInsets.bottom;
     final bottomPadding = mediaQuery.padding.bottom;
     final profile = ref.watch(userProfileProvider);
-    final currentEmail = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
-    final currentName = profile.name.isNotEmpty ? profile.name : 'Learner';
+    final authState = ref.watch(authProvider);
+    final currentEmail = profile.email.isNotEmpty ? profile.email : authState.email;
+    final currentName = profile.name.isNotEmpty ? profile.name : (authState.fullName.isNotEmpty ? authState.fullName : 'Learner');
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),

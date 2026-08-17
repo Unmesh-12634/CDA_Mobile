@@ -20,14 +20,20 @@ public class NotificationController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Notification>>> getUserNotifications(
-            @RequestParam(defaultValue = "unii12634@gmail.com") String email) {
-        List<Notification> list = notificationService.getUserNotifications(email);
+            @RequestParam(required = false, defaultValue = "") String email) {
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success(List.of(), "No active session"));
+        }
+        List<Notification> list = notificationService.getUserNotifications(email.trim());
         return ResponseEntity.ok(ApiResponse.success(list, "Fetched " + list.size() + " notifications"));
     }
 
     @PostMapping
     public ResponseEntity<ApiResponse<Boolean>> createNotification(@RequestBody Map<String, String> payload) {
-        String email = payload.getOrDefault("email", "unii12634@gmail.com");
+        String email = payload.getOrDefault("email", "");
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Email required"));
+        }
         String title = payload.getOrDefault("title", "CDA Notification");
         String message = payload.getOrDefault("message", "");
         String type = payload.getOrDefault("type", "SYSTEM");
@@ -44,8 +50,11 @@ public class NotificationController {
     }
 
     @PutMapping("/read-all")
-    public ResponseEntity<ApiResponse<Boolean>> markAllAsRead(@RequestParam(defaultValue = "unii12634@gmail.com") String email) {
-        boolean ok = notificationService.markAllAsRead(email);
+    public ResponseEntity<ApiResponse<Boolean>> markAllAsRead(@RequestParam(required = false, defaultValue = "") String email) {
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success(true, "No-op"));
+        }
+        boolean ok = notificationService.markAllAsRead(email.trim());
         return ResponseEntity.ok(ApiResponse.success(ok, ok ? "All marked as read" : "Failed to update"));
     }
 

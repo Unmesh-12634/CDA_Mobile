@@ -244,12 +244,15 @@ class AiInterviewApiClient {
   }
 
   /// GET /api/v1/interview/history — Fetches candidate's past interview session reports
-  Future<List<Map<String, dynamic>>> fetchInterviewHistory({String email = 'unii12634@gmail.com'}) async {
+  Future<List<Map<String, dynamic>>> fetchInterviewHistory({String email = ''}) async {
+    final targetEmail = email.trim();
+    if (targetEmail.isEmpty) return [];
+
     // 1. Try Java Enterprise Backend
     try {
-      final javaReports = await JavaApiService.fetchInterviewReports(email: email);
+      final javaReports = await JavaApiService.fetchInterviewReports(email: targetEmail);
       if (javaReports != null && javaReports.isNotEmpty) {
-        debugPrint('✅ Java Backend fetched ${javaReports.length} past interview reports!');
+        debugPrint('✅ Java Backend fetched ${javaReports.length} past interview reports for $targetEmail!');
         return javaReports;
       }
     } catch (e) {
@@ -260,7 +263,7 @@ class AiInterviewApiClient {
     try {
       final supabaseDio = Dio();
       final response = await supabaseDio.get(
-        '$_supabaseUrl/rest/v1/ai_interview_reports?order=created_at.desc&limit=50',
+        '$_supabaseUrl/rest/v1/ai_interview_reports?user_email=eq.${Uri.encodeComponent(targetEmail)}&order=created_at.desc&limit=50',
         options: Options(
           headers: {
             'apikey': _supabaseAnonKey,
@@ -272,7 +275,7 @@ class AiInterviewApiClient {
       if (response.statusCode == 200 && response.data != null) {
         final list = response.data as List;
         if (list.isNotEmpty) {
-          debugPrint('✅ Direct Supabase query fetched ${list.length} past interview reports!');
+          debugPrint('✅ Direct Supabase query fetched ${list.length} past interview reports for $targetEmail!');
           return list.map((item) => Map<String, dynamic>.from(item)).toList();
         }
       }

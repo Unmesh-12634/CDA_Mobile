@@ -28,8 +28,11 @@ public class ReelsController {
     @PostMapping("/{id}/like")
     public ResponseEntity<ApiResponse<Boolean>> toggleLike(
             @PathVariable("id") String id,
-            @RequestParam(defaultValue = "unii12634@gmail.com") String email) {
-        boolean liked = reelService.toggleLike(id, email);
+            @RequestParam(required = false, defaultValue = "") String email) {
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.ok(false, "No active user"));
+        }
+        boolean liked = reelService.toggleLike(id, email.trim());
         return ResponseEntity.ok(ApiResponse.ok(liked, liked ? "Liked reel" : "Unliked reel"));
     }
 
@@ -44,7 +47,7 @@ public class ReelsController {
     public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> addComment(
             @PathVariable("id") String id,
             @RequestBody java.util.Map<String, String> body) {
-        String email = body.getOrDefault("userEmail", "unii12634@gmail.com");
+        String email = body.getOrDefault("userEmail", "");
         String name = body.getOrDefault("userName", "Learner");
         String avatar = body.get("userAvatar");
         String comment = body.getOrDefault("comment", "");

@@ -43,10 +43,10 @@ public class UserProfileService {
      * Enterprise Java Business Logic: Calculate Profile Strength & AI Domain Affinities
      */
     public ProfileAnalyticsDTO getProfileAnalytics(String email) {
-        UserProfile profile = userProfileDAO.findByEmail(email != null ? email.trim() : "unii12634@gmail.com");
+        UserProfile profile = (email != null && !email.trim().isEmpty()) ? userProfileDAO.findByEmail(email.trim()) : null;
         if (profile == null) {
             profile = new UserProfile();
-            profile.setEmail(email);
+            profile.setEmail(email != null ? email.trim() : "");
         }
 
         ProfileAnalyticsDTO dto = new ProfileAnalyticsDTO();

@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/config/supabase_config.dart';
 import '../../../../core/network/java_api_service.dart';
+import '../../interview/data/interview_setup_provider.dart';
+
 
 class UserSettingsState {
   final String userEmail;
@@ -11,20 +14,18 @@ class UserSettingsState {
   final bool pushNotifications;
   final bool hapticFeedback;
   final String themeMode;
-  final bool twoFactorEnabled;
   final double storageCacheMb;
   final bool isLoading;
 
   const UserSettingsState({
-    this.userEmail = 'unii12634@gmail.com',
-    this.aiVoicePersona = 'Samantha (Natural AI)',
+    this.userEmail = '',
+    this.aiVoicePersona = 'christopher',
     this.realtimeAudio = true,
     this.autoRecord = true,
     this.emailNotifications = true,
     this.pushNotifications = true,
     this.hapticFeedback = true,
     this.themeMode = 'system',
-    this.twoFactorEnabled = false,
     this.storageCacheMb = 14.2,
     this.isLoading = false,
   });
@@ -38,7 +39,6 @@ class UserSettingsState {
     bool? pushNotifications,
     bool? hapticFeedback,
     String? themeMode,
-    bool? twoFactorEnabled,
     double? storageCacheMb,
     bool? isLoading,
   }) {
@@ -51,7 +51,6 @@ class UserSettingsState {
       pushNotifications: pushNotifications ?? this.pushNotifications,
       hapticFeedback: hapticFeedback ?? this.hapticFeedback,
       themeMode: themeMode ?? this.themeMode,
-      twoFactorEnabled: twoFactorEnabled ?? this.twoFactorEnabled,
       storageCacheMb: storageCacheMb ?? this.storageCacheMb,
       isLoading: isLoading ?? this.isLoading,
     );
@@ -66,22 +65,21 @@ class UserSettingsState {
     'push_notifications': pushNotifications,
     'haptic_feedback': hapticFeedback,
     'theme_mode': themeMode,
-    'two_factor_enabled': twoFactorEnabled,
   };
 
   factory UserSettingsState.fromJson(Map<String, dynamic> json) => UserSettingsState(
-    userEmail: json['user_email']?.toString() ?? 'unii12634@gmail.com',
-    aiVoicePersona: json['ai_voice_persona']?.toString() ?? 'Samantha (Natural AI)',
+    userEmail: json['user_email']?.toString() ?? '',
+    aiVoicePersona: json['ai_voice_persona']?.toString() ?? 'christopher',
     realtimeAudio: json['realtime_audio'] == true,
     autoRecord: json['auto_record'] == true,
     emailNotifications: json['email_notifications'] != false,
     pushNotifications: json['push_notifications'] != false,
     hapticFeedback: json['haptic_feedback'] != false,
     themeMode: json['theme_mode']?.toString() ?? 'system',
-    twoFactorEnabled: json['two_factor_enabled'] == true,
     storageCacheMb: (json['storage_cache_mb'] as num?)?.toDouble() ?? 14.2,
   );
 }
+
 
 class UserSettingsNotifier extends StateNotifier<UserSettingsState> {
   final Ref ref;
@@ -91,11 +89,25 @@ class UserSettingsNotifier extends StateNotifier<UserSettingsState> {
   }
 
   Future<void> loadSettings() async {
-    state = state.copyWith(isLoading: true);
-    final user = SupabaseConfig.client.auth.currentUser;
-    final email = user?.email ?? 'unii12634@gmail.com';
+    // 1. Instant load from local SharedPreferences disk
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      state = state.copyWith(
+        aiVoicePersona: prefs.getString('cda_pref_voice') ?? state.aiVoicePersona,
+        hapticFeedback: prefs.getBool('cda_pref_haptic') ?? state.hapticFeedback,
+        pushNotifications: prefs.getBool('cda_pref_push_notif') ?? state.pushNotifications,
+        emailNotifications: prefs.getBool('cda_pref_email_notif') ?? state.emailNotifications,
+        realtimeAudio: prefs.getBool('cda_pref_realtime_audio') ?? state.realtimeAudio,
+        autoRecord: prefs.getBool('cda_pref_auto_record') ?? state.autoRecord,
+        themeMode: prefs.getString('cda_pref_theme') ?? state.themeMode,
+      );
+    } catch (_) {}
 
-    // 1. Try Java Enterprise Backend
+    final user = SupabaseConfig.client.auth.currentUser;
+    final email = user?.email ?? '';
+    if (email.isEmpty) return;
+
+    // 2. Try Java Enterprise Backend
     try {
       final javaSettings = await JavaApiService.fetchUserSettings(email: email);
       if (javaSettings != null) {
@@ -104,7 +116,7 @@ class UserSettingsNotifier extends StateNotifier<UserSettingsState> {
       }
     } catch (_) {}
 
-    // 2. Direct Supabase DB Fallback
+    // 3. Direct Supabase DB Fallback
     try {
       final res = await SupabaseConfig.client
           .from('user_settings')
@@ -114,11 +126,8 @@ class UserSettingsNotifier extends StateNotifier<UserSettingsState> {
 
       if (res != null) {
         state = UserSettingsState.fromJson(res).copyWith(isLoading: false);
-        return;
       }
     } catch (_) {}
-
-    state = state.copyWith(isLoading: false);
   }
 
   Future<void> updateSettings({
@@ -129,29 +138,47 @@ class UserSettingsNotifier extends StateNotifier<UserSettingsState> {
     bool? pushNotifications,
     bool? hapticFeedback,
     String? themeMode,
-    bool? twoFactorEnabled,
+    double? storageCacheMb,
   }) async {
     final updated = state.copyWith(
-      aiVoicePersona: aiVoicePersona ?? state.aiVoicePersona,
-      realtimeAudio: realtimeAudio ?? state.realtimeAudio,
-      autoRecord: autoRecord ?? state.autoRecord,
-      emailNotifications: emailNotifications ?? state.emailNotifications,
-      pushNotifications: pushNotifications ?? state.pushNotifications,
-      hapticFeedback: hapticFeedback ?? state.hapticFeedback,
-      themeMode: themeMode ?? state.themeMode,
-      twoFactorEnabled: twoFactorEnabled ?? state.twoFactorEnabled,
+      aiVoicePersona: aiVoicePersona,
+      realtimeAudio: realtimeAudio,
+      autoRecord: autoRecord,
+      emailNotifications: emailNotifications,
+      pushNotifications: pushNotifications,
+      hapticFeedback: hapticFeedback,
+      themeMode: themeMode,
+      storageCacheMb: storageCacheMb,
     );
+
 
     state = updated;
 
+    // 1. Save to SharedPreferences for instant cold starts
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (aiVoicePersona != null) await prefs.setString('cda_pref_voice', aiVoicePersona);
+      if (hapticFeedback != null) await prefs.setBool('cda_pref_haptic', hapticFeedback);
+      if (pushNotifications != null) await prefs.setBool('cda_pref_push_notif', pushNotifications);
+      if (emailNotifications != null) await prefs.setBool('cda_pref_email_notif', emailNotifications);
+      if (realtimeAudio != null) await prefs.setBool('cda_pref_realtime_audio', realtimeAudio);
+      if (autoRecord != null) await prefs.setBool('cda_pref_auto_record', autoRecord);
+      if (themeMode != null) await prefs.setString('cda_pref_theme', themeMode);
+    } catch (_) {}
+
+    // 2. Synchronize selected AI Voice Persona with AI Interview setup configuration
+    if (aiVoicePersona != null) {
+      ref.read(interviewSetupProvider.notifier).updateConfig(voicePersona: aiVoicePersona);
+    }
+
+
     final user = SupabaseConfig.client.auth.currentUser;
-    final email = user?.email ?? 'unii12634@gmail.com';
+    final email = user?.email ?? '';
+    if (email.isEmpty) return;
     final payload = updated.toJson()..['user_email'] = email;
 
-    // 1. Save to Java Backend
+    // 3. Save to Java Backend & Supabase DB
     JavaApiService.saveUserSettings(payload);
-
-    // 2. Save to Supabase DB
     try {
       await SupabaseConfig.client.from('user_settings').upsert(payload);
     } catch (_) {}
@@ -161,3 +188,4 @@ class UserSettingsNotifier extends StateNotifier<UserSettingsState> {
 final userSettingsProvider = StateNotifierProvider<UserSettingsNotifier, UserSettingsState>((ref) {
   return UserSettingsNotifier(ref);
 });
+

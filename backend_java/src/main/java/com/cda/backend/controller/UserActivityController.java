@@ -17,9 +17,11 @@ public class UserActivityController {
     private UserActivityService userActivityService;
 
     @GetMapping
-    public ResponseEntity<List<UserActivity>> getUserActivities(@RequestParam(name = "email", required = false) String email) {
-        String targetEmail = (email != null && !email.trim().isEmpty()) ? email : "unii12634@gmail.com";
-        List<UserActivity> list = userActivityService.getUserActivities(targetEmail);
+    public ResponseEntity<List<UserActivity>> getUserActivities(@RequestParam(name = "email", required = false, defaultValue = "") String email) {
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+        List<UserActivity> list = userActivityService.getUserActivities(email.trim());
         return ResponseEntity.ok(list);
     }
 }

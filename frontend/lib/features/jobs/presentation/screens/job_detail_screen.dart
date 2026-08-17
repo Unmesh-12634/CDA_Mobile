@@ -158,7 +158,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final profile = ref.watch(userProfileProvider);
-    final userEmail = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final userEmail = profile.email.isNotEmpty ? profile.email : ref.watch(authProvider).email;
 
     final jobsAsync = ref.watch(realJobsListProvider(null));
     final allJobs = jobsAsync.maybeWhen(

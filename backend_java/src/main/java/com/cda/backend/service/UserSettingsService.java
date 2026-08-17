@@ -28,7 +28,7 @@ public class UserSettingsService {
     }
 
     public Map<String, Object> exportUserData(String email) {
-        String targetEmail = (email != null && !email.trim().isEmpty()) ? email : "unii12634@gmail.com";
+        String targetEmail = (email != null && !email.trim().isEmpty()) ? email.trim() : "";
         Map<String, Object> export = new HashMap<>();
         export.put("export_timestamp", java.time.LocalDateTime.now().toString());
         export.put("user_email", targetEmail);

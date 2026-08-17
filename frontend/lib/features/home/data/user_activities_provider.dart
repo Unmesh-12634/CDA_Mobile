@@ -24,7 +24,8 @@ class UserActivityItem {
 }
 
 final userActivitiesProvider = FutureProvider.family<List<UserActivityItem>, String>((ref, email) async {
-  final targetEmail = email.isNotEmpty ? email : 'unii12634@gmail.com';
+  final targetEmail = email.isNotEmpty ? email : '';
+  if (targetEmail.isEmpty) return [];
   
   // 1. Try Java Backend
   try {
@@ -87,15 +88,15 @@ final userActivitiesProvider = FutureProvider.family<List<UserActivityItem>, Str
     // Applications
     final appsRes = await SupabaseConfig.client
         .from('job_applications')
-        .select('id, job_id, status, created_at')
+        .select('id, job_id, status, applied_at, updated_at')
         .eq('user_email', targetEmail)
-        .order('created_at', ascending: false)
+        .order('applied_at', ascending: false)
         .limit(5);
 
     for (final a in (appsRes as List)) {
       DateTime dt;
       try {
-        dt = DateTime.parse(a['created_at']?.toString() ?? '');
+        dt = DateTime.parse((a['applied_at'] ?? a['updated_at'])?.toString() ?? '');
       } catch (_) {
         dt = DateTime.now();
       }
@@ -109,6 +110,7 @@ final userActivitiesProvider = FutureProvider.family<List<UserActivityItem>, Str
         createdAt: dt,
       ));
     }
+
 
     // Interview reports
     final repRes = await SupabaseConfig.client

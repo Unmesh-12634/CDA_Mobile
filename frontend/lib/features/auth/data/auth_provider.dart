@@ -178,8 +178,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       if (response.user != null) {
         _applySession(response.user!);
-        ref.read(userProfileProvider.notifier).updateProfile(
-              name: state.fullName,
+        await ref.read(userProfileProvider.notifier).resetForUser(
+              response.user!.email ?? email.trim(),
+              fullName: state.fullName,
             );
         return true;
       }
@@ -250,8 +251,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       if (response.user != null) {
         _applySession(response.user!);
-        ref.read(userProfileProvider.notifier).updateProfile(
-              name: fullName.trim(),
+        await ref.read(userProfileProvider.notifier).resetForUser(
+              email.trim(),
+              fullName: fullName.trim(),
+              phone: phone.trim(),
               targetRole: targetRole,
             );
         debugPrint('[Auth] New account created: ${email.trim()}');
@@ -329,6 +332,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         provider: 'google',
       );
 
+      LocalCacheService().set('cda_auth_logged_in', true);
+      LocalCacheService().set('cda_auth_email', googleEmail);
+      LocalCacheService().set('cda_auth_name', googleName);
+
       // Apply Google User state
       state = state.copyWith(
         isAuthenticated: true,
@@ -338,8 +345,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         errorMessage: null,
       );
 
-      ref.read(userProfileProvider.notifier).updateProfile(
-            name: googleName,
+      await ref.read(userProfileProvider.notifier).resetForUser(
+            googleEmail,
+            fullName: googleName,
           );
 
       debugPrint('[Auth] Signed in with Google Account: $googleName ($googleEmail)');
@@ -483,6 +491,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       debugPrint('[Auth] Sign-out error: $e');
     }
+    LocalCacheService().remove('cda_auth_logged_in');
+    LocalCacheService().remove('cda_auth_email');
+    LocalCacheService().remove('cda_auth_name');
     state = const AuthState(isAuthenticated: false);
   }
 

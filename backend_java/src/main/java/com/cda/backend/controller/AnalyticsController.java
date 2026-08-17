@@ -17,7 +17,10 @@ public class AnalyticsController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<UserAnalytics>> getAnalytics(
-            @RequestParam(defaultValue = "unii12634@gmail.com") String email) {
+            @RequestParam(required = false, defaultValue = "") String email) {
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.ok(new UserAnalytics(), "Analytics initialized"));
+        }
         UserAnalytics analytics = analyticsService.getAnalytics(email);
         return ResponseEntity.ok(ApiResponse.ok(analytics, "Analytics fetched successfully"));
     }

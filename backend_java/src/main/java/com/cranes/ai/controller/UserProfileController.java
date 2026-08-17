@@ -20,8 +20,11 @@ public class UserProfileController {
     }
 
     @GetMapping("/profile")
-    public ResponseEntity<?> getProfile(@RequestParam(defaultValue = "unii12634@gmail.com") String email) {
-        return profileService.getProfileByEmail(email)
+    public ResponseEntity<?> getProfile(@RequestParam(required = false, defaultValue = "") String email) {
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "Email is required"));
+        }
+        return profileService.getProfileByEmail(email.trim())
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> {
                     Map<String, String> err = new HashMap<>();
@@ -32,9 +35,12 @@ public class UserProfileController {
 
     @PutMapping("/profile")
     public ResponseEntity<?> updateProfile(
-            @RequestParam(defaultValue = "unii12634@gmail.com") String email,
+            @RequestParam(required = false, defaultValue = "") String email,
             @RequestBody UserProfileDto profileDto) {
-        boolean updated = profileService.updateProfile(email, profileDto);
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
+        }
+        boolean updated = profileService.updateProfile(email.trim(), profileDto);
         Map<String, Object> resp = new HashMap<>();
         if (updated) {
             resp.put("status", "success");

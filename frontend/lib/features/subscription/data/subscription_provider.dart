@@ -104,7 +104,9 @@ class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
   Future<void> loadLiveTrialsFromDb({String? email}) async {
     try {
       final user = SupabaseConfig.client.auth.currentUser;
-      final targetEmail = email ?? user?.email ?? 'unii12634@gmail.com';
+      final cachedEmail = LocalCacheService().get<String>('cda_auth_email');
+      final targetEmail = email ?? user?.email ?? cachedEmail ?? '';
+      if (targetEmail.isEmpty) return;
 
       // 1. Try Java Backend
       try {
@@ -235,7 +237,9 @@ class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
 
     try {
       final user = SupabaseConfig.client.auth.currentUser;
-      final email = user?.email ?? 'unii12634@gmail.com';
+      final cachedEmail = LocalCacheService().get<String>('cda_auth_email');
+      final email = user?.email ?? cachedEmail ?? '';
+      if (email.isEmpty) return true;
 
       // Call Java backend
       JavaApiService.consumeTrial(email);
@@ -314,7 +318,8 @@ class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
     try {
       final user = SupabaseConfig.client.auth.currentUser;
       final cachedEmail = LocalCacheService().get<String>('cda_auth_email');
-      final targetEmail = user?.email ?? cachedEmail ?? 'unii12634@gmail.com';
+      final targetEmail = user?.email ?? cachedEmail ?? '';
+      if (targetEmail.isEmpty) return;
 
       // 2. Call Java backend
       JavaApiService.upgradeToPro(targetEmail, planCycle: cycle);
@@ -388,7 +393,9 @@ class SubscriptionNotifier extends StateNotifier<SubscriptionState> {
 
     try {
       final user = SupabaseConfig.client.auth.currentUser;
-      final email = user?.email ?? 'unii12634@gmail.com';
+      final cachedEmail = LocalCacheService().get<String>('cda_auth_email');
+      final email = user?.email ?? cachedEmail ?? '';
+      if (email.isEmpty) return;
 
       await SupabaseConfig.client.from('users').update({
         'ai_trials_remaining': 5,

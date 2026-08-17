@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/supabase_config.dart';
 import '../../../core/network/java_api_service.dart';
+import '../../auth/data/auth_provider.dart';
 import '../../profile/data/user_profile_provider.dart';
 
 class NotificationItem {
@@ -62,7 +63,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
 
   Future<void> loadNotifications() async {
     final profile = ref.read(userProfileProvider);
-    final email = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final email = profile.email.isNotEmpty ? profile.email : ref.read(authProvider).email;
+    if (email.isEmpty) return;
 
     // 1. Try Java Backend
     try {
@@ -124,7 +126,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
     state = [for (final n in state) n.copyWith(isRead: true)];
 
     final profile = ref.read(userProfileProvider);
-    final email = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final email = profile.email.isNotEmpty ? profile.email : ref.read(authProvider).email;
+    if (email.isEmpty) return;
 
     try {
       await JavaApiService.markAllNotificationsAsRead(email: email);
@@ -148,7 +151,8 @@ class NotificationsNotifier extends StateNotifier<List<NotificationItem>> {
     String? actionUrl,
   }) async {
     final profile = ref.read(userProfileProvider);
-    final email = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final email = profile.email.isNotEmpty ? profile.email : ref.read(authProvider).email;
+    if (email.isEmpty) return;
 
     final newNotif = NotificationItem(
       id: 'notif-${DateTime.now().millisecondsSinceEpoch}',

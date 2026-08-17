@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../data/jobs_repository.dart';
+import '../../../auth/data/auth_provider.dart';
 import '../../../profile/data/user_profile_provider.dart';
 
 class ApplicationTrackerScreen extends ConsumerStatefulWidget {
@@ -74,7 +75,7 @@ class _ApplicationTrackerScreenState extends ConsumerState<ApplicationTrackerScr
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final profile = ref.watch(userProfileProvider);
-    final userEmail = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final userEmail = profile.email.isNotEmpty ? profile.email : ref.watch(authProvider).email;
     final appsAsync = ref.watch(userApplicationsProvider(userEmail));
 
     return Scaffold(

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/supabase_config.dart';
 import '../../../core/network/java_api_service.dart';
+import '../../../core/storage/local_cache_service.dart';
 import '../../../core/storage/secure_storage_service.dart';
 import '../../quiz/data/quiz_provider.dart';
 
@@ -165,7 +166,9 @@ class WeeklyGoalNotifier extends StateNotifier<WeeklyGoal> {
   Future<void> _loadState() async {
     try {
       final user = SupabaseConfig.client.auth.currentUser;
-      final email = user?.email ?? 'unii12634@gmail.com';
+      final cachedEmail = LocalCacheService().get<String>('cda_auth_email');
+      final email = user?.email ?? cachedEmail ?? '';
+      if (email.isEmpty) return;
 
       // 1. Try Java Enterprise Backend first
       try {
@@ -283,7 +286,9 @@ class WeeklyGoalNotifier extends StateNotifier<WeeklyGoal> {
       await storage.saveWeeklyGoal(jsonEncode(state.toJson()));
 
       final user = SupabaseConfig.client.auth.currentUser;
-      final email = user?.email ?? 'unii12634@gmail.com';
+      final cachedEmail = LocalCacheService().get<String>('cda_auth_email');
+      final email = user?.email ?? cachedEmail ?? '';
+      if (email.isEmpty) return;
       final todayStr = DateTime.now().toIso8601String().split('T')[0];
 
       // Call Java backend

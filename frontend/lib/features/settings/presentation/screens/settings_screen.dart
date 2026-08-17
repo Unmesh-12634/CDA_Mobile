@@ -11,8 +11,12 @@ import '../../../../core/constants/app_typography.dart';
 import '../../../../core/network/java_api_service.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../auth/data/auth_provider.dart';
+import '../../../profile/data/user_profile_provider.dart';
 import '../../../subscription/data/subscription_provider.dart';
 import '../../data/user_settings_provider.dart';
+import '../../../../core/utils/app_haptics.dart';
+import '../../../../core/services/notification_service.dart';
+
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -322,7 +326,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTick
     final sub = ref.watch(subscriptionProvider);
     final userSettings = ref.watch(userSettingsProvider);
     final authState = ref.watch(authProvider);
-    final String currentEmail = authState.email.isNotEmpty ? authState.email : 'unii12634@gmail.com';
+    final String currentEmail = authState.email.isNotEmpty ? authState.email : ref.watch(userProfileProvider).email;
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.credDarkBackground : AppColors.background,
@@ -389,10 +393,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTick
 
               const SizedBox(height: 24),
 
-              // ── 6. Option C: Security & Device Sessions Matrix ─────────────
-              _buildSectionTitle('SECURITY & ACTIVE SESSIONS (OPTION C)', isDark),
+              // ── 6. Security & Device Sessions Matrix ──────────────────────
+              _buildSectionTitle('SECURITY & ACTIVE SESSIONS', isDark),
               const SizedBox(height: 10),
               _buildSecurityAndSessionsCard(context, userSettings, currentEmail, isDark),
+
 
               const SizedBox(height: 32),
 
@@ -613,11 +618,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTick
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () {
+        AppHaptics.lightImpact(ref);
         ref.read(themeModeProvider.notifier).setThemeMode(mode);
         ref.read(userSettingsProvider.notifier).updateSettings(
           themeMode: mode == ThemeMode.dark ? 'dark' : (mode == ThemeMode.light ? 'light' : 'system'),
         );
       },
+
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -729,9 +736,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTick
                 }).toList(),
                 onChanged: (val) {
                   if (val != null) {
+                    AppHaptics.selectionClick(ref);
                     ref.read(userSettingsProvider.notifier).updateSettings(aiVoicePersona: val);
                   }
                 },
+
               ),
             ),
           ),
@@ -903,7 +912,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTick
             ),
             value: settings.pushNotifications,
             activeColor: AppColors.primary,
-            onChanged: (val) => ref.read(userSettingsProvider.notifier).updateSettings(pushNotifications: val),
+            onChanged: (val) {
+              ref.read(userSettingsProvider.notifier).updateSettings(pushNotifications: val);
+              AppHaptics.selectionClick(ref);
+              if (val) {
+                NotificationService().showNotification(
+                  title: '🔔 Notifications Enabled',
+                  body: 'Daily AI Skill Drills and Mock Interview streak reminders are active.',
+                );
+              }
+            },
           ),
           Divider(color: isDark ? AppColors.credDarkBorder : const Color(0xFFF1F5F9)),
           SwitchListTile(
@@ -925,7 +943,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTick
             ),
             value: settings.emailNotifications,
             activeColor: AppColors.primary,
-            onChanged: (val) => ref.read(userSettingsProvider.notifier).updateSettings(emailNotifications: val),
+            onChanged: (val) {
+              ref.read(userSettingsProvider.notifier).updateSettings(emailNotifications: val);
+              AppHaptics.selectionClick(ref);
+            },
           ),
           Divider(color: isDark ? AppColors.credDarkBorder : const Color(0xFFF1F5F9)),
           SwitchListTile(
@@ -947,8 +968,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTick
             ),
             value: settings.hapticFeedback,
             activeColor: AppColors.primary,
-            onChanged: (val) => ref.read(userSettingsProvider.notifier).updateSettings(hapticFeedback: val),
+            onChanged: (val) {
+              ref.read(userSettingsProvider.notifier).updateSettings(hapticFeedback: val);
+              if (val) {
+                AppHaptics.heavyImpact();
+              }
+            },
           ),
+
         ],
       ),
     );
@@ -1040,32 +1067,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTick
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 2FA Switch
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(
-              'Two-Factor Authentication (2FA)',
-              style: TextStyle(
-                color: isDark ? Colors.white : AppColors.onSurface,
-                fontWeight: FontWeight.bold,
-                fontSize: 13.5,
-              ),
-            ),
-            subtitle: Text(
-              'Require verification code upon logging in on new devices',
-              style: TextStyle(
-                color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-                fontSize: 11.5,
-              ),
-            ),
-            value: settings.twoFactorEnabled,
-            activeColor: const Color(0xFF10B981),
-            onChanged: (val) => ref.read(userSettingsProvider.notifier).updateSettings(twoFactorEnabled: val),
-          ),
-
-          Divider(color: isDark ? AppColors.credDarkBorder : const Color(0xFFF1F5F9)),
-
           // GDPR Data Export
+
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: Container(
@@ -1295,8 +1298,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTick
             onPressed: () async {
               Navigator.pop(ctx);
               await ref.read(authProvider.notifier).signOut();
+              await ref.read(userProfileProvider.notifier).clearProfile();
+              ref.read(subscriptionProvider.notifier).resetToFree();
               if (context.mounted) {
-                context.go('/auth');
+                context.go('/login');
               }
             },
             style: ElevatedButton.styleFrom(

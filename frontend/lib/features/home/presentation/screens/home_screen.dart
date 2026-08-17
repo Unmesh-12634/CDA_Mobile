@@ -14,6 +14,9 @@ import '../../../jobs/data/saved_jobs_provider.dart';
 import '../../../subscription/data/subscription_provider.dart';
 import '../../../subscription/presentation/widgets/cda_paywall_sheet.dart';
 import '../../data/weekly_goal_provider.dart';
+import '../../data/screen_time_provider.dart';
+import '../../../../core/utils/app_haptics.dart';
+import '../../../auth/data/auth_provider.dart';
 import '../../../profile/data/user_profile_provider.dart';
 import '../../../learn/data/reels_repository.dart';
 import '../../../interview/data/interview_reports_provider.dart';
@@ -21,6 +24,7 @@ import '../../../notifications/data/notifications_provider.dart';
 import '../../data/user_activities_provider.dart';
 import '../../../../core/services/notification_service.dart';
 import '../widgets/ai_daily_challenge_card.dart';
+
 
 // ─────────────────────────────────────────────────────────────
 // HOME SCREEN — Premium CDA Career Companion
@@ -432,7 +436,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(userProfileProvider);
-    final userEmail = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final userEmail = profile.email.isNotEmpty ? profile.email : ref.watch(authProvider).email;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -773,7 +777,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // ─────────────────────────────────────────────────────────────
   Widget _buildHero() {
     final profile = ref.watch(userProfileProvider);
-    final userEmail = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final userEmail = profile.email.isNotEmpty ? profile.email : ref.watch(authProvider).email;
     final appsAsync = ref.watch(userApplicationsProvider(userEmail));
     final activeCount = appsAsync.maybeWhen(
       data: (apps) => apps.length,
@@ -1022,7 +1026,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildQuickActions() {
     final sub = ref.watch(subscriptionProvider);
     final profile = ref.watch(userProfileProvider);
-    final userEmail = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final userEmail = profile.email.isNotEmpty ? profile.email : ref.watch(authProvider).email;
     final appsAsync = ref.watch(userApplicationsProvider(userEmail));
     final activeCount = appsAsync.maybeWhen(
       data: (apps) => apps.length,
@@ -1535,117 +1539,186 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void _showProgressSheet() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final weeklyGoal = ref.read(weeklyGoalProvider);
+
     showModalBottomSheet(
+
       context: context,
       isScrollControlled: true,
       backgroundColor: isDark ? AppColors.credDarkCard : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.only(
-              left: 24,
-              right: 24,
-              top: 24,
-              bottom: 24 + MediaQuery.of(context).padding.bottom,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final currentTarget = ref.watch(screenTimeProvider).dailyTargetMinutes;
+          final currentTodayTime = ref.watch(screenTimeProvider).formattedTodayTime;
+
+          return ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.88,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.credDarkBorder : const Color(0xFFE2E8F0),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+            child: SafeArea(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  top: 24,
+                  bottom: 24 + MediaQuery.of(context).padding.bottom,
                 ),
-                const SizedBox(height: 20),
-                Text(
-                  'Weekly Learning Analytics',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : AppColors.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'You\'ve studied ${weeklyGoal.totalHoursLearned} hours across ${weeklyGoal.completedDaysCount} active days this week. High consistency!',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFF59E0B), size: 20),
-                  ),
-                  title: Text('${weeklyGoal.streakCount}-Day Streak Active 🔥', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  subtitle: Text(weeklyGoal.nextGoalSuggestion, style: const TextStyle(fontSize: 12)),
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.star_rounded, color: AppColors.primary, size: 20),
-                  ),
-                  title: const Text('88% Avg Interview Score ⭐', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  subtitle: const Text('Top 10% in Java & System Design', style: TextStyle(fontSize: 12)),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
-                    ),
-                    icon: const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 18),
-                    label: const Text('Mark Today Completed 🔥', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                    onPressed: () {
-                      ref.read(weeklyGoalProvider.notifier).completeToday();
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Today marked completed & synced to database! 🔥'),
-                          backgroundColor: const Color(0xFF10B981),
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.credDarkBorder : const Color(0xFFE2E8F0),
+                          borderRadius: BorderRadius.circular(2),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Learning & Screen Time Analytics',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : AppColors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'You\'ve spent $currentTodayTime actively learning on CDA today across mock interviews, skill drills, and courses.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Daily Target Selector
+                    Text(
+                      'DAILY STUDY TIME TARGET',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                        color: isDark ? const Color(0xFF94A3B8) : AppColors.outline,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [30, 45, 60, 120, 180].map((mins) {
+                        final isSelected = currentTarget == mins;
+                        final label = mins < 60 ? '${mins}m' : '${mins ~/ 60}h';
+
+                        return Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 3),
+                            child: InkWell(
+                              onTap: () {
+                                AppHaptics.selectionClick(ref);
+                                ref.read(screenTimeProvider.notifier).setDailyTargetMinutes(mins);
+                                setSheetState(() {});
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? const Color(0xFF0284C7)
+                                      : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9)),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? const Color(0xFF0284C7)
+                                        : (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    label,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: isSelected ? Colors.white : (isDark ? Colors.white70 : AppColors.onSurface),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+
+                    const SizedBox(height: 20),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFF59E0B), size: 20),
+                      ),
+                      title: Text('${weeklyGoal.streakCount}-Day Streak Active 🔥', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      subtitle: Text(weeklyGoal.nextGoalSuggestion, style: const TextStyle(fontSize: 12)),
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.star_rounded, color: AppColors.primary, size: 20),
+                      ),
+                      title: const Text('88% Avg Interview Score ⭐', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      subtitle: const Text('Top 10% in Java & System Design', style: TextStyle(fontSize: 12)),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        icon: const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 18),
+                        label: const Text('Mark Today Completed 🔥', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                        onPressed: () {
+                          AppHaptics.mediumImpact(ref);
+                          ref.read(weeklyGoalProvider.notifier).completeToday();
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: const Text('Today marked completed & synced to database! 🔥'),
+                              backgroundColor: const Color(0xFF10B981),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                 ),
-                const SizedBox(height: 12),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
+
 
   // ─────────────────────────────────────────────────────────────
   // LEARNING PROGRESS
@@ -1653,8 +1726,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildProgress() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final weeklyGoal = ref.watch(weeklyGoalProvider);
+    final screenTime = ref.watch(screenTimeProvider);
     final profile = ref.watch(userProfileProvider);
-    final userEmail = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final userEmail = profile.email.isNotEmpty ? profile.email : ref.watch(authProvider).email;
     final appsAsync = ref.watch(userApplicationsProvider(userEmail));
     final activeCount = appsAsync.maybeWhen(
       data: (apps) => apps.length,
@@ -1678,7 +1752,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               const SizedBox(width: 12),
               _ProgressStat(label: 'Jobs Applied', value: '$activeCount', icon: Icons.work_rounded, color: const Color(0xFF10B981)),
               const SizedBox(width: 12),
-              _ProgressStat(label: 'Hrs Learned', value: '${weeklyGoal.totalHoursLearned}h', icon: Icons.schedule_rounded, color: const Color(0xFF0EA5E9)),
+              _ProgressStat(label: 'Screen Time', value: screenTime.formattedTodayTime, icon: Icons.schedule_rounded, color: const Color(0xFF0EA5E9)),
             ],
           ),
           const SizedBox(height: 16),
@@ -1725,7 +1799,72 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
+
+                  // ── SECTION 1.5: ACTIVE SCREEN TIME TODAY BAR ──
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF0F9FF),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: screenTime.isGoalCompleted
+                            ? const Color(0xFF10B981)
+                            : (isDark ? const Color(0xFF0284C7).withValues(alpha: 0.35) : const Color(0xFFBAE6FD)),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  screenTime.isGoalCompleted ? Icons.check_circle_rounded : Icons.timer_rounded,
+                                  color: screenTime.isGoalCompleted ? const Color(0xFF10B981) : const Color(0xFF0284C7),
+                                  size: 15,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  screenTime.isGoalCompleted ? 'Daily Study Target Reached! 🎉' : 'Daily Active Screen Time',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    color: screenTime.isGoalCompleted
+                                        ? const Color(0xFF10B981)
+                                        : (isDark ? Colors.white : AppColors.onSurface),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              '${screenTime.formattedTodayTime} / ${screenTime.formattedTargetTime}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 12,
+                                color: screenTime.isGoalCompleted ? const Color(0xFF10B981) : const Color(0xFF0284C7),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(100),
+                          child: LinearProgressIndicator(
+                            value: screenTime.progressPercent,
+                            minHeight: 5,
+                            backgroundColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFE0F2FE),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              screenTime.isGoalCompleted ? const Color(0xFF10B981) : const Color(0xFF0284C7),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
 
                   // ── SECTION 2: MAIN ANALYTICS ──
                   Row(
@@ -2034,7 +2173,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Widget _buildRecentActivity() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final profile = ref.watch(userProfileProvider);
-    final userEmail = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final userEmail = profile.email.isNotEmpty ? profile.email : ref.watch(authProvider).email;
     final activitiesAsync = ref.watch(userActivitiesProvider(userEmail));
 
     return activitiesAsync.when(

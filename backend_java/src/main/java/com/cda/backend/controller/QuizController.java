@@ -20,7 +20,10 @@ public class QuizController {
 
     @PostMapping("/save-result")
     public ResponseEntity<ApiResponse<Boolean>> saveResult(@RequestBody Map<String, Object> body) {
-        String email = (String) body.getOrDefault("email", "unii12634@gmail.com");
+        String email = (String) body.getOrDefault("email", "");
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("Email required"));
+        }
         int score = body.get("score") != null ? ((Number) body.get("score")).intValue() : 0;
         int correctCount = body.get("correctCount") != null ? ((Number) body.get("correctCount")).intValue() : 0;
         int totalQuestions = body.get("totalQuestions") != null ? ((Number) body.get("totalQuestions")).intValue() : 5;
@@ -33,15 +36,18 @@ public class QuizController {
 
     @GetMapping("/history")
     public ResponseEntity<ApiResponse<List<QuizResult>>> getHistory(
-            @RequestParam(defaultValue = "unii12634@gmail.com") String email) {
+            @RequestParam(required = false, defaultValue = "") String email) {
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.ok(List.of(), "Quiz history retrieved"));
+        }
         List<QuizResult> history = quizService.getHistory(email);
         return ResponseEntity.ok(ApiResponse.ok(history, "Quiz history retrieved"));
     }
 
     @GetMapping("/today-attempts")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getTodayAttempts(
-            @RequestParam(defaultValue = "unii12634@gmail.com") String email) {
-        int todayCount = quizService.getTodayCount(email);
+            @RequestParam(required = false, defaultValue = "") String email) {
+        int todayCount = email.trim().isEmpty() ? 0 : quizService.getTodayCount(email);
         int maxDaily = 5;
         Map<String, Object> resp = Map.of(
             "email", email,

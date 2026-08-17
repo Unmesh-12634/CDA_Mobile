@@ -276,6 +276,9 @@ class HealthResponse {
     required this.latencyMs,
   });
 
+  bool get isHealthy => status.toLowerCase() == 'online' || status.toLowerCase() == 'healthy' || status.toLowerCase() == 'ok';
+
+
   factory HealthResponse.fromJson(Map<String, dynamic> json, int latencyMs) {
     return HealthResponse(
       status: json['status'] ?? 'offline',

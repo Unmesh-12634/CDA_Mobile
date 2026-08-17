@@ -18,8 +18,11 @@ public class UserLearningGoalsDAO {
     private JdbcTemplate jdbcTemplate;
 
     public UserLearningGoal getLearningGoal(String email) {
-        String targetEmail = (email != null && !email.trim().isEmpty()) ? email : "unii12634@gmail.com";
+        String targetEmail = (email != null && !email.trim().isEmpty()) ? email.trim() : "";
         LocalDate today = LocalDate.now(); // 12:00 AM calendar day boundary
+        if (targetEmail.isEmpty()) {
+            return new UserLearningGoal("", 7, 0, List.of(false,false,false,false,false,false,false), 0.0, 0, today.toString(), "Start your learning journey today!");
+        }
         
         // 1. Try to read from public.user_learning_goals if table exists
         try {
@@ -85,8 +88,11 @@ public class UserLearningGoalsDAO {
     }
 
     public UserLearningGoal completeToday(String email) {
-        String targetEmail = (email != null && !email.trim().isEmpty()) ? email : "unii12634@gmail.com";
+        String targetEmail = (email != null && !email.trim().isEmpty()) ? email.trim() : "";
         LocalDate today = LocalDate.now();
+        if (targetEmail.isEmpty()) {
+            return new UserLearningGoal("", 7, 1, List.of(true,false,false,false,false,false,false), 1.0, 1, today.toString(), "Great job starting your streak!");
+        }
         UserLearningGoal current = getLearningGoal(targetEmail);
         
         int newStreak = current.getStreakCount();

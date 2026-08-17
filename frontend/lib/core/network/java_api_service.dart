@@ -265,9 +265,10 @@ class JavaApiService {
   }
 
   // ── AI INTERVIEW REPORTS ─────────────────────────────────
-  static Future<List<Map<String, dynamic>>?> fetchInterviewReports({String email = 'unii12634@gmail.com'}) async {
+  static Future<List<Map<String, dynamic>>?> fetchInterviewReports({required String email}) async {
+    if (email.trim().isEmpty) return null;
     try {
-      final url = Uri.parse('$baseUrl/interview/reports?email=${Uri.encodeComponent(email)}');
+      final url = Uri.parse('$baseUrl/interview/reports?email=${Uri.encodeComponent(email.trim())}');
       final res = await http.get(url).timeout(const Duration(seconds: 3));
       if (res.statusCode == 200) {
         final json = jsonDecode(res.body) as Map<String, dynamic>;
@@ -384,9 +385,10 @@ class JavaApiService {
   }
 
   // ── NOTIFICATIONS ───────────────────────────────────────────
-  static Future<List<Map<String, dynamic>>?> fetchNotifications({String email = 'unii12634@gmail.com'}) async {
+  static Future<List<Map<String, dynamic>>?> fetchNotifications({required String email}) async {
+    if (email.trim().isEmpty) return null;
     try {
-      final url = Uri.parse('$baseUrl/notifications?email=${Uri.encodeComponent(email)}');
+      final url = Uri.parse('$baseUrl/notifications?email=${Uri.encodeComponent(email.trim())}');
       final res = await http.get(url).timeout(const Duration(seconds: 3));
       if (res.statusCode == 200) {
         final json = jsonDecode(res.body) as Map<String, dynamic>;
@@ -442,9 +444,10 @@ class JavaApiService {
     return false;
   }
 
-  static Future<bool> markAllNotificationsAsRead({String email = 'unii12634@gmail.com'}) async {
+  static Future<bool> markAllNotificationsAsRead({required String email}) async {
+    if (email.trim().isEmpty) return false;
     try {
-      final url = Uri.parse('$baseUrl/notifications/read-all?email=${Uri.encodeComponent(email)}');
+      final url = Uri.parse('$baseUrl/notifications/read-all?email=${Uri.encodeComponent(email.trim())}');
       final res = await http.put(url).timeout(const Duration(seconds: 2));
       if (res.statusCode == 200) {
         final json = jsonDecode(res.body) as Map<String, dynamic>;
@@ -467,9 +470,10 @@ class JavaApiService {
   }
 
   // ── USER ACTIVITIES & LEARNING GOALS ────────────────────────
-  static Future<List<Map<String, dynamic>>?> fetchUserActivities({String email = 'unii12634@gmail.com'}) async {
+  static Future<List<Map<String, dynamic>>?> fetchUserActivities({required String email}) async {
+    if (email.trim().isEmpty) return null;
     try {
-      final url = Uri.parse('$baseUrl/user/activities?email=${Uri.encodeComponent(email)}');
+      final url = Uri.parse('$baseUrl/user/activities?email=${Uri.encodeComponent(email.trim())}');
       final res = await http.get(url).timeout(const Duration(seconds: 3));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -483,9 +487,10 @@ class JavaApiService {
     return null;
   }
 
-  static Future<Map<String, dynamic>?> fetchLearningGoals({String email = 'unii12634@gmail.com'}) async {
+  static Future<Map<String, dynamic>?> fetchLearningGoals({required String email}) async {
+    if (email.trim().isEmpty) return null;
     try {
-      final url = Uri.parse('$baseUrl/user/goals?email=${Uri.encodeComponent(email)}');
+      final url = Uri.parse('$baseUrl/user/goals?email=${Uri.encodeComponent(email.trim())}');
       final res = await http.get(url).timeout(const Duration(seconds: 3));
       if (res.statusCode == 200) {
         return jsonDecode(res.body) as Map<String, dynamic>;
@@ -496,9 +501,10 @@ class JavaApiService {
     return null;
   }
 
-  static Future<Map<String, dynamic>?> completeTodayGoal({String email = 'unii12634@gmail.com'}) async {
+  static Future<Map<String, dynamic>?> completeTodayGoal({required String email}) async {
+    if (email.trim().isEmpty) return null;
     try {
-      final url = Uri.parse('$baseUrl/user/goals/complete-today?email=${Uri.encodeComponent(email)}');
+      final url = Uri.parse('$baseUrl/user/goals/complete-today?email=${Uri.encodeComponent(email.trim())}');
       final res = await http.post(url).timeout(const Duration(seconds: 3));
       if (res.statusCode == 200) {
         return jsonDecode(res.body) as Map<String, dynamic>;
@@ -510,9 +516,10 @@ class JavaApiService {
   }
 
   // ── USER SETTINGS & GDPR EXPORT ────────────────────────────
-  static Future<Map<String, dynamic>?> fetchUserSettings({String email = 'unii12634@gmail.com'}) async {
+  static Future<Map<String, dynamic>?> fetchUserSettings({required String email}) async {
+    if (email.trim().isEmpty) return null;
     try {
-      final url = Uri.parse('$baseUrl/user/settings?email=${Uri.encodeComponent(email)}');
+      final url = Uri.parse('$baseUrl/user/settings?email=${Uri.encodeComponent(email.trim())}');
       final res = await http.get(url).timeout(const Duration(seconds: 3));
       if (res.statusCode == 200) {
         return jsonDecode(res.body) as Map<String, dynamic>;
@@ -540,9 +547,10 @@ class JavaApiService {
     return null;
   }
 
-  static Future<Map<String, dynamic>?> exportUserData({String email = 'unii12634@gmail.com'}) async {
+  static Future<Map<String, dynamic>?> exportUserData({required String email}) async {
+    if (email.trim().isEmpty) return null;
     try {
-      final url = Uri.parse('$baseUrl/user/settings/export-data?email=${Uri.encodeComponent(email)}');
+      final url = Uri.parse('$baseUrl/user/settings/export-data?email=${Uri.encodeComponent(email.trim())}');
       final res = await http.post(url).timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) {
         return jsonDecode(res.body) as Map<String, dynamic>;

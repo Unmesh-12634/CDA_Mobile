@@ -322,14 +322,8 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
           ),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.wifi_tethering_rounded, color: AppColors.primary),
-            tooltip: 'Backend Server Diagnostics',
-            onPressed: () => context.push('/interview/diagnostics'),
-          ),
-        ],
       ),
+
       body: SafeArea(
         child: Column(
           children: [
@@ -2097,6 +2091,39 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                 skills: mergedSkills,
                 enrolledCourses: const [],
               );
+
+              // 1. Check AI backend connectivity before starting
+              final api = ref.read(aiInterviewServiceProvider);
+              final health = await api.healthCheck();
+              if (!mounted) return;
+
+              if (health == null || !health.isHealthy) {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    title: const Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, color: Color(0xFFE11D48)),
+                        SizedBox(width: 10),
+                        Text('Service Notice', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      ],
+                    ),
+                    content: const Text(
+                      'AI Interview is temporarily out of service. Please try again in 10 mins.',
+                      style: TextStyle(fontSize: 14, height: 1.45),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                );
+                return;
+              }
+
               final success =
                   await ref.read(subscriptionProvider.notifier).consumeTrial();
               if (!mounted) return;
@@ -2107,6 +2134,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
               }
             },
           ),
+
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,

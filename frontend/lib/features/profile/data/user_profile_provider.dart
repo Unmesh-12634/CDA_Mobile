@@ -298,30 +298,97 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
 
   Future<void> _loadProfile() async {
     try {
+      final user = SupabaseConfig.client.auth.currentUser;
+      if (user != null && user.email != null && user.email!.isNotEmpty) {
+        await refreshProfileFromDb(user.email);
+        return;
+      }
       final storage = ref.read(secureStorageProvider);
       final raw = await storage.getUserProfile();
       if (raw != null) {
         final Map<String, dynamic> json = jsonDecode(raw);
-        state = UserProfile.fromJson(json);
+        final loaded = UserProfile.fromJson(json);
+        if (loaded.email.isNotEmpty) {
+          state = loaded;
+        }
       }
+    } catch (_) {}
+  }
 
-      await refreshProfileFromDb();
+  Future<void> resetForUser(String email, {String? fullName, String? phone, String? targetRole}) async {
+    final cleanEmail = email.trim();
+    if (cleanEmail.isEmpty) return;
+
+    final nameToUse = (fullName != null && fullName.trim().isNotEmpty)
+        ? fullName.trim()
+        : (cleanEmail.contains('@') ? cleanEmail.split('@').first : 'Learner');
+
+    final initials = nameToUse.trim().isNotEmpty
+        ? nameToUse.trim().split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').take(2).join()
+        : (cleanEmail.isNotEmpty ? cleanEmail[0].toUpperCase() : 'U');
+
+    state = UserProfile(
+      name: nameToUse,
+      email: cleanEmail,
+      phone: phone ?? '',
+      degree: '',
+      branch: '',
+      college: '',
+      yearOfPassing: '',
+      targetRole: targetRole ?? '',
+      aboutSummary: '',
+      careerPreference: '',
+      targetAnnualPackage: '',
+      experienceYears: 0.0,
+      githubUrl: '',
+      linkedinUrl: '',
+      portfolioUrl: '',
+      isEmailVerified: false,
+      avatarInitials: initials,
+      avatarImagePath: null,
+      isCvVerified: false,
+      skills: [],
+      domainScores: const {
+        'Java & Spring Boot': 0.70,
+        'Flutter & Mobile Apps': 0.65,
+        'Python, FastAPI & AI/ML': 0.60,
+        'System Architecture': 0.55,
+        'PostgreSQL & Cloud DBs': 0.50,
+      },
+    );
+
+    try {
+      final storage = ref.read(secureStorageProvider);
+      await storage.saveUserProfile(jsonEncode(state.toJson()));
+    } catch (_) {}
+
+    await refreshProfileFromDb(cleanEmail);
+  }
+
+  Future<void> clearProfile() async {
+    state = _defaultProfile();
+    try {
+      final storage = ref.read(secureStorageProvider);
+      await storage.clearAuth();
     } catch (_) {}
   }
 
   Future<void> refreshProfileFromDb([String? email]) async {
     try {
       final user = SupabaseConfig.client.auth.currentUser;
-      final targetEmail = email ?? user?.email ?? (state.email.isNotEmpty ? state.email : 'unii12634@gmail.com');
+      final targetEmail = (email != null && email.trim().isNotEmpty)
+          ? email.trim()
+          : (user?.email?.trim().isNotEmpty == true ? user!.email!.trim() : state.email.trim());
 
-      if (targetEmail.isNotEmpty) {
-        final res = await SupabaseConfig.client
-            .from('users')
-            .select()
-            .eq('email', targetEmail)
-            .maybeSingle();
+      if (targetEmail.isEmpty) return;
 
-        if (res != null) {
+      final res = await SupabaseConfig.client
+          .from('users')
+          .select()
+          .eq('email', targetEmail)
+          .maybeSingle();
+
+      if (res != null) {
           final dbName = res['full_name']?.toString() ?? state.name;
           final dbEmail = res['email']?.toString() ?? targetEmail;
           final dbPhone = res['phone_number']?.toString() ?? state.phone;
@@ -420,7 +487,6 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
           );
           debugPrint('✅ Refreshed 100% real profile from Supabase DB for $targetEmail (Resume: $dbResumeFileName, Strength: ${(state.profileStrengthPercentage * 100).toInt()}%)');
         }
-      }
     } catch (dbErr) {
       debugPrint('Supabase profile refresh notice: $dbErr');
     }

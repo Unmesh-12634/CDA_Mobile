@@ -20,14 +20,20 @@ public class InterviewReportController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<InterviewReport>>> getReports(
-            @RequestParam(required = false, defaultValue = "unii12634@gmail.com") String email) {
-        List<InterviewReport> reports = interviewReportService.getReports(email);
+            @RequestParam(required = false, defaultValue = "") String email) {
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.ok(List.of(), "Interview reports fetched"));
+        }
+        List<InterviewReport> reports = interviewReportService.getReports(email.trim());
         return ResponseEntity.ok(ApiResponse.ok(reports, "Interview reports fetched"));
     }
 
     @PostMapping("/save")
     public ResponseEntity<ApiResponse<Boolean>> saveReport(@RequestBody Map<String, Object> payload) {
-        String email = (String) payload.getOrDefault("email", "unii12634@gmail.com");
+        String email = (String) payload.getOrDefault("email", "");
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("User email is required"));
+        }
         String role = (String) payload.getOrDefault("targetRole", "Software Developer");
         double score = ((Number) payload.getOrDefault("overallScore", 85.0)).doubleValue();
         String summary = (String) payload.getOrDefault("feedbackSummary", "Completed session");

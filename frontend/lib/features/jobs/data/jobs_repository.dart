@@ -148,12 +148,13 @@ class JobsRepository {
   }) async {
     try {
       final user = SupabaseConfig.client.auth.currentUser;
-      final email = userEmail.trim().isNotEmpty ? userEmail.trim() : 'unii12634@gmail.com';
-      final userId = user?.id ?? '7e3f690f-38b7-4bfa-af4f-5afa4b79428f';
+      final email = userEmail.trim().isNotEmpty ? userEmail.trim() : (user?.email?.trim() ?? '');
+      if (email.isEmpty) return false;
+      final userId = user?.id;
 
       final payload = {
         'job_id': jobId,
-        'user_id': userId,
+        if (userId != null) 'user_id': userId,
         'applicant_email': email,
         'resume_url': resumeUrl,
         'status': 'Applied',
@@ -175,14 +176,16 @@ class JobsRepository {
       final user = SupabaseConfig.client.auth.currentUser;
       final email = (userEmail != null && userEmail.trim().isNotEmpty)
           ? userEmail.trim()
-          : (user?.email ?? 'unii12634@gmail.com');
-      final userId = user?.id ?? '7e3f690f-38b7-4bfa-af4f-5afa4b79428f';
+          : (user?.email?.trim() ?? '');
+      if (email.isEmpty) return [];
 
-      final response = await SupabaseConfig.client
+      final query = SupabaseConfig.client
           .from('job_applications')
           .select('*, jobs(*)')
-          .or('applicant_email.eq.$email,user_id.eq.$userId')
+          .eq('applicant_email', email)
           .order('applied_at', ascending: false);
+
+      final response = await query;
 
       if (response.isNotEmpty) {
         return response.map((item) {

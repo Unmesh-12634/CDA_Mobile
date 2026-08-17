@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/config/app_config.dart';
 import '../../../core/network/java_api_service.dart';
 import '../../../core/services/ai_quiz_generator_service.dart';
+import '../../auth/data/auth_provider.dart';
 import '../../profile/data/user_profile_provider.dart';
 import '../../home/data/weekly_goal_provider.dart';
 
@@ -177,7 +178,7 @@ class QuizNotifier extends StateNotifier<QuizState> {
     );
 
     final profile = ref.read(userProfileProvider);
-    final email = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final email = profile.email.isNotEmpty ? profile.email : ref.read(authProvider).email;
 
     // 1. Fetch today's attempts from Java backend
     int todayAttempts = 0;
@@ -250,7 +251,7 @@ class QuizNotifier extends StateNotifier<QuizState> {
 
       // 2. Persist result to database via Java backend
       final profile = ref.read(userProfileProvider);
-      final email = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+      final email = profile.email.isNotEmpty ? profile.email : ref.read(authProvider).email;
       int correctCount = 0;
       for (int i = 0; i < state.questions.length; i++) {
         if (state.selectedAnswers[i] == state.questions[i].correctOptionIndex) {

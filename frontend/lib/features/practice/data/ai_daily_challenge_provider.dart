@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/config/app_config.dart';
 import '../../../core/network/java_api_service.dart';
 import '../../../core/services/ai_quiz_generator_service.dart';
+import '../../auth/data/auth_provider.dart';
 import '../../profile/data/user_profile_provider.dart';
 import '../../home/data/weekly_goal_provider.dart';
 
@@ -239,7 +240,7 @@ class DailyDrillNotifier extends StateNotifier<DailyDrillState> {
     state = state.copyWith(isLoading: true, errorMessage: null, isCompleted: false, selectedOptions: {}, currentQuestionIndex: 0, score: 0);
 
     final profile = ref.read(userProfileProvider);
-    final email = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final email = profile.email.isNotEmpty ? profile.email : ref.read(authProvider).email;
 
     // 1. Fetch today's completed attempts from Java backend
     int todayAttempts = 0;

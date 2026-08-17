@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../../../auth/data/auth_provider.dart';
 import '../../../profile/data/user_profile_provider.dart';
 import '../../data/jobs_repository.dart';
 import '../../data/mock_jobs.dart';
@@ -60,7 +61,7 @@ class _JobsScreenState extends ConsumerState<JobsScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = ref.watch(userProfileProvider);
-    final userEmail = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final userEmail = profile.email.isNotEmpty ? profile.email : ref.watch(authProvider).email;
     final realJobsAsync = ref.watch(realJobsListProvider(null));
 
     final rawJobs = realJobsAsync.maybeWhen(
@@ -377,7 +378,7 @@ class _JobCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final profile = ref.watch(userProfileProvider);
-    final userEmail = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
+    final userEmail = profile.email.isNotEmpty ? profile.email : ref.watch(authProvider).email;
 
     final appliedSet = ref.watch(appliedJobIdsProvider(userEmail)).maybeWhen(
           data: (set) => set,

@@ -8,6 +8,8 @@ import '../../../../core/storage/local_cache_service.dart';
 import '../../../../core/storage/secure_storage_service.dart';
 import '../../../../shared/widgets/cda_app_logo.dart';
 import '../../../auth/data/auth_provider.dart';
+import '../../../profile/data/user_profile_provider.dart';
+
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -45,29 +47,33 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _checkSessionAndNavigate() async {
-    _timer = Timer(const Duration(milliseconds: 1400), () async {
+    _timer = Timer(const Duration(milliseconds: 1200), () async {
       if (!mounted) return;
 
       final session = SupabaseConfig.client.auth.currentSession;
       final authState = ref.read(authProvider);
       final isLocalLoggedIn = LocalCacheService().get<bool>('cda_auth_logged_in') ?? false;
       final cachedEmail = LocalCacheService().get<String>('cda_auth_email');
-      final secureProfile = await ref.read(secureStorageProvider).getUserProfile();
 
-      final bool hasActiveSession = session != null ||
-          authState.isAuthenticated ||
-          (isLocalLoggedIn && cachedEmail != null && cachedEmail.isNotEmpty) ||
-          (secureProfile != null && secureProfile.isNotEmpty);
+      final String? activeEmail = session?.user.email ??
+          (authState.isAuthenticated && authState.email.isNotEmpty ? authState.email : null) ??
+          (isLocalLoggedIn && cachedEmail != null && cachedEmail.isNotEmpty ? cachedEmail : null);
 
-      if (hasActiveSession) {
-        debugPrint('🚀 [Auto-Login] Active session found. Directing to /home');
-        context.go('/home');
+      if (activeEmail != null && activeEmail.isNotEmpty) {
+        debugPrint('🚀 [Auto-Login] Active persistent session found for $activeEmail. Navigating directly to /home');
+        ref.read(userProfileProvider.notifier).refreshProfileFromDb(activeEmail);
+        if (mounted) {
+          context.go('/home');
+        }
       } else {
-        debugPrint('🔒 [Auth Required] No active session. Directing to /login');
-        context.go('/login');
+        debugPrint('🔒 [Auth Required] No active session found. Navigating to /login');
+        if (mounted) {
+          context.go('/login');
+        }
       }
     });
   }
+
 
 
   @override

@@ -18,20 +18,31 @@ public class SubscriptionController {
     private SubscriptionService subscriptionService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<SubscriptionInfo>> getSubscription(@RequestParam(defaultValue = "unii12634@gmail.com") String email) {
-        SubscriptionInfo info = subscriptionService.getSubscription(email);
+    public ResponseEntity<ApiResponse<SubscriptionInfo>> getSubscription(@RequestParam(required = false, defaultValue = "") String email) {
+        if (email.trim().isEmpty()) {
+            SubscriptionInfo defaultInfo = new SubscriptionInfo();
+            defaultInfo.setPlanName("Standard Access");
+            defaultInfo.setTrialsRemaining(5);
+            defaultInfo.setTrialsTotal(5);
+            defaultInfo.setPro(false);
+            return ResponseEntity.ok(ApiResponse.success(defaultInfo));
+        }
+        SubscriptionInfo info = subscriptionService.getSubscription(email.trim());
         return ResponseEntity.ok(ApiResponse.success(info));
     }
 
     @PostMapping("/consume-trial")
-    public ResponseEntity<ApiResponse<Boolean>> consumeTrial(@RequestParam(defaultValue = "unii12634@gmail.com") String email) {
-        boolean ok = subscriptionService.consumeTrial(email);
+    public ResponseEntity<ApiResponse<Boolean>> consumeTrial(@RequestParam(required = false, defaultValue = "") String email) {
+        if (email.trim().isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.success("AI trial credit updated", true));
+        }
+        boolean ok = subscriptionService.consumeTrial(email.trim());
         return ResponseEntity.ok(ApiResponse.success("AI trial credit updated", ok));
     }
 
     @PostMapping("/upgrade-pro")
     public ResponseEntity<ApiResponse<Boolean>> upgradePro(
-            @RequestParam(defaultValue = "unii12634@gmail.com") String email,
+            @RequestParam(required = false, defaultValue = "") String email,
             @RequestParam(defaultValue = "1_month") String planCycle,
             @RequestBody(required = false) Map<String, String> body) {
         

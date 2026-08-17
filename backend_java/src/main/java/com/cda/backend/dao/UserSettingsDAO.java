@@ -14,7 +14,22 @@ public class UserSettingsDAO {
     private JdbcTemplate jdbcTemplate;
 
     public UserSettings getUserSettings(String email) {
-        String targetEmail = (email != null && !email.trim().isEmpty()) ? email : "unii12634@gmail.com";
+        String targetEmail = (email != null && !email.trim().isEmpty()) ? email.trim() : "";
+        if (targetEmail.isEmpty()) {
+            return new UserSettings(
+                "",
+                "Samantha (Natural AI)",
+                true,
+                true,
+                true,
+                true,
+                true,
+                "system",
+                false,
+                14.2,
+                LocalDateTime.now().toString()
+            );
+        }
         try {
             String sql = "SELECT user_email, ai_voice_persona, realtime_audio, auto_record, email_notifications, push_notifications, haptic_feedback, theme_mode, two_factor_enabled, updated_at FROM public.user_settings WHERE user_email = ? LIMIT 1";
             return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> new UserSettings(
@@ -50,8 +65,8 @@ public class UserSettingsDAO {
 
     public UserSettings saveUserSettings(UserSettings settings) {
         String targetEmail = (settings.getUserEmail() != null && !settings.getUserEmail().trim().isEmpty())
-                ? settings.getUserEmail()
-                : "unii12634@gmail.com";
+                ? settings.getUserEmail().trim()
+                : "";
 
         String now = LocalDateTime.now().toString();
         settings.setUserEmail(targetEmail);
