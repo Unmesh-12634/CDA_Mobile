@@ -390,49 +390,63 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   // ── Safe Avatar Builder ────────────────────────────────────────────────────
   Widget _buildAvatarWidget(UserProfile profile, bool isDark) {
-    bool hasFileImage = false;
-    if (profile.avatarImagePath != null && profile.avatarImagePath!.isNotEmpty && !kIsWeb) {
-      try {
-        hasFileImage = File(profile.avatarImagePath!).existsSync();
-      } catch (_) {
-        hasFileImage = false;
+    final imagePath = profile.avatarImagePath?.trim();
+    if (imagePath != null && imagePath.isNotEmpty) {
+      if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+        return ClipOval(
+          child: Image.network(
+            imagePath,
+            width: 80,
+            height: 80,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _buildAvatarFallback(profile.avatarInitials, isDark),
+          ),
+        );
+      } else if (!kIsWeb) {
+        try {
+          final file = File(imagePath);
+          if (file.existsSync()) {
+            return ClipOval(
+              child: Image.file(
+                file,
+                width: 80,
+                height: 80,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _buildAvatarFallback(profile.avatarInitials, isDark),
+              ),
+            );
+          }
+        } catch (_) {}
       }
     }
 
-    if (hasFileImage) {
-      return ClipOval(
-        child: Image.file(
-          File(profile.avatarImagePath!),
-          width: 80,
-          height: 80,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildAvatarFallback(profile.avatarInitials),
-        ),
-      );
-    } else if (profile.avatarImagePath != null && profile.avatarImagePath!.isNotEmpty && kIsWeb) {
-      return ClipOval(
-        child: Image.network(
-          profile.avatarImagePath!,
-          width: 80,
-          height: 80,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildAvatarFallback(profile.avatarInitials),
-        ),
-      );
-    }
-
-    return _buildAvatarFallback(profile.avatarInitials);
+    return _buildAvatarFallback(profile.avatarInitials, isDark);
   }
 
-  Widget _buildAvatarFallback(String initials) {
-    return Center(
-      child: Text(
-        initials.isEmpty ? 'UN' : initials,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w900,
-          fontSize: 28,
-          letterSpacing: 1.0,
+  Widget _buildAvatarFallback(String initials, bool isDark) {
+    final displayInitials = initials.trim().isNotEmpty ? initials.trim().toUpperCase() : 'UN';
+    return Container(
+      width: 80,
+      height: 80,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? const [Color(0xFF1E293B), Color(0xFF0F172A)]
+              : const [Color(0xFF0284C7), Color(0xFF0369A1)],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          displayInitials,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+            fontSize: 26,
+            letterSpacing: 1.2,
+          ),
         ),
       ),
     );

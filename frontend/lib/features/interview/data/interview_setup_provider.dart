@@ -1,5 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+enum InterviewTrack {
+  skillDrill,       // Focused Single-Skill Deep Dive (e.g. Java Concurrency, Flutter)
+  roleMock,         // Standard Role & Seniority Mock (e.g. Full Stack Java Dev)
+  customJd,         // Custom Job Description (paste any JD)
+  resumeBased,      // Tailored to user profile & uploaded resume projects
+  behavioralStar,   // HR / Leadership / Situational STAR format
+}
+
 class InterviewSetupConfig {
   final String candidateName;
   final String jobRole;
@@ -18,10 +26,12 @@ class InterviewSetupConfig {
   final String? jobId;
   final String? jobDescriptionText;
   final List<String> jobRequiredSkills;
+  final InterviewTrack track;
+  final String targetCompany;
 
   const InterviewSetupConfig({
     this.candidateName = '',
-    this.jobRole = '',
+    this.jobRole = 'Full Stack Java Developer',
     this.experienceLevel = 'Mid-Level',
     this.interviewType = 'Technical',
     this.difficulty = 'Intermediate',
@@ -37,6 +47,8 @@ class InterviewSetupConfig {
     this.jobId,
     this.jobDescriptionText,
     this.jobRequiredSkills = const [],
+    this.track = InterviewTrack.roleMock,
+    this.targetCompany = '',
   });
 
   InterviewSetupConfig copyWith({
@@ -57,6 +69,8 @@ class InterviewSetupConfig {
     String? jobId,
     String? jobDescriptionText,
     List<String>? jobRequiredSkills,
+    InterviewTrack? track,
+    String? targetCompany,
   }) {
     return InterviewSetupConfig(
       candidateName: candidateName ?? this.candidateName,
@@ -76,6 +90,8 @@ class InterviewSetupConfig {
       jobId: jobId ?? this.jobId,
       jobDescriptionText: jobDescriptionText ?? this.jobDescriptionText,
       jobRequiredSkills: jobRequiredSkills ?? this.jobRequiredSkills,
+      track: track ?? this.track,
+      targetCompany: targetCompany ?? this.targetCompany,
     );
   }
 }
@@ -101,6 +117,8 @@ class InterviewSetupNotifier extends StateNotifier<InterviewSetupConfig> {
     String? jobId,
     String? jobDescriptionText,
     List<String>? jobRequiredSkills,
+    InterviewTrack? track,
+    String? targetCompany,
   }) {
     state = state.copyWith(
       candidateName: candidateName,
@@ -120,7 +138,13 @@ class InterviewSetupNotifier extends StateNotifier<InterviewSetupConfig> {
       jobId: jobId,
       jobDescriptionText: jobDescriptionText,
       jobRequiredSkills: jobRequiredSkills,
+      track: track,
+      targetCompany: targetCompany,
     );
+  }
+
+  void reset() {
+    state = const InterviewSetupConfig();
   }
 }
 
@@ -128,4 +152,3 @@ final interviewSetupProvider =
     StateNotifierProvider<InterviewSetupNotifier, InterviewSetupConfig>((ref) {
   return InterviewSetupNotifier();
 });
-

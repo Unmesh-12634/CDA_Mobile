@@ -552,5 +552,31 @@ class JavaApiService {
     }
     return null;
   }
+
+  // ── RECORD USER ACTIVITY ──────────────────────────────────
+  static Future<bool> recordActivity({
+    required String email,
+    required String title,
+    required String subtitle,
+    String iconType = 'interview',
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/user/activities');
+      final res = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'title': title,
+          'subtitle': subtitle,
+          'iconType': iconType,
+        }),
+      ).timeout(const Duration(seconds: 3));
+      return res.statusCode == 200;
+    } catch (e) {
+      debugPrint('Java backend record activity notice: $e');
+      return false;
+    }
+  }
 }
 

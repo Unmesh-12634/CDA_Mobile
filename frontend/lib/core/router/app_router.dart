@@ -26,6 +26,7 @@ import '../../features/jobs/presentation/screens/application_tracker_screen.dart
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
 
 import '../../features/subscription/presentation/screens/subscription_details_screen.dart';
+import '../../features/practice/presentation/screens/ai_daily_challenge_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -137,6 +138,16 @@ final _router = GoRouter(
         state: state,
         isSlide: true,
         child: const NotificationsScreen(),
+      ),
+    ),
+    GoRoute(
+      path: '/daily-challenge',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const AiDailyChallengeScreen(),
       ),
     ),
     GoRoute(

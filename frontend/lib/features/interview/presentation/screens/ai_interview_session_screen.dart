@@ -9,9 +9,12 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../shared/widgets/glass_card.dart';
+import '../../../../core/network/java_api_service.dart';
 import '../../data/ai_interview_service.dart';
 import '../../data/interview_setup_provider.dart';
 import '../../../auth/data/auth_provider.dart';
+import '../../../home/data/weekly_goal_provider.dart';
+import '../../../home/data/user_activities_provider.dart';
 
 class AiInterviewSessionScreen extends ConsumerStatefulWidget {
   const AiInterviewSessionScreen({super.key});
@@ -644,6 +647,23 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       } catch (e) {
         debugPrint('Finish session error: $e');
       }
+    }
+
+    // 🏆 Advance 12:00 AM Streak and Record Activity
+    if (isCompleted) {
+      try {
+        final setupConfig = ref.read(interviewSetupProvider);
+        ref.read(weeklyGoalProvider.notifier).completeToday();
+        
+        final authState = ref.read(authProvider);
+        final email = authState.email.isNotEmpty ? authState.email : 'unii12634@gmail.com';
+        JavaApiService.recordActivity(
+          email: email,
+          title: 'Completed AI Mock Interview',
+          subtitle: setupConfig.jobRole.isNotEmpty ? setupConfig.jobRole : 'Technical Drill',
+          iconType: 'interview',
+        );
+      } catch (_) {}
     }
 
     if (!mounted) return;

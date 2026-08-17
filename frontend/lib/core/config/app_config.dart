@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 class AppConfig {
   /// USB Reverse Port Forwarding & Localhost (Port 8000 for Python AI Engine)
   static const String usbLocalhost8000 = 'http://127.0.0.1:8000';
+  static const String usbLocalhost8005 = 'http://127.0.0.1:8005';
   static const String usbLocalhost8080 = 'http://127.0.0.1:8080';
 
   /// Primary Wi-Fi IP address of host computer
@@ -15,6 +16,7 @@ class AppConfig {
 
   static const List<String> candidateHosts = [
     usbLocalhost8000,
+    usbLocalhost8005,
     usbLocalhost8080,
     defaultWifiHostPort8000,
     defaultWifiHostPort8080,

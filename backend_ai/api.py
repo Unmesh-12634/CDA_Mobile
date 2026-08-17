@@ -662,6 +662,59 @@ def delete_interview_block(block_id: str):
     success = supabase_repo.delete_interview_block(block_id)
     return {"status": "success" if success else "failed", "block_id": block_id}
 
+# ─────────────────────────────────────────────────────────────
+# AI Daily Skill Challenge & Weak-Area Target Endpoints
+# ─────────────────────────────────────────────────────────────
+from services.daily_challenge_service import daily_challenge_service
+
+class ChallengeSubmissionRequest(BaseModel):
+    user_email: str
+    challenge_id: Optional[str] = None
+    question_index: int = 1
+    question: str
+    model_answer: str
+    candidate_answer: str
+    target_skill: str = "Java & Spring Boot"
+
+@app.get("/api/v1/daily-challenge/today")
+def get_daily_challenge(email: str = "unii12634@gmail.com"):
+    """Fetches or generates today's targeted 2-question micro-challenge based on candidate's weak areas."""
+    try:
+        challenge = daily_challenge_service.get_or_generate_daily_challenge(email)
+        return {"status": "success", "challenge": challenge}
+    except Exception as e:
+        logger.error(f"Error fetching daily challenge: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/daily-challenge/refresh")
+def refresh_daily_challenge(email: str = "unii12634@gmail.com"):
+    """Forces generation of a brand new daily challenge pair for extra practice."""
+    try:
+        challenge = daily_challenge_service.get_or_generate_daily_challenge(email, force_refresh=True)
+        return {"status": "success", "challenge": challenge}
+    except Exception as e:
+        logger.error(f"Error refreshing daily challenge: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/v1/daily-challenge/submit")
+def submit_challenge_answer(submission: ChallengeSubmissionRequest):
+    """Evaluates candidate's answer against the AI model answer, returning score & detailed rubric feedback."""
+    try:
+        evaluation = daily_challenge_service.evaluate_challenge_answer(
+            question=submission.question,
+            model_answer=submission.model_answer,
+            candidate_answer=submission.candidate_answer,
+            skill=submission.target_skill,
+        )
+        return {
+            "status": "success",
+            "evaluation": evaluation,
+            "xp_awarded": 25 if submission.question_index == 1 else 50,
+        }
+    except Exception as e:
+        logger.error(f"Error evaluating daily challenge answer: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)

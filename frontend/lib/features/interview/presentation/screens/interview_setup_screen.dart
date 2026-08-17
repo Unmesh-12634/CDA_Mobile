@@ -14,6 +14,7 @@ import '../../../auth/data/auth_provider.dart';
 import '../../data/interview_setup_provider.dart';
 import '../../data/ai_interview_service.dart';
 import '../../data/interview_blocks_provider.dart';
+import '../../../profile/data/user_profile_provider.dart';
 
 // ─────────────────────────────────────────────────
 // Models & Enums (100% Aligned with Backend main.py)
@@ -50,6 +51,13 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
   late int _currentStep;
   InterviewRole? _selectedRole = InterviewRole.fullstack;
   final TextEditingController _customRoleCtrl = TextEditingController();
+
+  InterviewTrack _selectedTrack = InterviewTrack.roleMock;
+  String _selectedSkillDrill = 'Spring Boot Microservices';
+  final TextEditingController _customJdTitleCtrl = TextEditingController(text: 'Senior Software Engineer');
+  final TextEditingController _customJdCompanyCtrl = TextEditingController(text: 'Amazon / Top Tech');
+  final TextEditingController _customJdDescCtrl = TextEditingController(text: 'Looking for a Senior Software Engineer with strong experience in Distributed Systems, Java, AWS, Microservices, and high-concurrency architecture.');
+  String _selectedBehavioralScenario = 'Leadership & Ownership Under High Stakes';
 
   InterviewType? _selectedType = InterviewType.technical;
   double _difficulty = 2; // 1-Beginner, 2-Intermediate, 3-Advanced
@@ -493,7 +501,6 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
     final blocksState = ref.watch(interviewBlocksProvider);
     final blocksNotifier = ref.read(interviewBlocksProvider.notifier);
 
-    // Always show blocks — fallback to defaults if DB empty
     final allBlocks = blocksState.blocks.isNotEmpty
         ? blocksState.blocks
         : defaultFallbackBlocks;
@@ -515,7 +522,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Select Your Role',
+                      'AI Interview Setup',
                       style: AppTypography.headlineMobile.copyWith(
                         fontWeight: FontWeight.bold,
                         color: cs.onSurface,
@@ -523,7 +530,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${allBlocks.length} tracks available',
+                      'Choose your personalized interview track',
                       style: AppTypography.bodySmall.copyWith(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w600,
@@ -532,17 +539,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                   ],
                 ),
               ),
-              // Loading spinner while DB fetch is in progress
-              if (blocksState.isLoading)
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.primary,
-                  ),
-                )
-              else
+              if (_selectedTrack == InterviewTrack.roleMock)
                 GestureDetector(
                   onTap: () => _showAddJdDialog(context, blocksNotifier),
                   child: Container(
@@ -570,49 +567,530 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                 ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // ── 2-Column Compact Domain Cards Grid ───────────
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 1.55,
+          // ── Track Selector Tabs (5 Tracks) ─────────────────
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildTrackTab(
+                  label: '🏢 Role Mock',
+                  track: InterviewTrack.roleMock,
+                  cs: cs,
+                ),
+                const SizedBox(width: 8),
+                _buildTrackTab(
+                  label: '🎯 Skill Drill',
+                  track: InterviewTrack.skillDrill,
+                  cs: cs,
+                ),
+                const SizedBox(width: 8),
+                _buildTrackTab(
+                  label: '📄 Custom JD',
+                  track: InterviewTrack.customJd,
+                  cs: cs,
+                ),
+                const SizedBox(width: 8),
+                _buildTrackTab(
+                  label: '👤 Resume Profile',
+                  track: InterviewTrack.resumeBased,
+                  cs: cs,
+                ),
+                const SizedBox(width: 8),
+                _buildTrackTab(
+                  label: '🌟 STAR Behavioral',
+                  track: InterviewTrack.behavioralStar,
+                  cs: cs,
+                ),
+              ],
             ),
-            itemCount: allBlocks.length,
-            itemBuilder: (context, index) {
-              final block = allBlocks[index];
-              final isSelected = selectedId == block.id;
-              final accent = _accentForBlock(block);
-
-              return _buildJdGridCard(
-                cs: cs,
-                block: block,
-                isSelected: isSelected,
-                accent: accent,
-                onTap: () {
-                  setState(() => _selectedRole = InterviewRole.customRole);
-                  blocksNotifier.selectBlock(block);
-                  ref.read(interviewSetupProvider.notifier).updateConfig(
-                    jobRole: block.title,
-                    jobDescriptionText: block.description,
-                    jobRequiredSkills: block.requiredSkills,
-                    skills: block.requiredSkills,
-                    difficulty: block.difficulty.isNotEmpty ? block.difficulty : _difficultyLabel,
-                    experienceLevel: block.experienceLevel.isNotEmpty ? block.experienceLevel : _experienceLevel,
-                    interviewType: block.interviewType.isNotEmpty ? block.interviewType : _typeLabel,
-                    targetQuestionCount: block.targetQuestionCount > 0 ? block.targetQuestionCount : _targetQuestionCount,
-                  );
-                  _nextStep();
-                },
-              );
-            },
           ),
+          const SizedBox(height: 18),
+
+          // ── Dynamic View Based on Selected Track ───────────
+          if (_selectedTrack == InterviewTrack.roleMock)
+            _buildRoleMockView(cs, allBlocks, selectedId, blocksNotifier)
+          else if (_selectedTrack == InterviewTrack.skillDrill)
+            _buildSkillDrillView(cs)
+          else if (_selectedTrack == InterviewTrack.customJd)
+            _buildCustomJdView(cs)
+          else if (_selectedTrack == InterviewTrack.resumeBased)
+            _buildResumeProfileView(cs)
+          else if (_selectedTrack == InterviewTrack.behavioralStar)
+            _buildBehavioralStarView(cs),
         ],
       ),
+    );
+  }
+
+  Widget _buildTrackTab({
+    required String label,
+    required InterviewTrack track,
+    required ColorScheme cs,
+  }) {
+    final isSelected = _selectedTrack == track;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedTrack = track);
+        ref.read(interviewSetupProvider.notifier).updateConfig(track: track);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : cs.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(100),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : cs.outlineVariant.withValues(alpha: 0.4),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+            color: isSelected ? Colors.black : cs.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoleMockView(
+    ColorScheme cs,
+    List<InterviewBlockModel> allBlocks,
+    String? selectedId,
+    InterviewBlocksNotifier blocksNotifier,
+  ) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 1.55,
+      ),
+      itemCount: allBlocks.length,
+      itemBuilder: (context, index) {
+        final block = allBlocks[index];
+        final isSelected = selectedId == block.id;
+        final accent = _accentForBlock(block);
+
+        return _buildJdGridCard(
+          cs: cs,
+          block: block,
+          isSelected: isSelected,
+          accent: accent,
+          onTap: () {
+            setState(() => _selectedRole = InterviewRole.customRole);
+            blocksNotifier.selectBlock(block);
+            ref.read(interviewSetupProvider.notifier).updateConfig(
+              track: InterviewTrack.roleMock,
+              jobRole: block.title,
+              jobDescriptionText: block.description,
+              jobRequiredSkills: block.requiredSkills,
+              skills: block.requiredSkills,
+              difficulty: block.difficulty.isNotEmpty ? block.difficulty : _difficultyLabel,
+              experienceLevel: block.experienceLevel.isNotEmpty ? block.experienceLevel : _experienceLevel,
+              interviewType: block.interviewType.isNotEmpty ? block.interviewType : _typeLabel,
+              targetQuestionCount: block.targetQuestionCount > 0 ? block.targetQuestionCount : _targetQuestionCount,
+            );
+            _nextStep();
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSkillDrillView(ColorScheme cs) {
+    final skills = [
+      {'name': 'Spring Boot Microservices', 'icon': Icons.bolt_rounded, 'color': const Color(0xFF6DB33F), 'desc': 'REST APIs, Actuator, Security & JPA'},
+      {'name': 'Java Concurrency & Threads', 'icon': Icons.tune_rounded, 'color': const Color(0xFFE76F00), 'desc': 'Executors, Locks, Volatile & ForkJoin'},
+      {'name': 'Flutter & State Management', 'icon': Icons.phone_android_rounded, 'color': const Color(0xFF54C5F8), 'desc': 'Riverpod, AsyncValue & Widget Lifecycle'},
+      {'name': 'PostgreSQL & Query Tuning', 'icon': Icons.storage_rounded, 'color': const Color(0xFF336791), 'desc': 'B-Tree, EXPLAIN ANALYZE & Transactions'},
+      {'name': 'Data Structures & Algorithms', 'icon': Icons.psychology_rounded, 'color': const Color(0xFF10B981), 'desc': 'Trees, Graphs, DP & Time Complexity'},
+      {'name': 'System Design & Distributed Systems', 'icon': Icons.lan_rounded, 'color': const Color(0xFF8B5CF6), 'desc': 'Load Balancing, Caching, CAP & Sharding'},
+      {'name': 'Python, FastAPI & AI RAG', 'icon': Icons.auto_awesome_rounded, 'color': const Color(0xFFF59E0B), 'desc': 'LangChain, Vector DBs & Embeddings'},
+      {'name': 'Docker, Kubernetes & CI/CD', 'icon': Icons.cloud_done_rounded, 'color': const Color(0xFF0EA5E9), 'desc': 'Containers, Pods, Helm & Pipelines'},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Target Technical Competency',
+          style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: skills.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final s = skills[index];
+            final name = s['name'] as String;
+            final icon = s['icon'] as IconData;
+            final color = s['color'] as Color;
+            final desc = s['desc'] as String;
+            final isSelected = _selectedSkillDrill == name;
+
+            return GestureDetector(
+              onTap: () {
+                setState(() => _selectedSkillDrill = name);
+                ref.read(interviewSetupProvider.notifier).updateConfig(
+                  track: InterviewTrack.skillDrill,
+                  jobRole: 'Skill Drill: $name',
+                  skills: [name],
+                  interviewType: 'Technical',
+                  jobDescriptionText: 'Deep-dive technical competency drill focusing strictly on $name.',
+                );
+                _nextStep();
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isSelected ? color.withValues(alpha: 0.15) : cs.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isSelected ? color : cs.outlineVariant.withValues(alpha: 0.3),
+                    width: isSelected ? 2 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(icon, color: color, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            desc,
+                            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCustomJdView(ColorScheme cs) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Target Role & Company',
+          style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _customJdTitleCtrl,
+          decoration: InputDecoration(
+            labelText: 'Target Job Title',
+            hintText: 'e.g. SDE-2 Java & Distributed Systems',
+            prefixIcon: const Icon(Icons.work_outline_rounded),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _customJdCompanyCtrl,
+          decoration: InputDecoration(
+            labelText: 'Company Name',
+            hintText: 'e.g. Amazon, Google, Swiggy, TCS',
+            prefixIcon: const Icon(Icons.business_rounded),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Paste Job Description (JD)',
+          style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _customJdDescCtrl,
+          maxLines: 5,
+          decoration: InputDecoration(
+            hintText: 'Paste the requirements, tech stack, and responsibilities...',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.auto_awesome_rounded),
+            label: const Text('Start Custom JD Interview', style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () {
+              final title = _customJdTitleCtrl.text.trim().isNotEmpty ? _customJdTitleCtrl.text.trim() : 'Custom Role';
+              final company = _customJdCompanyCtrl.text.trim();
+              final desc = _customJdDescCtrl.text.trim();
+
+              ref.read(interviewSetupProvider.notifier).updateConfig(
+                track: InterviewTrack.customJd,
+                jobRole: company.isNotEmpty ? '$title @ $company' : title,
+                jobDescriptionText: desc,
+                targetCompany: company,
+                interviewType: 'Technical',
+              );
+              _nextStep();
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResumeProfileView(ColorScheme cs) {
+    final profile = ref.watch(userProfileProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cs.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                    child: const Icon(Icons.person_rounded, color: AppColors.primary, size: 28),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          profile.name.isNotEmpty ? profile.name : 'Candidate Profile',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        Text(
+                          profile.targetRole.isNotEmpty ? profile.targetRole : 'Full Stack Developer',
+                          style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              Text(
+                'Detected Profile Skills:',
+                style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: (profile.skills.isNotEmpty ? profile.skills : ['Java', 'Flutter', 'Spring Boot', 'SQL', 'Git'])
+                    .map((s) => Chip(
+                          label: Text(s, style: const TextStyle(fontSize: 11)),
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                        ))
+                    .toList(),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Academic / Project Focus:',
+                style: AppTypography.bodySmall.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                profile.degree.isNotEmpty
+                    ? '${profile.degree} ${profile.branch.isNotEmpty ? "- ${profile.branch}" : ""} (${profile.yearOfPassing})'
+                    : 'Computer Science & Engineering',
+                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.psychology_rounded),
+            label: const Text('Start Profile-Personalized Interview', style: TextStyle(fontWeight: FontWeight.bold)),
+            onPressed: () {
+              ref.read(interviewSetupProvider.notifier).updateConfig(
+                track: InterviewTrack.resumeBased,
+                candidateName: profile.name,
+                jobRole: profile.targetRole.isNotEmpty ? profile.targetRole : 'Full Stack Developer',
+                skills: profile.skills.isNotEmpty ? profile.skills : ['Java', 'Flutter', 'Spring Boot'],
+                interviewType: 'Resume Based',
+                jobDescriptionText: 'Personalized interview probing candidate actual resume projects, academic coursework, and tech stack.',
+              );
+              _nextStep();
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBehavioralStarView(ColorScheme cs) {
+    final scenarios = [
+      {
+        'title': 'Leadership & High-Stakes Ownership',
+        'desc': 'Tell me about a time you took ownership of a critical project under ambiguous requirements.',
+        'icon': Icons.military_tech_rounded,
+        'color': const Color(0xFFF59E0B),
+      },
+      {
+        'title': 'Cross-Functional & Engineer Conflict',
+        'desc': 'Describe a situation where you strongly disagreed with a senior engineer or product manager.',
+        'icon': Icons.groups_rounded,
+        'color': const Color(0xFF3B82F6),
+      },
+      {
+        'title': 'Urgent Outage & High-Pressure Delivery',
+        'desc': 'Tell me about a production incident or tight deadline and how you prioritized under pressure.',
+        'icon': Icons.speed_rounded,
+        'color': const Color(0xFFEF4444),
+      },
+      {
+        'title': 'Technical Trade-off & Architectural Pivot',
+        'desc': 'Give an example of choosing speed to market over architectural purity, and the consequences.',
+        'icon': Icons.architecture_rounded,
+        'color': const Color(0xFF10B981),
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.stars_rounded, color: Color(0xFFF59E0B), size: 24),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'STAR Method: Situation → Task → Action → Result. Answer with specific personal metrics!',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: scenarios.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final sc = scenarios[index];
+            final title = sc['title'] as String;
+            final desc = sc['desc'] as String;
+            final icon = sc['icon'] as IconData;
+            final color = sc['color'] as Color;
+
+            return GestureDetector(
+              onTap: () {
+                setState(() => _selectedBehavioralScenario = title);
+                ref.read(interviewSetupProvider.notifier).updateConfig(
+                  track: InterviewTrack.behavioralStar,
+                  jobRole: 'STAR Behavioral: $title',
+                  interviewType: 'Behavioral',
+                  jobDescriptionText: desc,
+                );
+                _nextStep();
+              },
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: color.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(icon, color: color, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            desc,
+                            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 

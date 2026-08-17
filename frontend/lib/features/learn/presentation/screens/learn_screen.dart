@@ -1170,6 +1170,23 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
     }
   }
 
+  static const List<String> _quickEmojis = ['❤️', '🔥', '👏', '💡', '🚀', '💯', '🙌', '✨'];
+
+  void _insertEmoji(String emoji) {
+    final text = _commentCtrl.text;
+    final selection = _commentCtrl.selection;
+    if (selection.start >= 0) {
+      final newText = text.replaceRange(selection.start, selection.end, emoji);
+      _commentCtrl.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: selection.start + emoji.length),
+      );
+    } else {
+      _commentCtrl.text = '$text$emoji';
+      _commentCtrl.selection = TextSelection.collapsed(offset: _commentCtrl.text.length);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
@@ -1182,21 +1199,24 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
     return Padding(
       padding: EdgeInsets.only(bottom: bottomInset),
       child: Container(
-        height: mediaQuery.size.height * 0.70,
+        height: mediaQuery.size.height * 0.72,
         decoration: const BoxDecoration(
           color: Color(0xFF0F172A),
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [
+            BoxShadow(color: Colors.black54, blurRadius: 20, spreadRadius: 5),
+          ],
         ),
         child: Column(
           children: [
             const SizedBox(height: 10),
             Center(
               child: Container(
-                width: 40,
-                height: 4,
+                width: 44,
+                height: 4.5,
                 decoration: BoxDecoration(
                   color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(3),
                 ),
               ),
             ),
@@ -1206,16 +1226,38 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Comments (${_comments.length})',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    children: [
+                      const Text(
+                        'Comments',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${_comments.length}',
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 20),
+                    icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 22),
+                    splashRadius: 20,
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -1232,24 +1274,31 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.chat_bubble_outline_rounded, size: 40, color: Colors.white30),
-                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.05),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.chat_bubble_outline_rounded, size: 36, color: Colors.white38),
+                              ),
+                              const SizedBox(height: 12),
                               const Text(
                                 'No comments yet',
-                                style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14.5),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 'Be the first to share your thoughts!',
-                                style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12.5),
                               ),
                             ],
                           ),
                         )
                       : ListView.separated(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                           itemCount: _comments.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 14),
+                          separatorBuilder: (_, __) => const SizedBox(height: 16),
                           itemBuilder: (context, i) {
                             final c = _comments[i];
                             final isMyComment = (c.userEmail.isNotEmpty && c.userEmail == currentEmail) ||
@@ -1259,20 +1308,39 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
                             return Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                CircleAvatar(
-                                  radius: 16,
-                                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                                  backgroundImage: (c.userAvatar != null && c.userAvatar!.isNotEmpty)
-                                      ? NetworkImage(c.userAvatar!)
-                                      : null,
-                                  child: (c.userAvatar == null || c.userAvatar!.isEmpty)
-                                      ? Text(
-                                          c.userName.isNotEmpty ? c.userName[0].toUpperCase() : 'U',
-                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                                        )
-                                      : null,
+                                // Avatar
+                                Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFF0284C7), Color(0xFF0369A1)],
+                                    ),
+                                  ),
+                                  child: ClipOval(
+                                    child: (c.userAvatar != null && c.userAvatar!.isNotEmpty)
+                                        ? Image.network(
+                                            c.userAvatar!,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Center(
+                                              child: Text(
+                                                c.userName.isNotEmpty ? c.userName[0].toUpperCase() : 'U',
+                                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                              ),
+                                            ),
+                                          )
+                                        : Center(
+                                            child: Text(
+                                              c.userName.isNotEmpty ? c.userName[0].toUpperCase() : 'U',
+                                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                            ),
+                                          ),
+                                  ),
                                 ),
                                 const SizedBox(width: 12),
+
+                                // Comment Content
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1284,23 +1352,24 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
-                                              fontSize: 12.5,
+                                              fontSize: 13,
                                             ),
                                           ),
                                           if (isMyComment) ...[
                                             const SizedBox(width: 6),
                                             Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                                               decoration: BoxDecoration(
                                                 color: AppColors.primary.withValues(alpha: 0.2),
-                                                borderRadius: BorderRadius.circular(4),
+                                                borderRadius: BorderRadius.circular(6),
+                                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.4), width: 0.8),
                                               ),
                                               child: const Text(
                                                 'You',
                                                 style: TextStyle(
                                                   color: AppColors.primary,
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.w800,
                                                 ),
                                               ),
                                             ),
@@ -1309,32 +1378,35 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
                                           Text(
                                             _formatTimeAgo(c.createdAt),
                                             style: TextStyle(
-                                              color: Colors.white.withValues(alpha: 0.5),
-                                              fontSize: 10.5,
+                                              color: Colors.white.withValues(alpha: 0.45),
+                                              fontSize: 11,
                                               fontWeight: FontWeight.w500,
                                             ),
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 3),
+                                      const SizedBox(height: 4),
                                       Text(
                                         c.comment,
                                         style: const TextStyle(
-                                          color: Color(0xFFF1F5F9),
-                                          fontSize: 13,
-                                          height: 1.3,
+                                          color: Color(0xFFF8FAFC),
+                                          fontSize: 13.5,
+                                          height: 1.35,
+                                          fontWeight: FontWeight.w400,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
+
+                                // Actions (Delete if own, else small heart)
                                 if (isMyComment)
                                   isDeletingThis
                                       ? const Padding(
                                           padding: EdgeInsets.all(8.0),
                                           child: SizedBox(
-                                            width: 14,
-                                            height: 14,
+                                            width: 16,
+                                            height: 16,
                                             child: CircularProgressIndicator(
                                               strokeWidth: 2,
                                               color: Color(0xFFEF4444),
@@ -1344,12 +1416,12 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
                                       : IconButton(
                                           icon: const Icon(
                                             Icons.delete_outline_rounded,
-                                            size: 16,
-                                            color: Color(0xFF94A3B8),
+                                            size: 18,
+                                            color: Color(0xFFEF4444),
                                           ),
                                           tooltip: 'Delete comment',
                                           splashRadius: 18,
-                                          padding: EdgeInsets.zero,
+                                          padding: const EdgeInsets.all(4),
                                           constraints: const BoxConstraints(),
                                           onPressed: () => _deleteComment(c),
                                         ),
@@ -1359,48 +1431,108 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
                         ),
             ),
 
+            // Quick Emoji Reaction Bar (Instagram-style)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E293B),
+                border: Border(top: BorderSide(color: Colors.white10)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: _quickEmojis.map((emoji) {
+                  return InkWell(
+                    onTap: () => _insertEmoji(emoji),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      child: Text(
+                        emoji,
+                        style: const TextStyle(fontSize: 20),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
             // Comment Input Bar
             Container(
-              padding: EdgeInsets.fromLTRB(16, 10, 16, 12 + (bottomInset == 0 ? bottomPadding : 4)),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
-                border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+              padding: EdgeInsets.fromLTRB(14, 8, 14, 10 + (bottomInset == 0 ? bottomPadding : 4)),
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E293B),
               ),
               child: Row(
                 children: [
+                  // Mini User Avatar
+                  Container(
+                    width: 32,
+                    height: 32,
+                    margin: const EdgeInsets.only(right: 10),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF0284C7), Color(0xFF0369A1)],
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        currentName.isNotEmpty ? currentName[0].toUpperCase() : 'U',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ),
+
+                  // Input Box with clear text visibility
                   Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0F172A),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: const Color(0xFF334155), width: 1.2),
+                    child: Theme(
+                      data: ThemeData.dark().copyWith(
+                        textSelectionTheme: const TextSelectionThemeData(
+                          cursorColor: Color(0xFF38BDF8),
+                          selectionColor: Color(0x6638BDF8),
+                          selectionHandleColor: Color(0xFF38BDF8),
+                        ),
                       ),
                       child: TextField(
                         controller: _commentCtrl,
                         cursorColor: const Color(0xFF38BDF8),
-                        cursorWidth: 2.5,
+                        cursorWidth: 2.2,
                         cursorRadius: const Radius.circular(2),
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14.5,
+                          color: Color(0xFFF8FAFC),
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
-                        decoration: const InputDecoration(
-                          hintText: 'Add a comment...',
-                          hintStyle: TextStyle(
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: const Color(0xFF0F172A),
+                          hintText: 'Add a comment as $currentName...',
+                          hintStyle: const TextStyle(
                             color: Color(0xFF94A3B8),
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w400,
                           ),
-                          border: InputBorder.none,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: const BorderSide(color: Color(0xFF334155), width: 1.2),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: const BorderSide(color: Color(0xFF334155), width: 1.2),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(24),
+                            borderSide: const BorderSide(color: Color(0xFF38BDF8), width: 1.5),
+                          ),
                           isDense: true,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                         ),
                         onSubmitted: (_) => _postComment(),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
+
                   _isPosting
                       ? const SizedBox(
                           width: 36,
@@ -1411,10 +1543,12 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
                           ),
                         )
                       : Container(
-                          width: 40,
-                          height: 40,
+                          width: 38,
+                          height: 38,
                           decoration: const BoxDecoration(
-                            color: AppColors.primary,
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF0284C7), Color(0xFF0369A1)],
+                            ),
                             shape: BoxShape.circle,
                           ),
                           child: IconButton(

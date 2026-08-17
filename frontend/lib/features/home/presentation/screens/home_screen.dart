@@ -8,6 +8,7 @@ import '../../../../shared/providers/selected_skill_provider.dart';
 import '../../../interview/data/interview_setup_provider.dart';
 import '../../../interview/data/interview_blocks_provider.dart';
 import '../../../interview/data/models/interview_block_model.dart';
+import '../../../jobs/data/mock_jobs.dart';
 import '../../../jobs/data/jobs_repository.dart';
 import '../../../jobs/data/saved_jobs_provider.dart';
 import '../../../subscription/data/subscription_provider.dart';
@@ -19,6 +20,7 @@ import '../../../interview/data/interview_reports_provider.dart';
 import '../../../notifications/data/notifications_provider.dart';
 import '../../data/user_activities_provider.dart';
 import '../../../../core/services/notification_service.dart';
+import '../widgets/ai_daily_challenge_card.dart';
 
 // ─────────────────────────────────────────────────────────────
 // HOME SCREEN — Premium CDA Career Companion
@@ -456,6 +458,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             // ── 2. Hero Banner ─────────────────────────────────
             SliverToBoxAdapter(child: _buildHero()),
 
+            // ── 2.5 Daily AI Skill Challenge Card ──────────────
+            const SliverToBoxAdapter(child: AiDailyChallengeCard()),
+
             // ── 3. Quick Access Hub 2×2 ────────────────────────
             SliverToBoxAdapter(child: _buildSectionHeader('Quick Access Hub')),
             SliverToBoxAdapter(child: _buildQuickActions()),
@@ -557,30 +562,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                 ),
                               ],
                             ),
-                            child: profile.avatarImagePath != null
+                            child: (profile.avatarImagePath != null && profile.avatarImagePath!.isNotEmpty)
                                 ? ClipOval(
-                                    child: kIsWeb
+                                    child: (profile.avatarImagePath!.startsWith('http://') || profile.avatarImagePath!.startsWith('https://'))
                                         ? Image.network(
                                             profile.avatarImagePath!,
                                             width: 44,
                                             height: 44,
                                             fit: BoxFit.cover,
                                             errorBuilder: (_, __, ___) => Center(
-                                              child: Text(profile.avatarInitials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                                              child: Text(profile.avatarInitials.isNotEmpty ? profile.avatarInitials : 'UN', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
                                             ),
                                           )
-                                        : Image.file(
-                                            File(profile.avatarImagePath!),
-                                            width: 44,
-                                            height: 44,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) => Center(
-                                              child: Text(profile.avatarInitials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
-                                            ),
-                                          ),
+                                        : (!kIsWeb && File(profile.avatarImagePath!).existsSync())
+                                            ? Image.file(
+                                                File(profile.avatarImagePath!),
+                                                width: 44,
+                                                height: 44,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) => Center(
+                                                  child: Text(profile.avatarInitials.isNotEmpty ? profile.avatarInitials : 'UN', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                                                ),
+                                              )
+                                            : Center(
+                                                child: Text(profile.avatarInitials.isNotEmpty ? profile.avatarInitials : 'UN', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                                              ),
                                   )
                                 : Center(
-                                    child: Text(profile.avatarInitials,
+                                    child: Text(profile.avatarInitials.isNotEmpty ? profile.avatarInitials : 'UN',
                                         style: const TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.w800,
@@ -1543,14 +1552,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     final skillLabel = (skill.isEmpty || skill == 'All') ? 'Tech' : skill;
     final jobsAsync = ref.watch(realJobsListProvider(null));
 
-    final allJobs = jobsAsync.maybeWhen(data: (list) => list, orElse: () => []);
-    final matchingJobs = (skill == 'All' || skill.isEmpty)
+    final List<Job> allJobs = jobsAsync.maybeWhen(
+      data: (list) => list,
+      orElse: () => <Job>[],
+    );
+    final String targetSkill = skill.toLowerCase();
+    final List<Job> matchingJobs = (skill == 'All' || skill.isEmpty)
         ? allJobs
-        : allJobs.where((j) =>
-            j.title.toLowerCase().contains(skill.toLowerCase()) ||
-            j.category.toLowerCase().contains(skill.toLowerCase()) ||
-            j.tags.any((s) => s.toLowerCase().contains(skill.toLowerCase()))
-          ).toList();
+        : allJobs.where((Job j) {
+            final titleMatch = j.title.toLowerCase().contains(targetSkill);
+            final catMatch = j.category.toLowerCase().contains(targetSkill);
+            final tagMatch = j.tags.any((String s) => s.toLowerCase().contains(targetSkill));
+            return titleMatch || catMatch || tagMatch;
+          }).toList();
 
     final jobCount = matchingJobs.isNotEmpty ? matchingJobs.length : (skill == 'All' ? allJobs.length : 0);
     final companyCount = matchingJobs.isNotEmpty
@@ -2326,14 +2340,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         child: Text('Failed to load real jobs: $e', style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)),
       ),
       data: (jobsList) {
-        final sourceJobs = jobsList;
-        final matchingJobs = skill == 'All'
+        final List<Job> sourceJobs = jobsList;
+        final String targetSkill = skill.toLowerCase();
+        final List<Job> matchingJobs = (skill == 'All' || skill.isEmpty)
             ? sourceJobs
-            : sourceJobs.where((j) =>
-                j.title.toLowerCase().contains(skill.toLowerCase()) ||
-                j.category.toLowerCase().contains(skill.toLowerCase()) ||
-                j.tags.any((s) => s.toLowerCase().contains(skill.toLowerCase()))
-              ).toList();
+            : sourceJobs.where((Job j) {
+                final titleMatch = j.title.toLowerCase().contains(targetSkill);
+                final catMatch = j.category.toLowerCase().contains(targetSkill);
+                final tagMatch = j.tags.any((String s) => s.toLowerCase().contains(targetSkill));
+                return titleMatch || catMatch || tagMatch;
+              }).toList();
 
         if (matchingJobs.isEmpty) {
           return Padding(

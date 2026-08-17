@@ -114,11 +114,12 @@ class ReelsRepository {
 
         if (skill != null && skill != 'All' && skill.trim().isNotEmpty) {
           final target = skill.trim().toLowerCase();
-          final filtered = list.where((r) =>
-              r.category.toLowerCase().contains(target) ||
-              r.title.toLowerCase().contains(target) ||
-              r.tags.any((t) => t.toLowerCase().contains(target))
-          ).toList();
+          final List<ReelModel> filtered = list.where((ReelModel r) {
+            final catMatch = r.category.toLowerCase().contains(target);
+            final titleMatch = r.title.toLowerCase().contains(target);
+            final tagMatch = r.tags.any((String t) => t.toLowerCase().contains(target));
+            return catMatch || titleMatch || tagMatch;
+          }).toList();
           return (filtered.isNotEmpty ? filtered : list).take(limit).toList();
         }
 
