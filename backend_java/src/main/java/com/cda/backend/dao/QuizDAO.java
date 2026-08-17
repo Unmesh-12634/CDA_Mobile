@@ -74,6 +74,16 @@ public class QuizDAO {
         }
     }
 
+    public int getTodayCount(String email) {
+        try {
+            String sql = "SELECT COUNT(*) FROM public.quiz_results WHERE user_email = ? AND completed_at >= CURRENT_DATE";
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, email);
+            return count != null ? count : 0;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
     public int getBestScore(String email) {
         try {
             String sql = "SELECT COALESCE(MAX(score), 0) FROM public.quiz_results WHERE user_email = ?";
@@ -84,3 +94,4 @@ public class QuizDAO {
         }
     }
 }
+

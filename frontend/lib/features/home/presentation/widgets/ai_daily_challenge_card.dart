@@ -82,7 +82,7 @@ class AiDailyChallengeCard extends ConsumerWidget {
                                     ),
                                   ),
                                   const SizedBox(width: 6),
-                                  Container(
+                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF10B981).withValues(alpha: 0.15),
@@ -94,6 +94,22 @@ class AiDailyChallengeCard extends ConsumerWidget {
                                         color: Color(0xFF10B981),
                                         fontSize: 9.5,
                                         fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      '${challenge.todayCompleted}/5 Today',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
                                       ),
                                     ),
                                   ),
@@ -150,7 +166,7 @@ class AiDailyChallengeCard extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            '2 dynamic practice questions crafted from your reports.',
+                            '5 adaptive MCQs tailored to your interview performance.',
                             style: TextStyle(
                               fontSize: 11.5,
                               color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
@@ -194,6 +210,7 @@ class AiDailyChallengeCard extends ConsumerWidget {
                         ),
                       ],
                     ),
+
                   ],
                 ),
               ),

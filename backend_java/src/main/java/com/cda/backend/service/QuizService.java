@@ -21,4 +21,9 @@ public class QuizService {
     public List<QuizResult> getHistory(String email) {
         return quizDAO.fetchHistory(email, 20);
     }
+
+    public int getTodayCount(String email) {
+        return quizDAO.getTodayCount(email);
+    }
 }
+

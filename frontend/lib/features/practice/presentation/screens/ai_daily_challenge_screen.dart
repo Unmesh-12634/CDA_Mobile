@@ -1,187 +1,17 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:http/http.dart' as http;
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/config/app_config.dart';
-import '../../../profile/data/user_profile_provider.dart';
-import '../../../home/data/weekly_goal_provider.dart';
 import '../../data/ai_daily_challenge_provider.dart';
 
-class AiDailyChallengeScreen extends ConsumerStatefulWidget {
+class AiDailyChallengeScreen extends ConsumerWidget {
   const AiDailyChallengeScreen({super.key});
 
   @override
-  ConsumerState<AiDailyChallengeScreen> createState() => _AiDailyChallengeScreenState();
-}
-
-class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen> {
-  int _currentQuestionIndex = 0; // 0 for Q1, 1 for Q2
-  final TextEditingController _answerController = TextEditingController();
-  
-  bool _isEvaluating = false;
-  bool _isRefreshing = false;
-  ChallengeEvaluation? _evaluationQ1;
-  ChallengeEvaluation? _evaluationQ2;
-
-  // Voice recording state
-  final stt.SpeechToText _speech = stt.SpeechToText();
-  bool _isListening = false;
-  bool _speechAvailable = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _initSpeech();
-  }
-
-  Future<void> _initSpeech() async {
-    try {
-      _speechAvailable = await _speech.initialize(
-        onError: (err) => setState(() => _isListening = false),
-        onStatus: (status) {
-          if (status == 'notListening' || status == 'done') {
-            setState(() => _isListening = false);
-          }
-        },
-      );
-    } catch (_) {
-      _speechAvailable = false;
-    }
-  }
-
-  void _toggleListening() async {
-    if (!_speechAvailable) {
-      await _initSpeech();
-    }
-    if (_isListening) {
-      await _speech.stop();
-      setState(() => _isListening = false);
-    } else {
-      if (_speechAvailable) {
-        setState(() => _isListening = true);
-        _speech.listen(
-          onResult: (result) {
-            setState(() {
-              _answerController.text = result.recognizedWords;
-            });
-          },
-        );
-      }
-    }
-  }
-
-  Future<void> _refreshQuestions() async {
-    setState(() {
-      _isRefreshing = true;
-      _evaluationQ1 = null;
-      _evaluationQ2 = null;
-      _currentQuestionIndex = 0;
-      _answerController.clear();
-    });
-
-    final profile = ref.read(userProfileProvider);
-    final email = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
-    await fetchRefreshedDailyChallenge(email);
-    ref.invalidate(dailyChallengeProvider);
-
-    setState(() => _isRefreshing = false);
-  }
-
-  Future<void> _submitAnswer(DailyChallengeModel challenge) async {
-    final text = _answerController.text.trim();
-    if (text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please type or speak your answer first.'),
-          backgroundColor: Color(0xFFE11D48),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    if (_isListening) {
-      await _speech.stop();
-      setState(() => _isListening = false);
-    }
-
-    setState(() => _isEvaluating = true);
-
-    final isQ1 = _currentQuestionIndex == 0;
-    final question = isQ1 ? challenge.question1 : challenge.question2;
-    final modelAns = isQ1 ? challenge.question1ModelAnswer : challenge.question2ModelAnswer;
-    final profile = ref.read(userProfileProvider);
-    final email = profile.email.isNotEmpty ? profile.email : 'unii12634@gmail.com';
-
-    try {
-      final baseUrl = AppConfig.activeHost;
-      final uri = Uri.parse('$baseUrl/api/v1/daily-challenge/submit');
-      final res = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'user_email': email,
-          'question_index': _currentQuestionIndex + 1,
-          'question': question,
-          'model_answer': modelAns,
-          'candidate_answer': text,
-          'target_skill': challenge.targetSkill,
-        }),
-      ).timeout(const Duration(seconds: 15));
-
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        final eval = ChallengeEvaluation.fromJson(data['evaluation']);
-
-        setState(() {
-          if (isQ1) {
-            _evaluationQ1 = eval;
-          } else {
-            _evaluationQ2 = eval;
-          }
-        });
-
-        // Trigger streak progression if completed
-        ref.read(weeklyGoalProvider.notifier).completeToday();
-      } else {
-        throw Exception('Server returned ${res.statusCode}');
-      }
-    } catch (_) {
-      // Offline / fallback evaluator
-      final fallbackEval = ChallengeEvaluation(
-        score: 84.0,
-        feedback: 'Well-reasoned response covering core technical requirements and architectural trade-offs.',
-        keyStrengths: ['Accurate architectural breakdown', 'Clear structural reasoning'],
-        areasToImprove: ['Mention latency benchmarks and failure recovery edge cases'],
-        modelAnswerSummary: modelAns,
-      );
-      setState(() {
-        if (isQ1) {
-          _evaluationQ1 = fallbackEval;
-        } else {
-          _evaluationQ2 = fallbackEval;
-        }
-      });
-      ref.read(weeklyGoalProvider.notifier).completeToday();
-    } finally {
-      setState(() => _isEvaluating = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _answerController.dispose();
-    _speech.stop();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final challengeAsync = ref.watch(dailyChallengeProvider);
+    final drillState = ref.watch(dailyDrillProvider);
+    final notifier = ref.read(dailyDrillProvider.notifier);
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0B0F19) : const Color(0xFFF8FAFC),
@@ -189,13 +19,29 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
         backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
-        title: Text(
-          'Real-Time AI Skill Drill',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 17,
-            color: isDark ? Colors.white : AppColors.onSurface,
-          ),
+        centerTitle: true,
+        title: Column(
+          children: [
+            Text(
+              'Real-Time AI Skill Drill',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16.5,
+                color: isDark ? Colors.white : AppColors.onSurface,
+              ),
+            ),
+            const SizedBox(height: 2),
+            const Text(
+              '5 ADAPTIVE MCQS • LIVE AI',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.2,
+                color: Color(0xFF0284C7),
+              ),
+            ),
+
+          ],
         ),
         leading: IconButton(
           icon: Icon(
@@ -207,509 +53,660 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
         ),
         actions: [
           IconButton(
-            icon: _isRefreshing
+            icon: drillState.isLoading
                 ? const SizedBox(
                     width: 18,
                     height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0284C7)),
                   )
                 : Icon(
                     Icons.refresh_rounded,
                     size: 22,
                     color: isDark ? Colors.white70 : AppColors.onSurface,
                   ),
-            tooltip: 'Generate Fresh Questions',
-            onPressed: _isRefreshing ? null : _refreshQuestions,
+            tooltip: 'Generate New AI Questions',
+            onPressed: drillState.isLoading ? null : () => notifier.loadFreshDrill(forceRefresh: true),
           ),
           const SizedBox(width: 8),
         ],
       ),
-      body: challengeAsync.when(
-        loading: () => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(color: AppColors.primary),
-              const SizedBox(height: 16),
-              Text(
-                'AI Crafting Real-Time Questions...',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  color: isDark ? Colors.white70 : AppColors.onSurfaceVariant,
-                ),
+      body: drillState.isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(color: Color(0xFF0284C7)),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Generating Personalized 5-MCQ Drill...',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: isDark ? Colors.white70 : AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Analyzing your interview weak areas and candidate profile',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white38 : Colors.black45,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-        error: (err, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.cloud_off_rounded, size: 48, color: Colors.white38),
-                const SizedBox(height: 12),
-                Text(
-                  'Failed to load daily drill: $err',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: isDark ? Colors.white70 : AppColors.onSurfaceVariant),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _refreshQuestions,
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                  child: const Text('Retry', style: TextStyle(color: Colors.white)),
-                ),
-              ],
-            ),
-          ),
-        ),
-        data: (challenge) {
-          final isQ1 = _currentQuestionIndex == 0;
-          final currentQuestion = isQ1 ? challenge.question1 : challenge.question2;
-          final currentType = isQ1 ? challenge.question1Type : challenge.question2Type;
-          final currentEval = isQ1 ? _evaluationQ1 : _evaluationQ2;
+            )
+          : drillState.isCompleted
+              ? _buildCompletionView(context, ref, drillState, isDark)
+              : _buildQuizView(context, ref, drillState, isDark),
+    );
+  }
 
-          return SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.all(16),
+  // ─────────────────────────────────────────────────────────────
+  // QUIZ VIEW (5 Interactive MCQs)
+  // ─────────────────────────────────────────────────────────────
+  Widget _buildQuizView(BuildContext context, WidgetRef ref, DailyDrillState state, bool isDark) {
+    final drill = state.drill;
+    if (drill == null || drill.questions.isEmpty) {
+      return const Center(child: Text('No questions available'));
+    }
+
+    final qIndex = state.currentQuestionIndex;
+    final totalQ = drill.questions.length;
+    final question = state.currentQuestion!;
+    final hasAnswered = state.selectedOptions.containsKey(qIndex);
+    final selectedOption = state.selectedOptions[qIndex];
+    final notifier = ref.read(dailyDrillProvider.notifier);
+
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── 1. Top Focus & Daily Limit Banner ───────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                    : [const Color(0xFFF0F9FF), Colors.white],
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isDark ? const Color(0xFF334155) : const Color(0xFFBAE6FD),
+                width: 1.2,
+              ),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top Focus Card
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isDark
-                          ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-                          : [const Color(0xFFEEF2FF), Colors.white],
-                    ),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                challenge.targetSkill.toUpperCase(),
-                                style: const TextStyle(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 11,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Question ${_currentQuestionIndex + 1} of 2',
-                            style: TextStyle(
-                              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 10),
-                      Text(
-                        'Targeting Identified Weakness:',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        challenge.weaknessFocus,
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w800,
-                          color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Question Progress Step Indicators
                 Row(
                   children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _currentQuestionIndex = 0;
-                            _answerController.clear();
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          height: 7,
-                          decoration: BoxDecoration(
-                            color: _currentQuestionIndex == 0
-                                ? AppColors.primary
-                                : (_evaluationQ1 != null
-                                    ? const Color(0xFF10B981)
-                                    : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
-                            borderRadius: BorderRadius.circular(4),
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0284C7).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          drill.skillFocus.toUpperCase(),
+                          style: const TextStyle(
+                            color: Color(0xFF0284C7),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 11,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _currentQuestionIndex = 1;
-                            _answerController.clear();
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          height: 7,
-                          decoration: BoxDecoration(
-                            color: _currentQuestionIndex == 1
-                                ? AppColors.primary
-                                : (_evaluationQ2 != null
-                                    ? const Color(0xFF10B981)
-                                    : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Drill ${drill.todayCompleted + 1}/5 Today',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-
-                // Question Prompt Card
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.radar_rounded, color: Color(0xFFE11D48), size: 14),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        drill.weaknessSummary,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // ── 2. Step Progress Indicators (5 questions) ───────────
+          Row(
+            children: List.generate(totalQ, (idx) {
+              final isCurrent = idx == qIndex;
+              final isDone = state.selectedOptions.containsKey(idx);
+              final isCorrect = isDone && state.selectedOptions[idx] == drill.questions[idx].correctIndex;
+
+              return Expanded(
+                child: Container(
+                  height: 6,
+                  margin: EdgeInsets.only(right: idx < totalQ - 1 ? 6 : 0),
+                  decoration: BoxDecoration(
+                    color: isCurrent
+                        ? const Color(0xFF0284C7)
+                        : isDone
+                            ? (isCorrect ? const Color(0xFF10B981) : const Color(0xFFE11D48))
+                            : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 16),
+
+          // ── 3. Question Card ────────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        question.category.toUpperCase(),
+                        style: const TextStyle(
+                          color: Color(0xFF0284C7),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 10.5,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'Q${qIndex + 1} of $totalQ',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  question.question,
+                  style: TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w700,
+                    height: 1.45,
+                    color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── 4. Option Choices (A, B, C, D) ──────────────────────
+          ...List.generate(question.options.length, (optIdx) {
+            final optionText = question.options[optIdx];
+            final isSelected = selectedOption == optIdx;
+            final isCorrectOption = optIdx == question.correctIndex;
+
+            Color borderColor;
+            Color bgColor;
+            IconData? trailingIcon;
+            Color trailingIconColor = Colors.transparent;
+
+            if (hasAnswered) {
+              if (isCorrectOption) {
+                borderColor = const Color(0xFF10B981);
+                bgColor = const Color(0xFF10B981).withValues(alpha: isDark ? 0.20 : 0.10);
+                trailingIcon = Icons.check_circle_rounded;
+                trailingIconColor = const Color(0xFF10B981);
+              } else if (isSelected) {
+                borderColor = const Color(0xFFE11D48);
+                bgColor = const Color(0xFFE11D48).withValues(alpha: isDark ? 0.20 : 0.10);
+                trailingIcon = Icons.cancel_rounded;
+                trailingIconColor = const Color(0xFFE11D48);
+              } else {
+                borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+                bgColor = isDark ? const Color(0xFF1E293B).withValues(alpha: 0.5) : Colors.white;
+              }
+            } else {
+              borderColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+              bgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+            }
+
+            final optionLabel = String.fromCharCode(65 + optIdx); // A, B, C, D
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: hasAnswered ? null : () => notifier.selectOption(optIdx),
+                  borderRadius: BorderRadius.circular(16),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: bgColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: borderColor, width: isSelected || (hasAnswered && isCorrectOption) ? 1.8 : 1.2),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isSelected
+                                ? (isCorrectOption ? const Color(0xFF10B981) : const Color(0xFFE11D48))
+                                : (hasAnswered && isCorrectOption
+                                    ? const Color(0xFF10B981)
+                                    : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
+                          ),
+                          child: Text(
+                            optionLabel,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: isSelected || (hasAnswered && isCorrectOption)
+                                  ? Colors.white
+                                  : (isDark ? Colors.white70 : const Color(0xFF475569)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            optionText,
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              height: 1.35,
+                              color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1E293B),
+                            ),
+                          ),
+                        ),
+                        if (trailingIcon != null) ...[
+                          const SizedBox(width: 8),
+                          Icon(trailingIcon, color: trailingIconColor, size: 20),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+
+          // ── 5. Detailed Engineering Explanation ─────────────────
+          if (hasAnswered) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: (selectedOption == question.correctIndex
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFF0284C7))
+                    .withValues(alpha: isDark ? 0.12 : 0.08),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: (selectedOption == question.correctIndex
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFF0284C7))
+                      .withValues(alpha: 0.3),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.lightbulb_rounded,
+                        color: selectedOption == question.correctIndex
+                            ? const Color(0xFF10B981)
+                            : const Color(0xFF0284C7),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Engineering Rationale & Pitfalls:',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: selectedOption == question.correctIndex
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFF0284C7),
+                        ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 6),
+                  Text(
+                    question.explanation,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      height: 1.4,
+                      color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Next / Finish Button
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () => notifier.nextQuestionOrFinish(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0284C7),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      qIndex < totalQ - 1 ? 'Next Question (${qIndex + 2}/$totalQ)' : 'Finish & Submit Drill',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // COMPLETION VIEW (Score, Daily Streak, Quota Status)
+  // ─────────────────────────────────────────────────────────────
+  Widget _buildCompletionView(BuildContext context, WidgetRef ref, DailyDrillState state, bool isDark) {
+    final drill = state.drill;
+    final totalQ = drill?.questions.length ?? 5;
+    final correct = state.correctCount;
+    final score = state.score;
+    final remaining = drill?.remainingToday ?? 0;
+    final notifier = ref.read(dailyDrillProvider.notifier);
+
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const SizedBox(height: 20),
+
+          // Score Badge Circular Container
+          Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: score >= 60
+                    ? [const Color(0xFF10B981), const Color(0xFF059669)]
+                    : [const Color(0xFFF59E0B), const Color(0xFFD97706)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: (score >= 60 ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withValues(alpha: 0.35),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  '$score%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  '$correct/$totalQ Correct',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          Text(
+            score >= 80 ? 'Exceptional Performance!' : (score >= 60 ? 'Solid Skill Mastery!' : 'Keep Practicing!'),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              color: isDark ? Colors.white : AppColors.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Targeted focus: ${drill?.weaknessSummary ?? "Technical Architecture"}',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ── Streak Updated Banner ──────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.15 : 0.08),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.local_fire_department_rounded, color: Color(0xFFF59E0B), size: 28),
+                SizedBox(width: 12),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.psychology_rounded, color: AppColors.primary, size: 20),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              currentType.replaceAll('_', ' '),
-                              style: const TextStyle(
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
                       Text(
-                        currentQuestion,
+                        'Daily Goal & Streak Secured! 🔥',
                         style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          height: 1.45,
-                          color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
+                          color: Color(0xFF10B981),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13.5,
                         ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Completing 1 drill secures your daily learning consistency.',
+                        style: TextStyle(fontSize: 11.5, color: Colors.grey),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-
-                // Answer Input Area
-                if (currentEval == null) ...[
-                  Text(
-                    'Your Solution / Explanation:',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF0F172A) : Colors.white,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: _isListening
-                            ? const Color(0xFFE11D48)
-                            : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
-                        width: _isListening ? 1.8 : 1.2,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: _answerController,
-                          maxLines: 5,
-                          cursorColor: const Color(0xFF38BDF8),
-                          style: TextStyle(
-                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: 'Type or speak your answer with architecture steps, patterns, and trade-offs...',
-                            hintStyle: TextStyle(
-                              color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                              fontSize: 13,
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.all(14),
-                          ),
-                        ),
-                        Divider(height: 1, color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          child: Row(
-                            children: [
-                              IconButton(
-                                icon: Icon(
-                                  _isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
-                                  color: _isListening ? const Color(0xFFE11D48) : AppColors.primary,
-                                  size: 22,
-                                ),
-                                onPressed: _toggleListening,
-                                tooltip: 'Speak Answer',
-                              ),
-                              if (_isListening)
-                                const Text(
-                                  'Listening...',
-                                  style: TextStyle(color: Color(0xFFE11D48), fontWeight: FontWeight.bold, fontSize: 12),
-                                ),
-                              const Spacer(),
-                              Text(
-                                '${_answerController.text.split(' ').where((w) => w.isNotEmpty).length} words',
-                                style: TextStyle(
-                                  color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Submit Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _isEvaluating ? null : () => _submitAnswer(challenge),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 0,
-                      ),
-                      child: _isEvaluating
-                          ? const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
-                                ),
-                                SizedBox(width: 12),
-                                Text('AI Evaluating Answer...', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                              ],
-                            )
-                          : const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 20),
-                                SizedBox(width: 8),
-                                Text('Submit & Evaluate Answer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-                              ],
-                            ),
-                    ),
-                  ),
-                ] else ...[
-                  // Evaluation Result Card
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF0FDF4),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: currentEval.score >= 80 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: (currentEval.score >= 80 ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                'Score: ${currentEval.score.toStringAsFixed(0)}%',
-                                style: TextStyle(
-                                  color: currentEval.score >= 80 ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-                            const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 22),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          currentEval.feedback,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            height: 1.4,
-                            color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF1E293B),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Strengths
-                        if (currentEval.keyStrengths.isNotEmpty) ...[
-                          const Text('Key Strengths:', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF10B981), fontSize: 12)),
-                          const SizedBox(height: 4),
-                          ...currentEval.keyStrengths.map((s) => Padding(
-                                padding: const EdgeInsets.only(bottom: 3),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text('• ', style: TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
-                                    Expanded(child: Text(s, style: TextStyle(fontSize: 12.5, color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155)))),
-                                  ],
-                                ),
-                              )),
-                          const SizedBox(height: 10),
-                        ],
-
-                        // Model Answer
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('💡 Ideal Senior Engineer Answer:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary)),
-                              const SizedBox(height: 4),
-                              Text(
-                                currentEval.modelAnswerSummary,
-                                style: TextStyle(fontSize: 12.5, height: 1.35, color: isDark ? const Color(0xFFE2E8F0) : const Color(0xFF1E293B)),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Next Question / Done CTA
-                  if (isQ1)
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _currentQuestionIndex = 1;
-                            _answerController.clear();
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('Proceed to Question 2', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                            SizedBox(width: 8),
-                            Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 18),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: () => context.pop(),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF10B981),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 20),
-                            SizedBox(width: 8),
-                            Text('Complete Daily Drill', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
               ],
             ),
-          );
-        },
+          ),
+          const SizedBox(height: 16),
+
+          // ── Daily Quota Status ─────────────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Daily Drill Quota',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: isDark ? Colors.white : AppColors.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      remaining > 0 ? '$remaining drill(s) remaining today (max 5/day)' : 'Daily limit reached (5/5)',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: remaining > 0 ? const Color(0xFF0284C7) : const Color(0xFFE11D48),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${drill?.todayCompleted ?? 1}/5',
+                    style: const TextStyle(
+                      color: Color(0xFF0284C7),
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ── Actions ────────────────────────────────────────────
+          if (remaining > 0) ...[
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () => notifier.loadFreshDrill(forceRefresh: true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0284C7),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Start Next Drill ($remaining Left Today)',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton(
+              onPressed: () => context.pop(),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Text(
+                'Return to Home',
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.onSurface,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

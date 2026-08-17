@@ -631,6 +631,56 @@ class JavaApiService {
     }
     return null;
   }
+
+  // ── QUIZ / DRILL ATTEMPTS & RESULTS ────────────────────────
+  static Future<Map<String, dynamic>?> fetchTodayQuizAttempts(String email) async {
+    try {
+      final url = Uri.parse('$baseUrl/quiz/today-attempts?email=${Uri.encodeComponent(email)}');
+      final res = await http.get(url).timeout(const Duration(seconds: 3));
+      if (res.statusCode == 200) {
+        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        if (json['success'] == true && json['data'] is Map) {
+          return json['data'] as Map<String, dynamic>;
+        }
+      }
+    } catch (e) {
+      debugPrint('Java backend fetch today quiz attempts notice: $e');
+    }
+    return null;
+  }
+
+  static Future<bool> saveQuizResult({
+    required String email,
+    required int score,
+    required int correctCount,
+    required int totalQuestions,
+    required String category,
+    required String skillFocus,
+  }) async {
+    try {
+      final url = Uri.parse('$baseUrl/quiz/save-result');
+      final res = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'score': score,
+          'correctCount': correctCount,
+          'totalQuestions': totalQuestions,
+          'category': category,
+          'skillFocus': skillFocus,
+        }),
+      ).timeout(const Duration(seconds: 3));
+      if (res.statusCode == 200) {
+        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        return json['success'] == true;
+      }
+    } catch (e) {
+      debugPrint('Java backend save quiz result notice: $e');
+    }
+    return false;
+  }
 }
+
 
 

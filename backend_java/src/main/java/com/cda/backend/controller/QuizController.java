@@ -37,4 +37,20 @@ public class QuizController {
         List<QuizResult> history = quizService.getHistory(email);
         return ResponseEntity.ok(ApiResponse.ok(history, "Quiz history retrieved"));
     }
+
+    @GetMapping("/today-attempts")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getTodayAttempts(
+            @RequestParam(defaultValue = "unii12634@gmail.com") String email) {
+        int todayCount = quizService.getTodayCount(email);
+        int maxDaily = 5;
+        Map<String, Object> resp = Map.of(
+            "email", email,
+            "todayCompleted", todayCount,
+            "maxDailyLimit", maxDaily,
+            "remainingToday", Math.max(0, maxDaily - todayCount),
+            "canTakeQuiz", todayCount < maxDaily
+        );
+        return ResponseEntity.ok(ApiResponse.ok(resp, "Today quiz attempts retrieved"));
+    }
 }
+
