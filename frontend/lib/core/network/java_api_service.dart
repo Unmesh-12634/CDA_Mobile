@@ -578,5 +578,59 @@ class JavaApiService {
       return false;
     }
   }
+
+  // ── CDA COURSES & MODULE CATALOG ─────────────────────────
+  static Future<List<Map<String, dynamic>>?> fetchCourses({String? category}) async {
+    try {
+      String urlStr = '$baseUrl/courses';
+      if (category != null && category.isNotEmpty && category != 'All') {
+        urlStr += '?category=${Uri.encodeComponent(category)}';
+      }
+      final res = await http.get(Uri.parse(urlStr)).timeout(const Duration(seconds: 3));
+      if (res.statusCode == 200) {
+        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        if (json['success'] == true && json['data'] is List) {
+          return (json['data'] as List).cast<Map<String, dynamic>>();
+        }
+      }
+    } catch (e) {
+      debugPrint('Java backend fetch courses notice: $e');
+    }
+    return null;
+  }
+
+  static Future<List<Map<String, dynamic>>?> fetchFeaturedCourses() async {
+    try {
+      final url = Uri.parse('$baseUrl/courses/featured');
+      final res = await http.get(url).timeout(const Duration(seconds: 3));
+      if (res.statusCode == 200) {
+        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        if (json['success'] == true && json['data'] is List) {
+          return (json['data'] as List).cast<Map<String, dynamic>>();
+        }
+      }
+    } catch (e) {
+      debugPrint('Java backend fetch featured courses notice: $e');
+    }
+    return null;
+  }
+
+  static Future<List<Map<String, dynamic>>?> fetchRecommendedCourses(List<String> skills) async {
+    try {
+      final skillsParam = skills.join(',');
+      final url = Uri.parse('$baseUrl/courses/recommend?skills=${Uri.encodeComponent(skillsParam)}');
+      final res = await http.get(url).timeout(const Duration(seconds: 3));
+      if (res.statusCode == 200) {
+        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        if (json['success'] == true && json['data'] is List) {
+          return (json['data'] as List).cast<Map<String, dynamic>>();
+        }
+      }
+    } catch (e) {
+      debugPrint('Java backend fetch recommended courses notice: $e');
+    }
+    return null;
+  }
 }
+
 

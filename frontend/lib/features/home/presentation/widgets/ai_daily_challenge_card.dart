@@ -20,19 +20,19 @@ class AiDailyChallengeCard extends ConsumerWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: isDark
-                  ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-                  : [const Color(0xFFEEF2FF), Colors.white],
+                  ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
+                  : [const Color(0xFFF0F9FF), Colors.white],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(22),
             border: Border.all(
-              color: isDark ? const Color(0xFF38BDF8).withValues(alpha: 0.35) : const Color(0xFF93C5FD),
+              color: isDark ? const Color(0xFF0284C7).withValues(alpha: 0.35) : const Color(0xFFBAE6FD),
               width: 1.3,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0284C7).withValues(alpha: isDark ? 0.15 : 0.08),
+                color: const Color(0xFF0284C7).withValues(alpha: isDark ? 0.15 : 0.06),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
@@ -68,16 +68,20 @@ class AiDailyChallengeCard extends ConsumerWidget {
                             children: [
                               Row(
                                 children: [
-                                  const Text(
-                                    'REAL-TIME AI SKILL DRILL',
-                                    style: TextStyle(
-                                      color: Color(0xFF38BDF8),
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 0.8,
+                                  const Flexible(
+                                    child: Text(
+                                      'REAL-TIME AI SKILL DRILL',
+                                      style: TextStyle(
+                                        color: Color(0xFF0284C7),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 0.6,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  const Spacer(),
+                                  const SizedBox(width: 6),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                     decoration: BoxDecoration(
@@ -88,7 +92,7 @@ class AiDailyChallengeCard extends ConsumerWidget {
                                       'LIVE AI',
                                       style: TextStyle(
                                         color: Color(0xFF10B981),
-                                        fontSize: 10,
+                                        fontSize: 9.5,
                                         fontWeight: FontWeight.w800,
                                       ),
                                     ),
@@ -103,6 +107,8 @@ class AiDailyChallengeCard extends ConsumerWidget {
                                   fontWeight: FontWeight.w800,
                                   color: isDark ? Colors.white : const Color(0xFF0F172A),
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
@@ -115,7 +121,7 @@ class AiDailyChallengeCard extends ConsumerWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0)).withValues(alpha: 0.5),
+                        color: (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)).withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
@@ -146,14 +152,17 @@ class AiDailyChallengeCard extends ConsumerWidget {
                           child: Text(
                             '2 dynamic practice questions crafted from your reports.',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 11.5,
                               color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                               fontWeight: FontWeight.w500,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 10),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
                               colors: [Color(0xFF0284C7), Color(0xFF0369A1)],
@@ -168,17 +177,18 @@ class AiDailyChallengeCard extends ConsumerWidget {
                             ],
                           ),
                           child: const Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 'Start Drill',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 12,
+                                  fontSize: 11.5,
                                 ),
                               ),
                               SizedBox(width: 4),
-                              Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 14),
+                              Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 13),
                             ],
                           ),
                         ),
@@ -194,3 +204,4 @@ class AiDailyChallengeCard extends ConsumerWidget {
     );
   }
 }
+

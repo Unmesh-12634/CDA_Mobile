@@ -299,6 +299,149 @@ CREATE INDEX IF NOT EXISTS idx_user_subscriptions_email ON public.user_subscript
 CREATE INDEX IF NOT EXISTS idx_user_subscriptions_status ON public.user_subscriptions(status);
 
 -- ─────────────────────────────────────────────────────────────────────────
+-- 9. QUIZ RESULTS TABLE (AI-Powered Quiz Tracking)
+-- ─────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.quiz_results (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_email VARCHAR(255) NOT NULL,
+    score INT NOT NULL DEFAULT 0,           -- 0-100 percentage
+    correct_count INT NOT NULL DEFAULT 0,
+    total_questions INT NOT NULL DEFAULT 5,
+    category VARCHAR(100) DEFAULT 'Mixed',  -- e.g. 'System Design', 'Flutter', 'Mixed'
+    skill_focus VARCHAR(255),               -- derived from user weak areas
+    completed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_results_email ON public.quiz_results(user_email, completed_at DESC);
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 10. COMPANIES SEED DATA (CDA Partner Companies)
+-- ─────────────────────────────────────────────────────────────────────────
+INSERT INTO public.companies (id, name, logo_url, website, industry, headquarters, description, is_active)
+VALUES
+  ('a1000000-0000-0000-0000-000000000001', 'Infosys', 'https://upload.wikimedia.org/wikipedia/commons/9/95/Infosys_logo.svg', 'https://www.infosys.com', 'IT Services & Consulting', 'Bengaluru, India', 'Global leader in digital services and consulting, enabling clients in more than 50 countries to navigate digital transformation.', true),
+  ('a1000000-0000-0000-0000-000000000002', 'TCS', 'https://upload.wikimedia.org/wikipedia/commons/b/b1/Tata_Consultancy_Services_Logo.svg', 'https://www.tcs.com', 'IT Services & Consulting', 'Mumbai, India', 'Tata Consultancy Services is an IT services, consulting and business solutions organization.', true),
+  ('a1000000-0000-0000-0000-000000000003', 'Wipro', 'https://upload.wikimedia.org/wikipedia/commons/a/a0/Wipro_Primary_Logo_Color_RGB.svg', 'https://www.wipro.com', 'IT Services & Consulting', 'Bengaluru, India', 'Wipro Limited is a global IT, consulting and business process services company.', true),
+  ('a1000000-0000-0000-0000-000000000004', 'Cognizant', 'https://upload.wikimedia.org/wikipedia/commons/3/34/Cognizant_logo.svg', 'https://www.cognizant.com', 'IT Services & Digital Engineering', 'New Jersey, USA', 'Cognizant helps modern businesses evolve while building a more equitable and sustainable future.', true),
+  ('a1000000-0000-0000-0000-000000000005', 'Capgemini', 'https://upload.wikimedia.org/wikipedia/commons/9/91/Capgemini_201x_logo.svg', 'https://www.capgemini.com', 'Technology & Management Consulting', 'Paris, France', 'A global leader in partnering with companies to transform and manage their business by harnessing the power of technology.', true),
+  ('a1000000-0000-0000-0000-000000000006', 'Tech Mahindra', 'https://upload.wikimedia.org/wikipedia/commons/8/80/Tech_Mahindra_New_Logo.png', 'https://www.techmahindra.com', 'IT Services & Telecom', 'Pune, India', 'Tech Mahindra is a leading provider of digital transformation, consulting and business re-engineering services.', true),
+  ('a1000000-0000-0000-0000-000000000007', 'HCL Technologies', 'https://upload.wikimedia.org/wikipedia/commons/4/44/HCL_Technologies_logo.svg', 'https://www.hcltech.com', 'IT & Digital Services', 'Noida, India', 'HCL Technologies is a next-generation global technology company that helps enterprises reimagine their businesses.', true),
+  ('a1000000-0000-0000-0000-000000000008', 'Accenture', 'https://upload.wikimedia.org/wikipedia/commons/c/cd/Accenture.svg', 'https://www.accenture.com', 'Professional Services & Consulting', 'Dublin, Ireland', 'A leading global professional services company offering services and solutions in strategy, consulting, technology and operations.', true),
+  ('a1000000-0000-0000-0000-000000000009', 'IBM India', 'https://upload.wikimedia.org/wikipedia/commons/5/51/IBM_logo.svg', 'https://www.ibm.com/in-en', 'Technology & Cloud Services', 'Bengaluru, India', 'IBM is a multinational technology corporation producing computer hardware, middleware, and software.', true),
+  ('a1000000-0000-0000-0000-000000000010', 'Mphasis', 'https://upload.wikimedia.org/wikipedia/commons/d/de/Mphasis-Logo.svg', 'https://www.mphasis.com', 'IT Services & BPO', 'Bengaluru, India', 'Mphasis applies next-generation technology to help enterprises transform across the two key imperatives of customer centricity and operational effectiveness.', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 11. CDA COURSES CATALOG (Cranes Varsity Website / Video Modules)
+-- ─────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.cda_courses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title VARCHAR(255) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    description TEXT NOT NULL,
+    link_url TEXT NOT NULL DEFAULT 'https://www.youtube.com/watch?v=Uf6PXnagtsg',
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    thumbnail_url TEXT,
+    estimated_duration VARCHAR(50) DEFAULT '12 Weeks',
+    difficulty_level VARCHAR(50) DEFAULT 'Intermediate to Advanced',
+    priority VARCHAR(20) DEFAULT 'HIGH',
+    is_featured BOOLEAN DEFAULT true,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_cda_courses_category ON public.cda_courses(category);
+CREATE INDEX IF NOT EXISTS idx_cda_courses_active ON public.cda_courses(is_active, is_featured);
+
+INSERT INTO public.cda_courses (id, title, category, description, link_url, tags, thumbnail_url, estimated_duration, difficulty_level, priority, is_featured, is_active)
+VALUES
+  (
+    'c0000000-0000-0000-0000-000000000001',
+    'Full-Stack Java Enterprise & Microservices Masterclass',
+    'Java & Backend',
+    'Comprehensive industry-grade program covering Core Java 17, Spring Boot 3, Microservices Architecture, Spring Cloud, Kafka, and PostgreSQL optimization.',
+    'https://www.youtube.com/watch?v=Uf6PXnagtsg',
+    ARRAY['#Java', '#SpringBoot', '#Microservices', '#Kafka', '#PostgreSQL', '#SystemDesign'],
+    'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80',
+    '12 Weeks',
+    'Intermediate to Advanced',
+    'HIGH',
+    true,
+    true
+  ),
+  (
+    'c0000000-0000-0000-0000-000000000002',
+    'System Design & Distributed High-Throughput Architecture',
+    'System Design',
+    'Master large-scale system design: load balancing, horizontal sharding, caching strategies (Redis), event-driven messaging, and zero-downtime deployments.',
+    'https://www.youtube.com/watch?v=Uf6PXnagtsg',
+    ARRAY['#SystemDesign', '#DistributedSystems', '#Scalability', '#Redis', '#AWS', '#Microservices'],
+    'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop&q=80',
+    '8 Weeks',
+    'Advanced',
+    'HIGH',
+    true,
+    true
+  ),
+  (
+    'c0000000-0000-0000-0000-000000000003',
+    'Python AI, Deep Learning & Generative AI Engineering',
+    'AI & Data Science',
+    'End-to-end GenAI & Machine Learning: PyTorch, Transformers, LLM Fine-Tuning, LangChain, RAG architectures, and Vector Databases (Pinecone/ChromaDB).',
+    'https://www.youtube.com/watch?v=Uf6PXnagtsg',
+    ARRAY['#Python', '#MachineLearning', '#PyTorch', '#GenAI', '#LangChain', '#LLMs'],
+    'https://images.unsplash.com/photo-1677442136019-21780efad99a?w=600&auto=format&fit=crop&q=80',
+    '14 Weeks',
+    'Intermediate to Advanced',
+    'HIGH',
+    true,
+    true
+  ),
+  (
+    'c0000000-0000-0000-0000-000000000004',
+    'Embedded Systems, RTOS & Automotive IoT Architecture',
+    'Embedded & IoT',
+    'Cranes flagship program on Embedded C, ARM Cortex Microcontrollers, FreeRTOS, CAN Bus protocols, and real-time automotive firmware design.',
+    'https://www.youtube.com/watch?v=Uf6PXnagtsg',
+    ARRAY['#EmbeddedC', '#RTOS', '#ARMCortex', '#IoT', '#Automotive', '#Firmware'],
+    'https://images.unsplash.com/photo-1518770660439-4636190af475?w=600&auto=format&fit=crop&q=80',
+    '16 Weeks',
+    'Beginner to Advanced',
+    'HIGH',
+    true,
+    true
+  ),
+  (
+    'c0000000-0000-0000-0000-000000000005',
+    'Modern Cross-Platform Flutter & Clean Architecture',
+    'Mobile Development',
+    'Production Flutter: Riverpod state management, Clean Architecture, CI/CD pipelines, Native platform channels, and high-performance animations.',
+    'https://www.youtube.com/watch?v=Uf6PXnagtsg',
+    ARRAY['#Flutter', '#Dart', '#Riverpod', '#CleanArchitecture', '#MobileDev', '#iOSAndroid'],
+    'https://images.unsplash.com/photo-1551650975-87deedd944c3?w=600&auto=format&fit=crop&q=80',
+    '8 Weeks',
+    'Intermediate',
+    'MEDIUM',
+    true,
+    true
+  ),
+  (
+    'c0000000-0000-0000-0000-000000000006',
+    'Cloud DevOps, Docker & Kubernetes Production Engineering',
+    'DevOps & Cloud',
+    'Containerization with Docker, Kubernetes orchestration, Helm, Terraform Infrastructure as Code (IaC), and resilient GitOps with ArgoCD.',
+    'https://www.youtube.com/watch?v=Uf6PXnagtsg',
+    ARRAY['#DevOps', '#Kubernetes', '#Docker', '#AWS', '#CI_CD', '#Terraform'],
+    'https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?w=600&auto=format&fit=crop&q=80',
+    '10 Weeks',
+    'Intermediate to Advanced',
+    'HIGH',
+    true,
+    true
+  )
+ON CONFLICT (id) DO NOTHING;
+
+-- ─────────────────────────────────────────────────────────────────────────
 -- 7. PERFORMANCE INDEXES
 -- ─────────────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
@@ -328,6 +471,8 @@ ALTER TABLE public.reel_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_learning_goals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.quiz_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cda_courses ENABLE ROW LEVEL SECURITY;
 
 -- Permissive App Read/Write RLS Rules for Authenticated & Anon API Operations
 DO $$
@@ -341,3 +486,4 @@ BEGIN
         EXECUTE format('CREATE POLICY "Allow All Ops" ON public.%I FOR ALL TO anon, authenticated, service_role USING (true) WITH CHECK (true)', tbl);
     END LOOP;
 END $$;
+

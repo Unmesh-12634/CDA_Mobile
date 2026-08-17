@@ -97,6 +97,7 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
         const SnackBar(
           content: Text('Please type or speak your answer first.'),
           backgroundColor: Color(0xFFE11D48),
+          behavior: SnackBarBehavior.floating,
         ),
       );
       return;
@@ -145,14 +146,13 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
 
         // Trigger streak progression if completed
         ref.read(weeklyGoalProvider.notifier).completeToday();
-
       } else {
         throw Exception('Server returned ${res.statusCode}');
       }
     } catch (_) {
       // Offline / fallback evaluator
       final fallbackEval = ChallengeEvaluation(
-        score: 82.0,
+        score: 84.0,
         feedback: 'Well-reasoned response covering core technical requirements and architectural trade-offs.',
         keyStrengths: ['Accurate architectural breakdown', 'Clear structural reasoning'],
         areasToImprove: ['Mention latency benchmarks and failure recovery edge cases'],
@@ -188,16 +188,36 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
       appBar: AppBar(
         backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
         elevation: 0,
-        title: const Text('🎯 Real-Time AI Skill Drill', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        scrolledUnderElevation: 0,
+        title: Text(
+          'Real-Time AI Skill Drill',
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 17,
+            color: isDark ? Colors.white : AppColors.onSurface,
+          ),
+        ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 18,
+            color: isDark ? Colors.white : AppColors.onSurface,
+          ),
           onPressed: () => context.pop(),
         ),
         actions: [
           IconButton(
             icon: _isRefreshing
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
-                : const Icon(Icons.refresh_rounded, size: 22),
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                  )
+                : Icon(
+                    Icons.refresh_rounded,
+                    size: 22,
+                    color: isDark ? Colors.white70 : AppColors.onSurface,
+                  ),
             tooltip: 'Generate Fresh Questions',
             onPressed: _isRefreshing ? null : _refreshQuestions,
           ),
@@ -205,20 +225,46 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
         ],
       ),
       body: challengeAsync.when(
-        loading: () => const Center(
+        loading: () => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(color: AppColors.primary),
-              SizedBox(height: 16),
+              const CircularProgressIndicator(color: AppColors.primary),
+              const SizedBox(height: 16),
               Text(
                 'AI Crafting Real-Time Questions...',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  color: isDark ? Colors.white70 : AppColors.onSurfaceVariant,
+                ),
               ),
             ],
           ),
         ),
-        error: (err, _) => Center(child: Text('Error: $err')),
+        error: (err, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.cloud_off_rounded, size: 48, color: Colors.white38),
+                const SizedBox(height: 12),
+                Text(
+                  'Failed to load daily drill: $err',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: isDark ? Colors.white70 : AppColors.onSurfaceVariant),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _refreshQuestions,
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                  child: const Text('Retry', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          ),
+        ),
         data: (challenge) {
           final isQ1 = _currentQuestionIndex == 0;
           final currentQuestion = isQ1 ? challenge.question1 : challenge.question2;
@@ -226,6 +272,7 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
           final currentEval = isQ1 ? _evaluationQ1 : _evaluationQ2;
 
           return SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -250,29 +297,38 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
                     children: [
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              challenge.targetSkill.toUpperCase(),
-                              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 11),
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                challenge.targetSkill.toUpperCase(),
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ),
-                          const Spacer(),
+                          const SizedBox(width: 10),
                           Text(
                             'Question ${_currentQuestionIndex + 1} of 2',
                             style: TextStyle(
                               color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                               fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+
+                      const SizedBox(height: 10),
                       Text(
                         'Targeting Identified Weakness:',
                         style: TextStyle(
@@ -281,12 +337,12 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
                           color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(
                         challenge.weaknessFocus,
                         style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
                           color: isDark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A),
                         ),
                       ),
@@ -295,7 +351,7 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
                 ),
                 const SizedBox(height: 16),
 
-                // Question Progress Indicator
+                // Question Progress Step Indicators
                 Row(
                   children: [
                     Expanded(
@@ -306,12 +362,15 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
                             _answerController.clear();
                           });
                         },
-                        child: Container(
-                          height: 6,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          height: 7,
                           decoration: BoxDecoration(
                             color: _currentQuestionIndex == 0
                                 ? AppColors.primary
-                                : (_evaluationQ1 != null ? const Color(0xFF10B981) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
+                                : (_evaluationQ1 != null
+                                    ? const Color(0xFF10B981)
+                                    : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -326,12 +385,15 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
                             _answerController.clear();
                           });
                         },
-                        child: Container(
-                          height: 6,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          height: 7,
                           decoration: BoxDecoration(
                             color: _currentQuestionIndex == 1
                                 ? AppColors.primary
-                                : (_evaluationQ2 != null ? const Color(0xFF10B981) : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
+                                : (_evaluationQ2 != null
+                                    ? const Color(0xFF10B981)
+                                    : (isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0))),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -341,7 +403,7 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
                 ),
                 const SizedBox(height: 16),
 
-                // Question Card
+                // Question Prompt Card
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(18),
@@ -353,7 +415,7 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
+                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -364,14 +426,17 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.psychology_rounded, color: AppColors.primary, size: 22),
+                          const Icon(Icons.psychology_rounded, color: AppColors.primary, size: 20),
                           const SizedBox(width: 8),
-                          Text(
-                            currentType.replaceAll('_', ' '),
-                            style: const TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                          Flexible(
+                            child: Text(
+                              currentType.replaceAll('_', ' '),
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -380,9 +445,9 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
                       Text(
                         currentQuestion,
                         style: TextStyle(
-                          fontSize: 15.5,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          height: 1.4,
+                          height: 1.45,
                           color: isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A),
                         ),
                       ),
@@ -478,6 +543,7 @@ class _AiDailyChallengeScreenState extends ConsumerState<AiDailyChallengeScreen>
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
                       ),
                       child: _isEvaluating
                           ? const Row(

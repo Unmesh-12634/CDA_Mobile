@@ -1429,13 +1429,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isDark
-              ? [const Color(0xFF1F1508), const Color(0xFF2A1C0B)]
-              : [const Color(0xFFFFF7ED), const Color(0xFFFEF3C7)],
+              ? [const Color(0xFF1E1B4B), const Color(0xFF0F172A)]
+              : [const Color(0xFFEEF2FF), Colors.white],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: isDark ? const Color(0xFF854D0E) : const Color(0xFFFEE3A0)),
+        border: Border.all(
+          color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.35 : 0.20),
+          width: 1.3,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.15 : 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -1446,64 +1456,69 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             Row(
               children: [
                 Container(
-                  width: 52,
-                  height: 52,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: AppColors.credGoldGradient,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.credGold.withValues(alpha: 0.35),
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.35),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
                   child: const Icon(Icons.psychology_rounded,
-                      color: Colors.white, size: 26),
+                      color: Colors.white, size: 24),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('$skillLabel Challenge',
+                      Text('$skillLabel AI Quiz',
                           style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
-                              color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E))),
-                      const SizedBox(height: 4),
-                      Text('5 questions • 3 minutes',
+                              color: isDark ? Colors.white : AppColors.onSurface)),
+                      const SizedBox(height: 3),
+                      Text('5 Personalized MCQs • AI-Evaluated',
                           style: TextStyle(
                               fontSize: 12,
-                              color: isDark ? const Color(0xFFF59E0B) : const Color(0xFFB45309),
-                              fontWeight: FontWeight.w500)),
+                              color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
+                              fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.credGold,
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(100),
+                    border: Border.all(
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                    ),
                   ),
-                  child: Text('$skillLabel Quiz',
-                      style: const TextStyle(
-                          color: Colors.white,
+                  child: const Text('DAILY QUIZ',
+                      style: TextStyle(
+                          color: Color(0xFF6366F1),
                           fontSize: 10,
-                          fontWeight: FontWeight.bold)),
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5)),
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
             // Description
             Text(
-              'Test your $skillLabel knowledge with 5 quick daily questions and build a streak!',
+              'Challenge your $skillLabel expertise with dynamic AI questions and maintain your learning streak!',
               style: TextStyle(
                   fontSize: 13,
-                  color: isDark ? const Color(0xFFFDE68A).withValues(alpha: 0.85) : const Color(0xFF92400E),
-                  height: 1.5),
+                  color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                  height: 1.45),
             ),
             const SizedBox(height: 16),
             // Full-width button
@@ -1513,13 +1528,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 13),
                 decoration: BoxDecoration(
-                  gradient: AppColors.credGoldGradient,
-                  borderRadius: BorderRadius.circular(100),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.credGold.withValues(alpha: 0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
                     ),
                   ],
                 ),
@@ -1528,7 +1545,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   children: [
                     Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
                     SizedBox(width: 8),
-                    Text('Start Today\'s Challenge',
+                    Text('Start Daily Quiz',
                         style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -1542,6 +1559,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       ),
     );
   }
+
 
   // ─────────────────────────────────────────────────────────────
   // CAREER INSIGHTS (Live Database & Real Hiring Metrics)

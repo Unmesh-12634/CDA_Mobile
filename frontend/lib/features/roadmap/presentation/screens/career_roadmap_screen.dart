@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class CareerRoadmapScreen extends StatefulWidget {
@@ -485,28 +486,43 @@ class _CareerRoadmapScreenState extends State<CareerRoadmapScreen> {
                                         ],
                                       ),
                                     )),
-
-                                const SizedBox(height: 10),
-                                // CTA Button for in progress phase
-                                if (status == 'In Progress')
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.primary,
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(100),
-                                        ),
-                                        elevation: 0,
-                                        padding: const EdgeInsets.symmetric(vertical: 10),
+                                const SizedBox(height: 12),
+                                // Masterclass & CDA Course Redirection Action
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFFE11D48),
+                                      side: BorderSide(
+                                        color: const Color(0xFFE11D48).withValues(alpha: 0.4),
+                                        width: 1.2,
                                       ),
-                                      onPressed: () => context.push('/learn'),
-                                      child: const Text('Continue Learning Phase',
-                                          style: TextStyle(
-                                              fontSize: 12, fontWeight: FontWeight.bold)),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(vertical: 10),
                                     ),
+                                    icon: const Icon(Icons.play_circle_filled_rounded, size: 16, color: Color(0xFFE11D48)),
+                                    label: const Text(
+                                      'Watch Phase Masterclass on YouTube',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                    ),
+                                    onPressed: () async {
+                                      const url = 'https://www.youtube.com/watch?v=Uf6PXnagtsg';
+                                      final uri = Uri.parse(url);
+                                      try {
+                                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                      } catch (_) {
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                            content: Text('Opening Cranes Varsity Masterclass: $url'),
+                                            behavior: SnackBarBehavior.floating,
+                                          ));
+                                        }
+                                      }
+                                    },
                                   ),
+                                ),
                               ],
                             ),
                           ),

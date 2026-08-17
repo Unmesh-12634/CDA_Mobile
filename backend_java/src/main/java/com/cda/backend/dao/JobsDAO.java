@@ -26,34 +26,46 @@ public class JobsDAO {
             Job j = new Job();
             j.setId(rs.getString("id"));
             j.setTitle(rs.getString("title"));
-            
-            String company = rs.getString("company_name");
-            j.setCompany(company != null ? company : "Tech Partner");
+
+            // Company — prefer joined companies table, fallback to company_name column
+            String companyName = rs.getString("company_display_name");
+            if (companyName == null || companyName.trim().isEmpty()) {
+                companyName = rs.getString("company_name");
+            }
+            j.setCompany(companyName != null ? companyName : "Tech Partner");
+
+            // Rich company fields from JOIN
+            j.setCompanyLogoUrl(rs.getString("company_logo_url"));
+            j.setCompanyWebsite(rs.getString("company_website"));
+            j.setCompanyIndustry(rs.getString("company_industry"));
+
             j.setLocation(rs.getString("location"));
-            
+
             String type = rs.getString("job_type");
             j.setType(type != null ? type : "Full-time");
-            
+
             String salary = rs.getString("salary_display");
             j.setSalary(salary != null ? salary : "Competitive");
-            
-            String logo = company != null && !company.isEmpty()
-                    ? Arrays.stream(company.split(" ")).map(e -> e.length() > 0 ? e.substring(0,1) : "").limit(2).reduce("", String::concat).toUpperCase()
+
+            // Logo initials — from company name
+            String logoBase = j.getCompany();
+            String logo = !logoBase.isEmpty()
+                    ? Arrays.stream(logoBase.split(" ")).map(e -> e.length() > 0 ? e.substring(0,1) : "").limit(2).reduce("", String::concat).toUpperCase()
                     : "CD";
             j.setLogoText(logo.isEmpty() ? "CD" : logo);
-            
+
             j.setCategory(rs.getString("job_category"));
             j.setMatchScore(92);
             j.setPostedAgo("Active Opening");
             j.setExperienceLevel("All Levels");
             j.setDescription(rs.getString("description"));
-            
+
             j.setResponsibilities(Arrays.asList(
                     "Architect and deliver scalable software systems",
                     "Collaborate across product and engineering teams",
                     "Maintain clean, performant, and reliable code"
             ));
-            
+
             j.setRequirements(Arrays.asList(
                     "Strong technical fundamentals & domain expertise",
                     "Experience working in modern product environments",
@@ -72,7 +84,10 @@ public class JobsDAO {
     };
 
     public List<Job> findAllJobs(String category, String query) {
-        String sql = "SELECT * FROM public.jobs WHERE is_active = true ORDER BY created_at DESC";
+        String sql = "SELECT j.*, c.name AS company_display_name, c.logo_url AS company_logo_url, " +
+                     "c.website AS company_website, c.industry AS company_industry " +
+                     "FROM public.jobs j LEFT JOIN public.companies c ON j.company_id = c.id " +
+                     "WHERE j.is_active = true ORDER BY j.created_at DESC";
         List<Job> all = jdbcTemplate.query(sql, JOB_MAPPER);
 
         if ((category == null || category.equalsIgnoreCase("All")) && (query == null || query.trim().isEmpty())) {
@@ -116,7 +131,10 @@ public class JobsDAO {
     }
 
     public Job findJobById(String id) {
-        String sql = "SELECT * FROM public.jobs WHERE id = ?::uuid";
+        String sql = "SELECT j.*, c.name AS company_display_name, c.logo_url AS company_logo_url, " +
+                     "c.website AS company_website, c.industry AS company_industry " +
+                     "FROM public.jobs j LEFT JOIN public.companies c ON j.company_id = c.id " +
+                     "WHERE j.id = ?::uuid";
         List<Job> list = jdbcTemplate.query(sql, JOB_MAPPER, id);
         return list.isEmpty() ? null : list.get(0);
     }

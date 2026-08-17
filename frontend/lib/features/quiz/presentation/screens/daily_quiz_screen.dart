@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../shared/widgets/glass_card.dart';
@@ -645,6 +646,137 @@ class DailyQuizScreen extends ConsumerWidget {
             );
           }),
 
+          const SizedBox(height: 20),
+
+          // ── Recommended Masterclass Card ─────────────────────────
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF1E1B4B), const Color(0xFF0F172A)]
+                    : [const Color(0xFFEEF2FF), Colors.white],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.35 : 0.25),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.2 : 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE11D48),
+                        borderRadius: BorderRadius.circular(100),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.play_arrow_rounded, color: Colors.white, size: 14),
+                          SizedBox(width: 4),
+                          Text(
+                            'FREE MASTERCLASS',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Cranes Varsity',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white70 : AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Master Advanced System Design & Microservices',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : AppColors.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Watch the complete hands-on masterclass covering production concurrency, caching, and database scaling.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    Text('#SystemDesign', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF6366F1))),
+                    Text('#Microservices', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF6366F1))),
+                    Text('#SpringBoot', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF6366F1))),
+                    Text('#Java', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF6366F1))),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE11D48),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    icon: const Icon(Icons.play_circle_filled_rounded, size: 18),
+                    label: const Text(
+                      'WATCH ON YOUTUBE / CDA PORTAL',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                    ),
+                    onPressed: () async {
+                      const url = 'https://www.youtube.com/watch?v=Uf6PXnagtsg';
+                      final uri = Uri.parse(url);
+                      try {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      } catch (_) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            content: Text('Opening Cranes Varsity Video: $url'),
+                            behavior: SnackBarBehavior.floating,
+                          ));
+                        }
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           const SizedBox(height: 24),
 
           // Action buttons
@@ -655,6 +787,7 @@ class DailyQuizScreen extends ConsumerWidget {
               ref.read(quizProvider.notifier).restartQuiz();
             },
           ),
+
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../shared/widgets/gradient_button.dart';
@@ -274,22 +275,24 @@ class _InterviewAnalysisScreenState extends ConsumerState<InterviewAnalysisScree
 
                   ...((data['cda_learning_recommendations'] as List?) ?? [
                     {
-                      'course_id': 'cda-py-101',
-                      'title': 'Python Architecture, Memory & Multithreading',
-                      'category': 'Python',
-                      'reason': 'Targeted practice for identified Python GIL and concurrency concepts.',
+                      'course_id': 'c0000000-0000-0000-0000-000000000001',
+                      'title': 'Full-Stack Java Enterprise & Microservices Masterclass',
+                      'category': 'Java & Backend',
+                      'reason': 'Targeted practice for identified Concurrency, Spring Data JPA, and Microservices transaction boundaries.',
                       'priority': 'HIGH',
-                      'cda_learning_url': 'https://cranesdigitalacademy.com/courses/python-mastery',
-                      'estimated_duration': '4.5 Hours',
+                      'cda_learning_url': 'https://www.youtube.com/watch?v=Uf6PXnagtsg',
+                      'estimated_duration': '12 Weeks',
+                      'tags': ['#Java', '#SpringBoot', '#Microservices', '#Kafka'],
                     },
                     {
-                      'course_id': 'cda-sys-401',
-                      'title': 'System Design: Microservices & Production Scaling',
+                      'course_id': 'c0000000-0000-0000-0000-000000000002',
+                      'title': 'System Design: Microservices, Distributed Caching & Sharding',
                       'category': 'System Design',
-                      'reason': 'Production readiness optimization for distributed systems.',
+                      'reason': 'Production readiness optimization for distributed systems and horizontal scaling.',
                       'priority': 'HIGH',
-                      'cda_learning_url': 'https://cranesdigitalacademy.com/courses/system-design-microservices',
-                      'estimated_duration': '8.0 Hours',
+                      'cda_learning_url': 'https://www.youtube.com/watch?v=Uf6PXnagtsg',
+                      'estimated_duration': '8 Weeks',
+                      'tags': ['#SystemDesign', '#DistributedSystems', '#Redis', '#AWS'],
                     },
                   ]).map((rec) {
                     final recMap = rec as Map<String, dynamic>;
@@ -297,8 +300,9 @@ class _InterviewAnalysisScreenState extends ConsumerState<InterviewAnalysisScree
                     final category = (recMap['category'] as String?) ?? 'Engineering';
                     final reason = (recMap['reason'] as String?) ?? 'Fills technical gap identified during interview.';
                     final priority = (recMap['priority'] as String?) ?? 'HIGH';
-                    final url = (recMap['cda_learning_url'] as String?) ?? 'https://cranesdigitalacademy.com/courses';
-                    final duration = (recMap['estimated_duration'] as String?) ?? '5.0 Hours';
+                    final url = (recMap['cda_learning_url'] as String?) ?? 'https://www.youtube.com/watch?v=Uf6PXnagtsg';
+                    final duration = (recMap['estimated_duration'] as String?) ?? '12 Weeks';
+                    final List<String> tags = (recMap['tags'] as List?)?.map((t) => t.toString()).toList() ?? ['#CDA', '#TechMastery'];
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -367,28 +371,60 @@ class _InterviewAnalysisScreenState extends ConsumerState<InterviewAnalysisScree
                             reason,
                             style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : AppColors.onSurfaceVariant, height: 1.4),
                           ),
+                          if (tags.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: tags.map((t) => Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
+                                  ),
+                                ),
+                                child: Text(
+                                  t,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark ? Colors.white70 : AppColors.onSurfaceVariant,
+                                  ),
+                                ),
+                              )).toList(),
+                            ),
+                          ],
                           const SizedBox(height: 14),
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
+                                backgroundColor: const Color(0xFFE11D48),
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                 elevation: 0,
                               ),
-                              icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                              icon: const Icon(Icons.play_circle_filled_rounded, size: 18),
                               label: const Text(
-                                'CONTINUE LEARNING ON CDA WEBSITE',
+                                'WATCH MASTERCLASS ON YOUTUBE',
                                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                               ),
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                  content: Text('Opening CDA Learning Portal: $url'),
-                                  backgroundColor: AppColors.primary,
-                                  behavior: SnackBarBehavior.floating,
-                                ));
+                              onPressed: () async {
+                                final uri = Uri.parse(url);
+                                try {
+                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                      content: Text('Could not open link: $url'),
+                                      backgroundColor: Colors.redAccent,
+                                      behavior: SnackBarBehavior.floating,
+                                    ));
+                                  }
+                                }
                               },
                             ),
                           ),
@@ -397,6 +433,7 @@ class _InterviewAnalysisScreenState extends ConsumerState<InterviewAnalysisScree
                     );
                   }),
                   const SizedBox(height: 28),
+
 
                   // Bottom Action Buttons
                   Row(

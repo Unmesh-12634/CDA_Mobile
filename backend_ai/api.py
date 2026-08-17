@@ -715,6 +715,31 @@ def submit_challenge_answer(submission: ChallengeSubmissionRequest):
         logger.error(f"Error evaluating daily challenge answer: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ─────────────────────────────────────────────────────────────
+# AI Quiz Generation Endpoints
+# ─────────────────────────────────────────────────────────────
+from services.quiz_service import QuizService
+quiz_service_instance = QuizService()
+
+class QuizGenerateRequest(BaseModel):
+    email: str = Field(default="unii12634@gmail.com", example="user@example.com")
+
+@app.post("/api/v1/quiz/generate")
+def generate_quiz(req: QuizGenerateRequest):
+    """
+    Generates a fresh 5-MCQ quiz personalized to the user's weak areas,
+    derived from their AI interview report history via Groq Llama-3.
+    """
+    try:
+        result = quiz_service_instance.generate_quiz(req.email)
+        return {"status": "success", "data": result}
+    except Exception as e:
+        logger.error(f"Error generating quiz: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("api:app", host="0.0.0.0", port=8000, reload=True)
+

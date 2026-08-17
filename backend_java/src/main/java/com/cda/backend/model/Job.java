@@ -6,6 +6,9 @@ public class Job {
     private String id;
     private String title;
     private String company;
+    private String companyLogoUrl;
+    private String companyWebsite;
+    private String companyIndustry;
     private String location;
     private String type;
     private String salary;
@@ -29,6 +32,15 @@ public class Job {
 
     public String getCompany() { return company; }
     public void setCompany(String company) { this.company = company; }
+
+    public String getCompanyLogoUrl() { return companyLogoUrl; }
+    public void setCompanyLogoUrl(String companyLogoUrl) { this.companyLogoUrl = companyLogoUrl; }
+
+    public String getCompanyWebsite() { return companyWebsite; }
+    public void setCompanyWebsite(String companyWebsite) { this.companyWebsite = companyWebsite; }
+
+    public String getCompanyIndustry() { return companyIndustry; }
+    public void setCompanyIndustry(String companyIndustry) { this.companyIndustry = companyIndustry; }
 
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
