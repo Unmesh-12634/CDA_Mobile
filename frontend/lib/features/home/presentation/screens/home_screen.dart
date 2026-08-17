@@ -89,11 +89,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       'route': '/applications',
     },
     {
-      'icon': Icons.psychology_rounded,
-      'title': 'Daily Challenge',
-      'subtitle': '5 Qs • 200 XP',
+      'icon': Icons.play_circle_fill_rounded,
+      'title': 'CDA Courses',
+      'subtitle': 'Masterclasses',
       'color': const Color(0xFFF59E0B), // Amber Gold accent
-      'route': '/quiz',
+      'route': '/learn',
     },
     {
       'icon': Icons.explore_rounded,
@@ -103,6 +103,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       'route': '/career-roadmap',
     },
   ];
+
 
   @override
   void initState() {
@@ -476,12 +477,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             // ── 6. AI Interview Section ────────────────────────
             SliverToBoxAdapter(child: _buildAIInterviewSection()),
 
-            // ── 7. Daily Quiz ──────────────────────────────────
-            SliverToBoxAdapter(child: _buildDailyQuiz()),
-
-            // ── 8. Continue Watching ───────────────────────────
+            // ── 7. Continue Watching ───────────────────────────
             SliverToBoxAdapter(child: _buildSectionHeader('Continue Watching', actionLabel: 'See All', onAction: () => context.push('/learn'))),
             SliverToBoxAdapter(child: _buildContinueWatching()),
+
 
             // ── 9. Career Insights ─────────────────────────────
             SliverToBoxAdapter(child: _buildSectionHeader('Career Insights', actionLabel: 'View All', onAction: () => context.push('/jobs'))),
@@ -1415,150 +1414,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // DAILY QUIZ
-  // ─────────────────────────────────────────────────────────────
-  Widget _buildDailyQuiz() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final skill = _currentSkill;
-    final skillLabel = skill == 'All' ? 'Daily Skill' : skill;
 
-    return Container(
-      key: ValueKey('daily_quiz_$skill'),
-      margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDark
-              ? [const Color(0xFF1E1B4B), const Color(0xFF0F172A)]
-              : [const Color(0xFFEEF2FF), Colors.white],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.35 : 0.20),
-          width: 1.3,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.15 : 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top row: icon + badge
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF6366F1).withValues(alpha: 0.35),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(Icons.psychology_rounded,
-                      color: Colors.white, size: 24),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('$skillLabel AI Quiz',
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: isDark ? Colors.white : AppColors.onSurface)),
-                      const SizedBox(height: 3),
-                      Text('5 Personalized MCQs • AI-Evaluated',
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4F46E5),
-                              fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(100),
-                    border: Border.all(
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: const Text('DAILY QUIZ',
-                      style: TextStyle(
-                          color: Color(0xFF6366F1),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            // Description
-            Text(
-              'Challenge your $skillLabel expertise with dynamic AI questions and maintain your learning streak!',
-              style: TextStyle(
-                  fontSize: 13,
-                  color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-                  height: 1.45),
-            ),
-            const SizedBox(height: 16),
-            // Full-width button
-            GestureDetector(
-              onTap: () => context.push('/quiz'),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
-                    SizedBox(width: 8),
-                    Text('Start Daily Quiz',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14)),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
 
   // ─────────────────────────────────────────────────────────────

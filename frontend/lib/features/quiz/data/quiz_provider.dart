@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/config/app_config.dart';
 import '../../../core/network/java_api_service.dart';
+import '../../../core/services/ai_quiz_generator_service.dart';
 import '../../profile/data/user_profile_provider.dart';
 import '../../home/data/weekly_goal_provider.dart';
+
 
 
 class QuizQuestion {
@@ -186,36 +188,29 @@ class QuizNotifier extends StateNotifier<QuizState> {
       }
     } catch (_) {}
 
-    // 2. Fetch fresh personalized questions from backend_ai
+    // 2. Fetch fresh personalized questions directly via Groq AI Engine
     try {
-      final baseUrl = AppConfig.activeHost;
-      final uri = Uri.parse('$baseUrl/api/v1/quiz/generate');
-      final res = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email}),
-      ).timeout(const Duration(seconds: 18));
+      final drillModel = await AiQuizGeneratorService.generatePersonalizedDrill(
+        email: email,
+        todayCompleted: todayAttempts,
+      );
+      final questions = drillModel.questions.map((q) => QuizQuestion(
+        id: q.id,
+        category: q.category,
+        question: q.question,
+        options: q.options,
+        correctOptionIndex: q.correctIndex,
+        explanation: q.explanation,
+      )).toList();
 
-      if (res.statusCode == 200) {
-        final json = jsonDecode(res.body);
-        if (json['data'] != null && json['data']['questions'] is List) {
-          final rawList = json['data']['questions'] as List;
-          final questions = rawList.map((q) => QuizQuestion.fromJson(q as Map<String, dynamic>)).toList();
-          final skillFocus = json['data']['skill_focus']?.toString() ?? 'Full-Stack Software Engineering';
-          final weaknessSummary = json['data']['weakness_summary']?.toString() ?? 'System Design & Concurrency';
-
-          if (questions.isNotEmpty) {
-            state = state.copyWith(
-              isLoading: false,
-              questions: questions,
-              skillFocus: skillFocus,
-              weaknessSummary: weaknessSummary,
-              todayCompleted: todayAttempts,
-            );
-            return;
-          }
-        }
-      }
+      state = state.copyWith(
+        isLoading: false,
+        questions: questions,
+        skillFocus: drillModel.skillFocus,
+        weaknessSummary: drillModel.weaknessSummary,
+        todayCompleted: todayAttempts,
+      );
+      return;
     } catch (_) {}
 
     state = state.copyWith(
@@ -224,6 +219,7 @@ class QuizNotifier extends StateNotifier<QuizState> {
       todayCompleted: todayAttempts,
     );
   }
+
 
   void selectAnswer(int optionIndex) {
     if (state.selectedAnswers.containsKey(state.currentIndex)) return; // Already answered

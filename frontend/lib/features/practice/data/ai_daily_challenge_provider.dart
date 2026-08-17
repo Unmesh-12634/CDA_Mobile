@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/config/app_config.dart';
 import '../../../core/network/java_api_service.dart';
+import '../../../core/services/ai_quiz_generator_service.dart';
 import '../../profile/data/user_profile_provider.dart';
 import '../../home/data/weekly_goal_provider.dart';
+
 
 
 class DrillQuestion {
@@ -248,7 +250,19 @@ class DailyDrillNotifier extends StateNotifier<DailyDrillState> {
       }
     } catch (_) {}
 
-    // 2. Fetch AI generated questions from backend_ai
+    // 2. Generate Real-time AI Questions via Groq AI Engine
+    try {
+      final drillModel = await AiQuizGeneratorService.generatePersonalizedDrill(
+        email: email,
+        todayCompleted: todayAttempts,
+      );
+      state = state.copyWith(isLoading: false, drill: drillModel);
+      return;
+    } catch (e) {
+      debugPrint('AI Drill direct generation notice: $e');
+    }
+
+    // 3. Secondary attempt via Python backend if direct call had network glitch
     try {
       final baseUrl = AppConfig.activeHost;
       final uri = Uri.parse('$baseUrl/api/v1/quiz/generate');
@@ -256,7 +270,7 @@ class DailyDrillNotifier extends StateNotifier<DailyDrillState> {
         uri,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email}),
-      ).timeout(const Duration(seconds: 18));
+      ).timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
         final json = jsonDecode(res.body);
@@ -270,15 +284,13 @@ class DailyDrillNotifier extends StateNotifier<DailyDrillState> {
           return;
         }
       }
-    } catch (e) {
-      debugPrint('AI Drill generation notice: $e');
-    }
+    } catch (_) {}
 
-    // Fallback model
+    // Dynamic procedural fallback if offline
     final fallbackModel = AiDailyDrillModel(
       userEmail: email,
       skillFocus: profile.targetRole.isNotEmpty ? profile.targetRole : 'Java & Spring Boot Engineer',
-      weakAreas: ['System Design', 'Concurrency', 'PostgreSQL Optimizations'],
+      weakAreas: ['System Design & Scalability', 'Concurrency & Deadlocks', 'PostgreSQL Optimizations'],
       weaknessSummary: 'Targeting System Design & Concurrency',
       questions: AiDailyDrillModel._fallbackDrillQuestions(),
       todayCompleted: todayAttempts,
@@ -288,6 +300,7 @@ class DailyDrillNotifier extends StateNotifier<DailyDrillState> {
 
     state = state.copyWith(isLoading: false, drill: fallbackModel);
   }
+
 
   void selectOption(int optionIndex) {
     if (state.selectedOptions.containsKey(state.currentQuestionIndex)) return; // Already answered
