@@ -203,13 +203,19 @@ class AppUpdateNotifier extends StateNotifier<UpdateState> {
     }
   }
 
-  /// Compares semantic versions (e.g. 1.0.1 > 1.0.0)
+  /// Compares semantic versions accurately (e.g. 1.0.2 is not newer than 1.0.2+3)
   bool _isVersionNewer({required String latest, required String current}) {
     try {
-      final lParts = latest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-      final cParts = current.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      // Remove any 'v', tags, build numbers, or non-numeric characters except dots
+      final cleanLatest = latest.replaceAll(RegExp(r'[^0-9.]'), '').split('.');
+      final cleanCurrent = current.split('+').first.replaceAll(RegExp(r'[^0-9.]'), '').split('.');
 
-      for (int i = 0; i < 3; i++) {
+      final lParts = cleanLatest.map((e) => int.tryParse(e) ?? 0).toList();
+      final cParts = cleanCurrent.map((e) => int.tryParse(e) ?? 0).toList();
+
+      final maxLen = lParts.length > cParts.length ? lParts.length : cParts.length;
+
+      for (int i = 0; i < maxLen; i++) {
         final l = i < lParts.length ? lParts[i] : 0;
         final c = i < cParts.length ? cParts[i] : 0;
         if (l > c) return true;
