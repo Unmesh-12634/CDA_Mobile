@@ -220,14 +220,14 @@ class AiInterviewApiClient {
     try {
       final response = await _dio
           .post('/interview/start', data: request.toJson())
-          .timeout(const Duration(seconds: 3));
+          .timeout(const Duration(seconds: 4));
       if (response.statusCode == 200 && response.data != null) {
         return StartInterviewResponse.fromJson(response.data);
       }
     } catch (_) {}
 
-    // 3. Fallback to adaptive memory session
-    return _generateInstantSession(request);
+    // Strict 100% Real AI Policy: Never return static pre-written questions
+    throw Exception('AI Interview Engine is temporarily out of service.');
   }
 
   /// Evaluates candidate's actual spoken/typed response in real-time with Groq LLM
@@ -259,8 +259,8 @@ class AiInterviewApiClient {
       debugPrint('Groq answer evaluation error: $e');
     }
 
-    // 2. Fallback
-    return _generateInstantEvaluation(request, role: role, turn: turn, total: total);
+    // Strict 100% Real AI Policy: Never return fake evaluations
+    throw Exception('AI Interview Engine is temporarily out of service.');
   }
 
   /// Concludes interview and generates deep comprehensive report via Groq LLM
@@ -273,8 +273,6 @@ class AiInterviewApiClient {
     int targetTurns = 5,
     List<Map<String, String>> transcriptHistory = const [],
   }) async {
-    InterviewFinishResponse report;
-
     // 1. Generate deep report from Groq LLM
     try {
       final groqReport = await _callGroqForReport(
@@ -286,19 +284,14 @@ class AiInterviewApiClient {
         transcriptHistory: transcriptHistory,
       );
       if (groqReport != null) {
-        report = groqReport;
-      } else {
-        report = _generateInstantFinishReport(sessionId, role: role, totalTurns: targetTurns);
+        _saveReportToSupabase(groqReport, candidateEmail: candidateEmail, jobRole: role);
+        return groqReport;
       }
     } catch (e) {
       debugPrint('Groq report error: $e');
-      report = _generateInstantFinishReport(sessionId, role: role, totalTurns: targetTurns);
     }
 
-    // 2. Persist to Supabase ai_interview_reports table asynchronously
-    _saveReportToSupabase(report, candidateEmail: candidateEmail, jobRole: role);
-
-    return report;
+    throw Exception('AI Interview Engine is temporarily out of service.');
   }
 
   static const List<String> _candidateGroqModels = [

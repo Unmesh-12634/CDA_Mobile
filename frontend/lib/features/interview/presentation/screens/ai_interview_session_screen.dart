@@ -415,38 +415,48 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     );
 
     // Real Live Groq LLM generation (~1.2s)
-    final sessionData = await api.startInterview(request);
+    try {
+      final sessionData = await api.startInterview(request);
 
-    if (mounted) {
-      final greetingText = sessionData.initialGreeting;
-      final questionText = sessionData.currentQuestion;
+      if (mounted) {
+        final greetingText = sessionData.initialGreeting;
+        final questionText = sessionData.currentQuestion;
 
-      setState(() {
-        _sessionId = sessionData.sessionId;
-        _currentQuestionText = questionText;
-        _transitionPhrase = sessionData.transitionPhrase;
-        _currentQuestionIndex = 1;
-        _totalQuestions = sessionData.totalTargetQuestions;
-        _isInitializing = false;
-        _isAiSystemUnderService = false;
-        _backendConnected = true;
+        setState(() {
+          _sessionId = sessionData.sessionId;
+          _currentQuestionText = questionText;
+          _transitionPhrase = sessionData.transitionPhrase;
+          _currentQuestionIndex = 1;
+          _totalQuestions = sessionData.totalTargetQuestions;
+          _isInitializing = false;
+          _isAiSystemUnderService = false;
+          _backendConnected = true;
 
-        _transcriptHistory.add({
-          'speaker': 'AI Interviewer ($persona)',
-          'time': '00:02',
-          'text': greetingText,
-          'isAi': 'true',
+          _transcriptHistory.add({
+            'speaker': 'AI Interviewer ($persona)',
+            'time': '00:02',
+            'text': greetingText,
+            'isAi': 'true',
+          });
+          _transcriptHistory.add({
+            'speaker': 'AI Interviewer ($persona)',
+            'time': '00:05',
+            'text': questionText,
+            'isAi': 'true',
+          });
         });
-        _transcriptHistory.add({
-          'speaker': 'AI Interviewer ($persona)',
-          'time': '00:05',
-          'text': questionText,
-          'isAi': 'true',
-        });
-      });
 
-      // Human-like natural delivery: Speak personalized greeting, pause 650ms, then speak Question 1
-      _speakGreetingAndQuestion(greetingText, questionText);
+        // Human-like natural delivery: Speak personalized greeting, pause 650ms, then speak Question 1
+        _speakGreetingAndQuestion(greetingText, questionText);
+      }
+    } catch (e) {
+      debugPrint('AI Interview start notice: $e');
+      if (mounted) {
+        setState(() {
+          _isInitializing = false;
+          _isAiSystemUnderService = true;
+        });
+      }
     }
   }
 
@@ -508,70 +518,80 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         candidateAnswer: candidateResponseText,
         speakingDurationSec: (150 - _secondsRemaining).toDouble(),
       );
-      final nextData = await api.submitAnswer(
-        req,
-        candidateName: candidateName,
-        role: setupConfig.jobRole,
-        skills: setupConfig.skills,
-        turn: _currentQuestionIndex,
-        total: _totalQuestions,
-        transcriptHistory: _transcriptHistory,
-      );
+      try {
+        final nextData = await api.submitAnswer(
+          req,
+          candidateName: candidateName,
+          role: setupConfig.jobRole,
+          skills: setupConfig.skills,
+          turn: _currentQuestionIndex,
+          total: _totalQuestions,
+          transcriptHistory: _transcriptHistory,
+        );
 
-      if (mounted) {
-        if (nextData.isCompleted || nextData.turnNumber > nextData.totalTargetQuestions) {
-          _finishInterviewSession(isCompleted: true);
-          return;
-        }
-
-        setState(() {
-          _currentQuestionIndex = nextData.turnNumber;
-          _totalQuestions = nextData.totalTargetQuestions;
-          if (nextData.currentQuestion != null && nextData.currentQuestion!.isNotEmpty) {
-            _currentQuestionText = nextData.currentQuestion!;
-          }
-          if (nextData.transitionPhrase.isNotEmpty) {
-            _transitionPhrase = nextData.transitionPhrase;
-          }
-          _isSubmittingAnswer = false;
-
-          if (nextData.lastEvaluationScore != null) {
-            _lastAnswerScore = nextData.lastEvaluationScore!;
-            _lastAnswerFeedback = nextData.lastFeedback;
-            _showFeedbackBanner = true;
+        if (mounted) {
+          if (nextData.isCompleted || nextData.turnNumber > nextData.totalTargetQuestions) {
+            _finishInterviewSession(isCompleted: true);
+            return;
           }
 
+          setState(() {
+            _currentQuestionIndex = nextData.turnNumber;
+            _totalQuestions = nextData.totalTargetQuestions;
+            if (nextData.currentQuestion != null && nextData.currentQuestion!.isNotEmpty) {
+              _currentQuestionText = nextData.currentQuestion!;
+            }
+            if (nextData.transitionPhrase.isNotEmpty) {
+              _transitionPhrase = nextData.transitionPhrase;
+            }
+            _isSubmittingAnswer = false;
 
-          _transcriptHistory.add({
-            'speaker': 'Candidate (You)',
-            'time': _formatTimer(150 - _secondsRemaining),
-            'text': candidateResponseText,
-            'isAi': 'false',
-          });
-          _transcriptHistory.add({
-            'speaker': 'AI Interviewer',
-            'time': '00:10',
-            'text': _currentQuestionText,
-            'isAi': 'true',
-          });
-        });
+            if (nextData.lastEvaluationScore != null) {
+              _lastAnswerScore = nextData.lastEvaluationScore!;
+              _lastAnswerFeedback = nextData.lastFeedback;
+              _showFeedbackBanner = true;
+            }
 
-        // Auto-hide feedback banner after 8 seconds
-        Future.delayed(const Duration(seconds: 8), () {
-          if (mounted) setState(() => _showFeedbackBanner = false);
-        });
 
-        // Natural conversational delivery: Transition phrase -> pause -> Next Question
-        if (_transitionPhrase.isNotEmpty && _transitionPhrase != _currentQuestionText) {
-          _speakAiText(_transitionPhrase, onComplete: () {
-            Future.delayed(const Duration(milliseconds: 500), () {
-              if (mounted && !_isMuted) {
-                _speakAiText(_currentQuestionText);
-              }
+            _transcriptHistory.add({
+              'speaker': 'Candidate (You)',
+              'time': _formatTimer(150 - _secondsRemaining),
+              'text': candidateResponseText,
+              'isAi': 'false',
+            });
+            _transcriptHistory.add({
+              'speaker': 'AI Interviewer',
+              'time': '00:10',
+              'text': _currentQuestionText,
+              'isAi': 'true',
             });
           });
-        } else {
-          _speakAiText(_currentQuestionText);
+
+          // Auto-hide feedback banner after 8 seconds
+          Future.delayed(const Duration(seconds: 8), () {
+            if (mounted) setState(() => _showFeedbackBanner = false);
+          });
+
+          // Natural conversational delivery: Transition phrase -> pause -> Next Question
+          if (_transitionPhrase.isNotEmpty && _transitionPhrase != _currentQuestionText) {
+            _speakAiText(_transitionPhrase, onComplete: () {
+              Future.delayed(const Duration(milliseconds: 500), () {
+                if (mounted && !_isMuted) {
+                  _speakAiText(_currentQuestionText);
+                }
+              });
+            });
+          } else {
+            _speakAiText(_currentQuestionText);
+          }
+        }
+      } catch (e) {
+        debugPrint('Submit answer notice: $e');
+        if (mounted) {
+          setState(() {
+            _isSubmittingAnswer = false;
+            _isAiSystemUnderService = true;
+          });
         }
       }
     } else {
