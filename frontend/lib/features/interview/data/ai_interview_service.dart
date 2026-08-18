@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide MultipartFile;
 import '../../../../core/config/app_config.dart';
 import '../../../../core/network/java_api_service.dart';
 import 'models/ai_interview_models.dart';
@@ -233,12 +233,12 @@ class AiInterviewApiClient {
   /// Evaluates candidate's actual spoken/typed response in real-time with Groq LLM
   Future<AnswerResponse> submitAnswer(
     AnswerRequest request, {
-    required String candidateName,
-    required String role,
-    required List<String> skills,
-    required int turn,
-    required int total,
-    required List<Map<String, String>> transcriptHistory,
+    String candidateName = 'Candidate',
+    String role = 'Software Engineer',
+    List<String> skills = const [],
+    int turn = 1,
+    int total = 5,
+    List<Map<String, String>> transcriptHistory = const [],
   }) async {
     // 1. Live Groq LLM Evaluation & Adaptive Next Question
     try {
@@ -266,12 +266,12 @@ class AiInterviewApiClient {
   /// Concludes interview and generates deep comprehensive report via Groq LLM
   Future<InterviewFinishResponse> finishInterview(
     String sessionId, {
-    required String candidateName,
-    required String candidateEmail,
-    required String role,
-    required int completedTurns,
-    required int targetTurns,
-    required List<Map<String, String>> transcriptHistory,
+    String candidateName = 'Candidate',
+    String candidateEmail = '',
+    String role = 'Software Engineer',
+    int completedTurns = 5,
+    int targetTurns = 5,
+    List<Map<String, String>> transcriptHistory = const [],
   }) async {
     InterviewFinishResponse report;
 

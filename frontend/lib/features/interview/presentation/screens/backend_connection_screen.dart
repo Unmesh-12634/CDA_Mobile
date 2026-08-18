@@ -104,10 +104,10 @@ class _BackendConnectionDiagnosticsScreenState
       _endpointResults.add({
         'name': 'POST /api/v1/interview/start',
         'desc': 'Groq Llama-3 70B AI Session Initialization',
-        'status': sessionResult != null ? 'PASSED 🟢' : 'FAILED 🔴',
+        'status': sessionResult.sessionId.isNotEmpty ? 'PASSED 🟢' : 'FAILED 🔴',
         'latency': '${stopwatch.elapsedMilliseconds} ms',
-        'isOk': sessionResult != null,
-        'details': sessionResult != null
+        'isOk': sessionResult.sessionId.isNotEmpty,
+        'details': sessionResult.sessionId.isNotEmpty
             ? {
                 'session_id': sessionResult.sessionId,
                 'initial_greeting': sessionResult.initialGreeting,

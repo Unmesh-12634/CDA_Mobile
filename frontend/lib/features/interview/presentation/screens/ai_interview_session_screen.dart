@@ -1654,11 +1654,24 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
               if (_sessionId != null) {
                 try {
                   final api = ref.read(aiInterviewServiceProvider);
-                  final remoteReport = await api.finishInterview(_sessionId!);
-                  if (remoteReport != null) {
-                    reportData = remoteReport.toJson();
-                    reportData['is_terminated_early'] = true;
-                  }
+                  final setupConfig = ref.read(interviewSetupProvider);
+                  final authState = ref.read(authProvider);
+                  final email = authState.email.isNotEmpty ? authState.email : ref.read(userProfileProvider).email;
+                  final String candidateName = setupConfig.candidateName.trim().isNotEmpty
+                      ? setupConfig.candidateName.trim()
+                      : (authState.fullName.trim().isNotEmpty ? authState.fullName.trim() : 'Candidate');
+
+                  final remoteReport = await api.finishInterview(
+                    _sessionId!,
+                    candidateName: candidateName,
+                    candidateEmail: email,
+                    role: setupConfig.jobRole,
+                    completedTurns: _currentQuestionIndex - 1,
+                    targetTurns: _totalQuestions,
+                    transcriptHistory: _transcriptHistory,
+                  );
+                  reportData = remoteReport.toJson();
+                  reportData['is_terminated_early'] = true;
                 } catch (e) {
                   debugPrint('Finish interview API error: $e');
                 }

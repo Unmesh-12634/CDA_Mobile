@@ -105,7 +105,7 @@ class InterviewSessionNotifier extends StateNotifier<InterviewSessionState> {
       }
 
       final response = await _apiClient.startInterview(request);
-      if (response != null && response.sessionId.isNotEmpty) {
+      if (response.sessionId.isNotEmpty) {
         state = state.copyWith(
           sessionId: response.sessionId,
           currentQuestion: response.currentQuestion,
@@ -155,26 +155,18 @@ class InterviewSessionNotifier extends StateNotifier<InterviewSessionState> {
 
       final response = await _apiClient.submitAnswer(req);
 
-      if (response != null) {
-        state = state.copyWith(
-          isSubmittingAnswer: false,
-          isCompleted: response.isCompleted,
-          currentQuestion: response.currentQuestion ?? state.currentQuestion,
-          turnNumber: response.turnNumber,
-          totalQuestions: response.totalTargetQuestions,
-          transitionPhrase: response.transitionPhrase,
-          lastEvaluationScore: response.lastEvaluationScore ?? state.lastEvaluationScore,
-          lastFeedback: response.lastFeedback ?? state.lastFeedback,
-          speechAnalytics: response.speechAnalytics ?? state.speechAnalytics,
-        );
-        return response;
-      } else {
-        state = state.copyWith(
-          isSubmittingAnswer: false,
-          errorMessage: 'Failed to process answer with backend.',
-        );
-        return null;
-      }
+      state = state.copyWith(
+        isSubmittingAnswer: false,
+        isCompleted: response.isCompleted,
+        currentQuestion: response.currentQuestion ?? state.currentQuestion,
+        turnNumber: response.turnNumber,
+        totalQuestions: response.totalTargetQuestions,
+        transitionPhrase: response.transitionPhrase,
+        lastEvaluationScore: response.lastEvaluationScore ?? state.lastEvaluationScore,
+        lastFeedback: response.lastFeedback ?? state.lastFeedback,
+        speechAnalytics: response.speechAnalytics ?? state.speechAnalytics,
+      );
+      return response;
     } catch (e) {
       debugPrint('submitAnswer error: $e');
       state = state.copyWith(
@@ -191,10 +183,8 @@ class InterviewSessionNotifier extends StateNotifier<InterviewSessionState> {
 
     try {
       final report = await _apiClient.finishInterview(state.sessionId!);
-      if (report != null) {
-        state = state.copyWith(finalReport: report, isCompleted: true);
-        return report;
-      }
+      state = state.copyWith(finalReport: report, isCompleted: true);
+      return report;
     } catch (e) {
       debugPrint('finishSession error: $e');
     }
