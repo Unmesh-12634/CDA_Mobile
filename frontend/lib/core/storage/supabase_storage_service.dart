@@ -28,10 +28,10 @@ class SupabaseStorageService {
 
       debugPrint('[Storage] Uploading avatar to avatars/$storagePath ...');
 
-      // Upload with upsert so subsequent uploads replace the old picture
-      await _client.storage.from('avatars').upload(
+      final bytes = await file.readAsBytes();
+      await _client.storage.from('avatars').uploadBinary(
             storagePath,
-            file,
+            bytes,
             fileOptions: const FileOptions(
               upsert: true,
               cacheControl: '3600',
@@ -68,9 +68,10 @@ class SupabaseStorageService {
 
       debugPrint('[Storage] Uploading resume to resumes/$storagePath ...');
 
-      await _client.storage.from('resumes').upload(
+      final bytes = await file.readAsBytes();
+      await _client.storage.from('resumes').uploadBinary(
             storagePath,
-            file,
+            bytes,
             fileOptions: const FileOptions(
               upsert: true,
               cacheControl: '3600',

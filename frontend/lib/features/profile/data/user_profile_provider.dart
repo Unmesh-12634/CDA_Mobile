@@ -404,15 +404,27 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
           final dbPortfolio = res['portfolio_url']?.toString() ?? state.portfolioUrl;
           final dbEmailVerified = res['is_email_verified'] == true;
 
-          final dbResumeUrl = res['resume_url']?.toString() ?? state.resumeUrl;
+          String? dbResumeUrl = res['resume_url']?.toString();
+          if (dbResumeUrl != null && dbResumeUrl.trim().isEmpty) dbResumeUrl = null;
+          if (dbResumeUrl != null && !dbResumeUrl.startsWith('http')) {
+            dbResumeUrl = (state.resumeUrl != null && state.resumeUrl!.startsWith('http')) ? state.resumeUrl : null;
+          }
+          dbResumeUrl ??= state.resumeUrl;
+
           String? dbResumeFileName = state.resumeFileName;
           if (dbResumeUrl != null && dbResumeUrl.isNotEmpty) {
-            final lastPart = dbResumeUrl.split('/').last;
+            final lastPart = dbResumeUrl.split('?').first.split('/').last;
             if (lastPart.isNotEmpty) {
-              dbResumeFileName = lastPart;
+              dbResumeFileName = Uri.decodeComponent(lastPart);
             }
           }
-          final dbAvatar = res['avatar_url']?.toString() ?? state.avatarImagePath;
+
+          String? dbAvatar = res['avatar_url']?.toString();
+          if (dbAvatar != null && dbAvatar.trim().isEmpty) dbAvatar = null;
+          if (dbAvatar != null && !dbAvatar.startsWith('http')) {
+            dbAvatar = (state.avatarImagePath != null && state.avatarImagePath!.startsWith('http')) ? state.avatarImagePath : null;
+          }
+          dbAvatar ??= state.avatarImagePath;
 
           final initials = dbName.trim().isNotEmpty
               ? dbName.trim().split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').take(2).join()
@@ -657,49 +669,43 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
     await _saveProfile();
   }
 
-  Future<void> setResume({required String fileName, required String filePath}) async {
-    await setResumeFile(filePath, fileName);
+  Future<String?> setResume({required String fileName, required String filePath}) async {
+    return await setResumeFile(filePath, fileName);
   }
 
-  Future<void> setAvatarImagePath(String? path) async {
+  Future<String?> setAvatarImagePath(String? path) async {
     if (path == null) {
       state = state.copyWith(
         avatarImagePath: null,
         clearAvatarImagePath: true,
       );
       await _saveProfile();
-      return;
+      return null;
     }
 
-    // Set local path immediately for instantaneous UI feedback
-    state = state.copyWith(avatarImagePath: path);
+    String finalPath = path;
 
-    // Upload to Supabase Storage 'avatars' bucket in background
+    // Upload to Supabase Storage 'avatars' bucket first
     if (!path.startsWith('http')) {
       final userEmail = state.email.isNotEmpty ? state.email : (SupabaseConfig.client.auth.currentUser?.email ?? 'user');
       final cloudUrl = await SupabaseStorageService().uploadAvatar(
         filePath: path,
         userEmail: userEmail,
       );
-      if (cloudUrl != null) {
-        state = state.copyWith(avatarImagePath: cloudUrl);
+      if (cloudUrl != null && cloudUrl.isNotEmpty) {
+        finalPath = cloudUrl;
       }
     }
 
+    state = state.copyWith(avatarImagePath: finalPath);
     await _saveProfile();
+    return finalPath;
   }
 
-  Future<void> setResumeFile(String filePath, String fileName) async {
-    // Set immediate state
-    state = state.copyWith(
-      resumeFileName: fileName,
-      resumeFilePath: filePath,
-      resumeUrl: filePath,
-      resumeUploadedAt: '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
-      isCvVerified: true,
-    );
+  Future<String?> setResumeFile(String filePath, String fileName) async {
+    String finalUrl = filePath;
 
-    // Upload to Supabase Storage 'resumes' bucket
+    // Upload to Supabase Storage 'resumes' bucket first
     if (!filePath.startsWith('http')) {
       final userEmail = state.email.isNotEmpty ? state.email : (SupabaseConfig.client.auth.currentUser?.email ?? 'user');
       final cloudUrl = await SupabaseStorageService().uploadResume(
@@ -707,15 +713,21 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
         fileName: fileName,
         userEmail: userEmail,
       );
-      if (cloudUrl != null) {
-        state = state.copyWith(
-          resumeUrl: cloudUrl,
-          resumeFilePath: cloudUrl,
-        );
+      if (cloudUrl != null && cloudUrl.isNotEmpty) {
+        finalUrl = cloudUrl;
       }
     }
 
+    state = state.copyWith(
+      resumeFileName: fileName,
+      resumeFilePath: finalUrl,
+      resumeUrl: finalUrl,
+      resumeUploadedAt: '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+      isCvVerified: true,
+    );
+
     await _saveProfile();
+    return finalUrl;
   }
 }
 

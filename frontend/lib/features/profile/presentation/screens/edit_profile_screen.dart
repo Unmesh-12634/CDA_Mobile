@@ -167,11 +167,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         setState(() {
           _avatarImagePath = image.path;
         });
-        await ref.read(userProfileProvider.notifier).setAvatarImagePath(image.path);
+        final cloudUrl = await ref.read(userProfileProvider.notifier).setAvatarImagePath(image.path);
+        if (mounted && cloudUrl != null && cloudUrl.isNotEmpty) {
+          setState(() {
+            _avatarImagePath = cloudUrl;
+          });
+        }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Profile photo updated!'),
+              content: const Text('Profile photo uploaded and updated!'),
               backgroundColor: const Color(0xFF10B981),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -519,7 +524,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                           child: Center(
                             child: _avatarImagePath != null
                                 ? ClipOval(
-                                    child: kIsWeb
+                                    child: (_avatarImagePath!.startsWith('http') || kIsWeb)
                                         ? Image.network(
                                             _avatarImagePath!,
                                             width: 104,
