@@ -16,7 +16,7 @@ class AiQuizGeneratorService {
     return String.fromCharCodes(_kParts);
   }
 
-  static const String _groqModel = 'llama-3.3-70b-versatile';
+  static const String _groqModel = 'openai/gpt-oss-120b';
   static const String _groqEndpoint = 'https://api.groq.com/openai/v1/chat/completions';
 
 

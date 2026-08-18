@@ -11,8 +11,8 @@ class Settings:
     """Central configuration class for the AI Interviewer application."""
 
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
-    # Default to llama-3.3-70b-versatile for top-tier 70B parameter interview intelligence
-    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+    # Default to openai/gpt-oss-120b for top-tier 120B parameter interview intelligence
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
     # Directory Paths
     BASE_DIR: Path = BASE_DIR

@@ -10,6 +10,7 @@ from prompts.interviewer_prompt import (
     INTERVIEWER_USER_PROMPT,
 )
 from services.groq_service import GroqService
+from config.settings import settings
 from utils.logger import get_logger
 
 logger = get_logger("interview_agent")
@@ -108,7 +109,7 @@ class InterviewerAgent:
             prompt=prompt,
             system_prompt=INTERVIEWER_SYSTEM_PROMPT,
             temperature=0.7,
-            model="llama-3.3-70b-versatile",
+            model=settings.GROQ_MODEL,
         )
 
         if not response_dict or "question_text" not in response_dict:

@@ -200,7 +200,7 @@ class AiInterviewApiClient {
     return String.fromCharCodes(_kParts);
   }
 
-  static const String _groqModel = 'llama-3.3-70b-versatile';
+  static const String _groqModel = 'openai/gpt-oss-120b';
   static const String _groqEndpoint = 'https://api.groq.com/openai/v1/chat/completions';
 
   /// Starts 100% real live LLM interview using candidate's real name, resume details, and skills
@@ -302,9 +302,10 @@ class AiInterviewApiClient {
   }
 
   static const List<String> _candidateGroqModels = [
-    'llama-3.3-70b-versatile',
-    'llama-3.1-8b-instant',
-    'mixtral-8x7b-32768',
+    'openai/gpt-oss-120b',
+    'openai/gpt-oss-20b',
+    'qwen/qwen3.6-27b',
+    'groq/compound',
   ];
 
   static Future<StartInterviewResponse?> _callGroqForStart(StartInterviewRequest request) async {

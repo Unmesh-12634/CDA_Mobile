@@ -11,7 +11,7 @@ services:
       - key: GROQ_API_KEY
         sync: false           # Set manually in Render dashboard (never commit key)
       - key: GROQ_MODEL
-        value: llama-3.3-70b-versatile   # Smarter model, ~350ms via Groq LPU
+        value: openai/gpt-oss-120b   # High intelligence 120B model via Groq LPU
       - key: PYTHONIOENCODING
         value: utf-8
       - key: LOG_LEVEL

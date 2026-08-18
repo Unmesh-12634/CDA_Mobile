@@ -11,11 +11,12 @@ from utils.logger import get_logger
 logger = get_logger("groq_service")
 T = TypeVar("T", bound=BaseModel)
 
-# Active, supported Groq LLM models (decommissioned models like llama3-70b & mixtral removed)
 # Active, ultra-fast Groq LLM models (<250ms completion time)
 FALLBACK_MODELS: List[str] = [
-    "llama-3.3-70b-versatile",        # Primary 70B: deep reasoning & high intelligence (~350ms)
-    "llama-3.1-8b-instant",           # Ultra-fast fallback (128k context, ~120ms)
+    "openai/gpt-oss-120b",        # Primary 120B: deep reasoning & high intelligence
+    "openai/gpt-oss-20b",         # Ultra-fast 20B (<150ms)
+    "qwen/qwen3.6-27b",           # 27B high-precision fallback
+    "groq/compound",              # Robust compound model
 ]
 
 MAX_PROMPT_CHARS = 4500  # Safe limit to keep requests well under Groq 6000 TPM limit

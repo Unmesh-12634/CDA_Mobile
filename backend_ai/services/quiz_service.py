@@ -165,7 +165,7 @@ Guidelines:
 
         try:
             raw = self.groq.client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model=settings.GROQ_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.85,
                 max_tokens=2500,
