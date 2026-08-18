@@ -136,23 +136,26 @@ class InterviewService:
         # 2. Record turn in memory
         turn_record = memory.add_turn(current_q, candidate_answer, evaluation)
 
-        # 3. Update Supabase DB with turn record
-        existing_db_session = self.repo.get_session(session_id)
-        current_turns = (existing_db_session.get("turn_records") if existing_db_session else []) or []
-        current_turns.append({
-            "turn_number": turn_record.turn_number,
-            "question_text": current_q.text,
-            "candidate_answer": candidate_answer,
-            "overall_score": getattr(evaluation, "overall", 7.0),
-            "technical_accuracy": getattr(evaluation, "technical_accuracy", 7.0),
-            "communication_clarity": getattr(evaluation, "clarity", 7.0),
-            "problem_solving": getattr(evaluation, "engineering_judgement_score", 7.0),
-        })
-        self.repo.update_session(session_id, {
-            "current_turn": memory.current_turn,
-            "turn_records": current_turns,
-            "updated_at": "now()",
-        })
+        # 3. Update Supabase DB with turn record asynchronously / non-blocking
+        try:
+            existing_db_session = self.repo.get_session(session_id)
+            current_turns = (existing_db_session.get("turn_records") if existing_db_session else []) or []
+            current_turns.append({
+                "turn_number": turn_record.turn_number,
+                "question_text": current_q.text,
+                "candidate_answer": candidate_answer,
+                "overall_score": getattr(evaluation, "overall", 7.0),
+                "technical_accuracy": getattr(evaluation, "technical_accuracy", 7.0),
+                "communication_clarity": getattr(evaluation, "clarity", 7.0),
+                "problem_solving": getattr(evaluation, "engineering_judgement_score", 7.0),
+            })
+            self.repo.update_session(session_id, {
+                "current_turn": memory.current_turn,
+                "turn_records": current_turns,
+                "updated_at": "now()",
+            })
+        except Exception as e:
+            logger.warning(f"Non-fatal warning updating session turn in DB: {e}")
 
         # 4. Check if target question count reached
         if memory.current_turn >= memory.config.target_question_count:
