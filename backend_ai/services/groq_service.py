@@ -126,7 +126,7 @@ class GroqService:
         prompt: str,
         system_prompt: Optional[str] = None,
         temperature: float = 0.2,
-        max_tokens: int = 1500,
+        max_tokens: int = 3500,
         model: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """Generates structured JSON response from Groq LLM with fallback cascade across active models."""
@@ -179,7 +179,7 @@ class GroqService:
         prompt: str,
         system_prompt: Optional[str] = None,
         temperature: float = 0.2,
-        max_tokens: int = 1500,
+        max_tokens: int = 3500,
     ) -> Optional[T]:
         """Generates and validates response into a Pydantic model."""
         json_data = self.generate_json(
