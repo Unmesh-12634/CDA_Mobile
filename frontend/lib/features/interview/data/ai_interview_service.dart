@@ -301,21 +301,28 @@ class AiInterviewApiClient {
     return report;
   }
 
+  static const List<String> _candidateGroqModels = [
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'mixtral-8x7b-32768',
+  ];
+
   static Future<StartInterviewResponse?> _callGroqForStart(StartInterviewRequest request) async {
     final candidateName = request.candidateName.trim().isNotEmpty ? request.candidateName.trim() : 'Candidate';
     final jobRole = request.jobRole;
-    final skillsStr = request.skills.isNotEmpty ? request.skills.join(', ') : 'Software Engineering, Problem Solving, System Design';
+    final skillsStr = request.skills.isNotEmpty ? request.skills.join(', ') : 'Software Engineering, System Design, Problem Solving';
     final resumeInfo = request.resumeText != null && request.resumeText!.isNotEmpty
-        ? 'Resume Highlights: ${request.resumeText}'
-        : (request.resumePath != null ? 'Resume File: ${request.resumePath}' : '');
+        ? 'Candidate Resume Content:\n${request.resumeText}'
+        : (request.resumePath != null ? 'Candidate Uploaded Resume File: ${request.resumePath}' : '');
     final jdInfo = request.jobDescription != null && request.jobDescription!.isNotEmpty
-        ? 'Job Context: ${request.jobDescription}'
+        ? 'Target Job Description:\n${request.jobDescription}'
         : '';
     final track = request.interviewType;
     final difficulty = request.difficulty;
 
     final systemPrompt = '''You are an elite, highly professional AI Technical Interviewer at Cranes Digital Academy conducting a realistic live voice interview.
 You speak like a senior engineering leader at Google or Amazon — warm, conversational, articulate, encouraging yet rigorous.
+DO NOT use generic template greetings or memorization trivia questions.
 
 CANDIDATE INFORMATION:
 - Candidate Name: $candidateName
@@ -328,52 +335,58 @@ $jdInfo
 $resumeInfo
 
 TASK:
-1. Generate "initial_greeting": A warm, natural, human opening greeting (2 sentences) addressing $candidateName directly by their name, expressing excitement to interview them for $jobRole, and acknowledging their background/skills.
-2. Generate "current_question": Question #1 — A thought-provoking, realistic technical scenario question specifically tailored to their verified skills and target role.
-3. Generate "transition_phrase": A brief, natural conversational transition phrase (e.g. "Let us begin with your first technical scenario.").
+1. Generate a warm, natural opening greeting (2 sentences) addressing $candidateName directly by their actual name, welcoming them to the interview for $jobRole, and acknowledging 1 or 2 specific technologies/skills from their profile.
+2. Generate Question #1: A realistic, practical technical scenario question specifically tailored to their verified skills ($skillsStr) and target role ($jobRole). It must be practical (e.g. system architecture, performance optimization, concurrency, or debugging).
+3. Generate a brief conversational transition phrase to introduce Question 1.
 
-Return ONLY a valid JSON object matching this exact schema:
+Return ONLY a valid JSON object matching this schema:
 {
-  "initial_greeting": "Warm greeting addressing $candidateName by name...",
-  "current_question": "Realistic technical scenario question...",
-  "transition_phrase": "Conversational transition sentence..."
+  "greeting": "Warm opening greeting string addressing $candidateName...",
+  "question": "Realistic technical scenario question...",
+  "transition": "Conversational transition sentence..."
 }''';
 
-    final response = await http.post(
-      Uri.parse(_groqEndpoint),
-      headers: {
-        'Authorization': 'Bearer $_groqApiKey',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'model': _groqModel,
-        'messages': [
-          {'role': 'system', 'content': systemPrompt},
-          {'role': 'user', 'content': 'Generate the live interview greeting and Question 1 for $candidateName.'}
-        ],
-        'temperature': 0.7,
-        'response_format': {'type': 'json_object'},
-      }),
-    ).timeout(const Duration(seconds: 5));
+    for (final model in _candidateGroqModels) {
+      try {
+        final response = await http.post(
+          Uri.parse(_groqEndpoint),
+          headers: {
+            'Authorization': 'Bearer $_groqApiKey',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'model': model,
+            'messages': [
+              {'role': 'system', 'content': systemPrompt},
+              {'role': 'user', 'content': 'Generate the live interview greeting and Question 1 for $candidateName.'}
+            ],
+            'temperature': 0.7,
+            'response_format': {'type': 'json_object'},
+          }),
+        ).timeout(const Duration(seconds: 8));
 
-    if (response.statusCode == 200) {
-      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-      final content = decoded['choices']?[0]?['message']?['content'];
-      if (content != null) {
-        final parsed = jsonDecode(content) as Map<String, dynamic>;
-        final greeting = parsed['initial_greeting']?.toString() ?? 'Welcome $candidateName! I am your AI Technical Interviewer for $jobRole.';
-        final question = parsed['current_question']?.toString() ?? 'Could you explain a complex project you built recently in $jobRole?';
-        final transition = parsed['transition_phrase']?.toString() ?? 'Let us begin with your technical evaluation.';
+        if (response.statusCode == 200) {
+          final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+          final content = decoded['choices']?[0]?['message']?['content'];
+          if (content != null) {
+            final parsed = jsonDecode(content) as Map<String, dynamic>;
+            final greeting = (parsed['greeting'] ?? parsed['initial_greeting'] ?? parsed['intro'] ?? parsed['welcome_message'])?.toString() ?? 'Welcome $candidateName! I am your AI Technical Interviewer for $jobRole.';
+            final question = (parsed['question'] ?? parsed['current_question'] ?? parsed['question_1'] ?? parsed['first_question'])?.toString() ?? 'Could you explain a complex project you developed in $jobRole?';
+            final transition = (parsed['transition'] ?? parsed['transition_phrase'] ?? parsed['phrase'])?.toString() ?? 'Let us begin with your technical assessment.';
 
-        return StartInterviewResponse(
-          sessionId: 'ai_groq_${DateTime.now().millisecondsSinceEpoch}',
-          isCompleted: false,
-          initialGreeting: greeting,
-          currentQuestion: question,
-          turnNumber: 1,
-          totalTargetQuestions: request.targetQuestionCount > 0 ? request.targetQuestionCount : 5,
-          transitionPhrase: transition,
-        );
+            return StartInterviewResponse(
+              sessionId: 'ai_groq_${DateTime.now().millisecondsSinceEpoch}',
+              isCompleted: false,
+              initialGreeting: greeting,
+              currentQuestion: question,
+              turnNumber: 1,
+              totalTargetQuestions: request.targetQuestionCount > 0 ? request.targetQuestionCount : 5,
+              transitionPhrase: transition,
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('Groq model $model start failed: $e, trying next...');
       }
     }
     return null;
@@ -394,67 +407,73 @@ Return ONLY a valid JSON object matching this exact schema:
     final historySnippet = transcriptHistory.take(8).map((t) => "${t['speaker']}: ${t['text']}").join("\n");
 
     final systemPrompt = '''You are an expert AI Technical Interviewer evaluating a live answer from $candidateName for the role of $role.
-Skills: ${skills.join(', ')}
+Candidate Verified Skills: ${skills.join(', ')}
 Current Turn: $turn of $total
 Is Final Turn: $isDone
 
-INTERVIEW HISTORY:
+INTERVIEW TRANSCRIPT SO FAR:
 $historySnippet
 
 LATEST CANDIDATE ANSWER:
 "${req.candidateAnswer}"
 
-TASK:
-1. "last_evaluation_score": Score the answer objectively from 0.0 to 100.0 based on technical depth, accuracy, trade-offs, and communication clarity.
-2. "last_feedback": Provide 1-2 constructive, human sentences highlighting what was good and what could be deeper.
-3. "transition_phrase": A brief, natural conversational transition phrase acknowledging what they just said.
-4. "current_question": ${isDone ? 'Leave as empty string "" since this is the final question.' : 'Question #$nextTurn — A new, highly relevant scenario question testing another key skill in $role, naturally following up on the discussion.'}
+EVALUATION & ADAPTIVE FOLLOW-UP TASK:
+1. Grade the candidate's answer objectively from 0.0 to 100.0 based on technical depth, accuracy, trade-offs, and communication clarity.
+2. Provide 1-2 constructive, human sentences highlighting what was good in their answer and what edge cases or optimizations were missed.
+3. Provide a brief, natural conversational transition phrase acknowledging their specific points.
+4. ${isDone ? 'Leave "question" as empty string since this was the final question.' : 'Generate Question #$nextTurn: A new, practical scenario question that logically builds on what the candidate just explained or tests another core facet of $role and ${skills.join(', ')}.'}
 
-Return ONLY a valid JSON object matching this exact schema:
+Return ONLY a valid JSON object matching this schema:
 {
-  "last_evaluation_score": 88.0,
-  "last_feedback": "Constructive feedback string...",
-  "transition_phrase": "Conversational transition string...",
-  "current_question": "${isDone ? '' : 'New question string...'}"
+  "score": 88.0,
+  "feedback": "Constructive feedback evaluating their specific answer...",
+  "transition": "Conversational transition phrase...",
+  "question": "${isDone ? '' : 'Adaptive follow-up question...'}"
 }''';
 
-    final response = await http.post(
-      Uri.parse(_groqEndpoint),
-      headers: {
-        'Authorization': 'Bearer $_groqApiKey',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({
-        'model': _groqModel,
-        'messages': [
-          {'role': 'system', 'content': systemPrompt},
-          {'role': 'user', 'content': 'Evaluate candidate answer and provide the next step.'}
-        ],
-        'temperature': 0.7,
-        'response_format': {'type': 'json_object'},
-      }),
-    ).timeout(const Duration(seconds: 5));
+    for (final model in _candidateGroqModels) {
+      try {
+        final response = await http.post(
+          Uri.parse(_groqEndpoint),
+          headers: {
+            'Authorization': 'Bearer $_groqApiKey',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({
+            'model': model,
+            'messages': [
+              {'role': 'system', 'content': systemPrompt},
+              {'role': 'user', 'content': 'Evaluate candidate answer and provide the next adaptive question.'}
+            ],
+            'temperature': 0.7,
+            'response_format': {'type': 'json_object'},
+          }),
+        ).timeout(const Duration(seconds: 8));
 
-    if (response.statusCode == 200) {
-      final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-      final content = decoded['choices']?[0]?['message']?['content'];
-      if (content != null) {
-        final parsed = jsonDecode(content) as Map<String, dynamic>;
-        final score = (parsed['last_evaluation_score'] as num?)?.toDouble() ?? 82.0;
-        final feedback = parsed['last_feedback']?.toString() ?? 'Solid technical explanation.';
-        final transition = parsed['transition_phrase']?.toString() ?? 'Thank you. Let us move to the next topic.';
-        final nextQuestion = parsed['current_question']?.toString();
+        if (response.statusCode == 200) {
+          final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+          final content = decoded['choices']?[0]?['message']?['content'];
+          if (content != null) {
+            final parsed = jsonDecode(content) as Map<String, dynamic>;
+            final score = (parsed['score'] ?? parsed['last_evaluation_score'] ?? parsed['evaluation_score'] as num?)?.toDouble() ?? 84.0;
+            final feedback = (parsed['feedback'] ?? parsed['last_feedback'] ?? parsed['critique'])?.toString() ?? 'Solid technical explanation.';
+            final transition = (parsed['transition'] ?? parsed['transition_phrase'] ?? parsed['acknowledgment'])?.toString() ?? 'Thank you for that explanation. Let us move forward.';
+            final nextQuestion = (parsed['question'] ?? parsed['current_question'] ?? parsed['next_question'])?.toString();
 
-        return AnswerResponse(
-          sessionId: req.sessionId,
-          isCompleted: isDone,
-          turnNumber: nextTurn,
-          totalTargetQuestions: total,
-          transitionPhrase: transition,
-          currentQuestion: (nextQuestion != null && nextQuestion.isNotEmpty && !isDone) ? nextQuestion : null,
-          lastEvaluationScore: score,
-          lastFeedback: feedback,
-        );
+            return AnswerResponse(
+              sessionId: req.sessionId,
+              isCompleted: isDone,
+              turnNumber: nextTurn,
+              totalTargetQuestions: total,
+              transitionPhrase: transition,
+              currentQuestion: (nextQuestion != null && nextQuestion.isNotEmpty && !isDone) ? nextQuestion : null,
+              lastEvaluationScore: score,
+              lastFeedback: feedback,
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('Groq model $model evaluation failed: $e, trying next...');
       }
     }
     return null;
