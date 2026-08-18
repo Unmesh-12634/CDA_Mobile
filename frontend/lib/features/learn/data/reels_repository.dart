@@ -175,11 +175,13 @@ class ReelsRepository {
 
   /// Fetch Comments for Reel
   Future<List<ReelCommentModel>> fetchComments(String reelId) async {
+    final cleanId = reelId.trim();
+    if (cleanId.isEmpty) return [];
     try {
       final res = await SupabaseConfig.client
           .from('reel_comments')
           .select('*')
-          .eq('reel_id', reelId)
+          .eq('reel_id', cleanId)
           .order('created_at', ascending: false);
 
       if (res.isNotEmpty) {
@@ -199,20 +201,26 @@ class ReelsRepository {
     String? userAvatar,
     required String comment,
   }) async {
+    final cleanId = reelId.trim();
+    final cleanEmail = userEmail.trim();
+    final cleanName = userName.trim().isNotEmpty ? userName.trim() : 'Learner';
+    final cleanText = comment.trim();
+    if (cleanId.isEmpty || cleanText.isEmpty) return null;
+
     try {
       final data = {
-        'reel_id': reelId,
-        'user_email': userEmail,
-        'user_name': userName,
+        'reel_id': cleanId,
+        'user_email': cleanEmail,
+        'user_name': cleanName,
         'user_avatar': userAvatar,
-        'comment': comment,
+        'comment': cleanText,
         'created_at': DateTime.now().toIso8601String(),
       };
       final res = await SupabaseConfig.client.from('reel_comments').insert(data).select().single();
       try {
-        final cur = await SupabaseConfig.client.from('reels').select('comments_count').eq('id', reelId).maybeSingle();
+        final cur = await SupabaseConfig.client.from('reels').select('comments_count').eq('id', cleanId).maybeSingle();
         final count = (cur?['comments_count'] as num?)?.toInt() ?? 0;
-        await SupabaseConfig.client.from('reels').update({'comments_count': count + 1}).eq('id', reelId);
+        await SupabaseConfig.client.from('reels').update({'comments_count': count + 1}).eq('id', cleanId);
       } catch (_) {}
       return ReelCommentModel.fromMap(Map<String, dynamic>.from(res));
     } catch (e) {

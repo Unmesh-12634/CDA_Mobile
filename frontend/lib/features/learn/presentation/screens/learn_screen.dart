@@ -216,6 +216,21 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with WidgetsBindingOb
         _commentCountMap.addAll(counts);
       }
 
+      // Preload live total likes count per reel directly from reel_likes
+      final allLikesRes = await SupabaseConfig.client
+          .from('reel_likes')
+          .select('reel_id');
+      if (allLikesRes.isNotEmpty) {
+        final Map<String, int> likeCounts = {};
+        for (final row in allLikesRes) {
+          final rId = row['reel_id']?.toString();
+          if (rId != null) {
+            likeCounts[rId] = (likeCounts[rId] ?? 0) + 1;
+          }
+        }
+        _likeCountMap.addAll(likeCounts);
+      }
+
       if (mounted) setState(() {});
     } catch (e) {
       debugPrint('Reels state load notice: $e');
