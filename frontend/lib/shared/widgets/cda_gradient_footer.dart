@@ -205,11 +205,11 @@ class CDAHomeFooter extends StatelessWidget {
           const SizedBox(height: 4),
 
           Text(
-            'Your career growth partner',
+            'Where Technology Meets Excellence',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 10.5,
               color: textSub,
-              fontWeight: FontWeight.w400,
+              fontWeight: FontWeight.w600,
               letterSpacing: 0.4,
             ),
           ),

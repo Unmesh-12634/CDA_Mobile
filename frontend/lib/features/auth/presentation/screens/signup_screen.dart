@@ -161,35 +161,82 @@ class _SignUpScreenState extends ConsumerState<SignUpScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── TOP LOGO IN CORNER ──
-                    Container(
-                      width: 52,
-                      height: 52,
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1C2541) : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
+                    // ── TOP LOGO & TAGLINE ──
+                    Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1C2541) : Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF0F2088).withValues(alpha: isDark ? 0.25 : 0.10),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                            border: Border.all(
+                              color: isDark ? const Color(0xFF2E3D5E) : const Color(0xFFE2E8F0),
+                              width: 1.2,
+                            ),
                           ),
-                        ],
-                        border: Border.all(
-                          color: isDark ? const Color(0xFF2E3D5E) : const Color(0xFFE2E8F0),
-                          width: 1.2,
+                          child: Image.asset(
+                            'assets/images/cranes_logo.png',
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const Icon(
+                              Icons.school_rounded,
+                              color: AppColors.primary,
+                              size: 26,
+                            ),
+                          ),
                         ),
-                      ),
-                      child: Image.asset(
-                        'assets/images/cranes_logo.png',
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.school_rounded,
-                          color: Color(0xFFD97706),
-                          size: 28,
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  'CRANES ',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
+                                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                                ShaderMask(
+                                  shaderCallback: (bounds) => const LinearGradient(
+                                    colors: [Color(0xFFF59E0B), Color(0xFF0F2088)],
+                                  ).createShader(bounds),
+                                  child: const Text(
+                                    'VARSITY',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.white,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Where Technology Meets Excellence',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
+                      ],
                     ),
 
                     const SizedBox(height: 32),

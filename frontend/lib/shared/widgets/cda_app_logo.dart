@@ -123,13 +123,13 @@ class CDAAppLogo extends StatelessWidget {
           if (showTagline) ...[
             const SizedBox(height: 3),
             Text(
-              'INSTITUTE OF CAREER & AI EXCELLENCE',
+              'Where Technology Meets Excellence',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: taglineSize,
                 fontWeight: FontWeight.w700,
                 color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
-                letterSpacing: 1.1,
+                letterSpacing: 0.8,
               ),
             ),
           ],
