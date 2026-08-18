@@ -182,17 +182,47 @@ class AiInterviewApiClient {
     } catch (_) {}
   }
 
+  /// Starts instant session without any network blocking
+  StartInterviewResponse generateInstantSession({
+    required String candidateName,
+    required String jobRole,
+    required String interviewType,
+    int targetQuestionCount = 5,
+  }) {
+    return _generateInstantSession(StartInterviewRequest(
+      candidateName: candidateName,
+      jobRole: jobRole,
+      experienceLevel: '1 - 3 Years',
+      interviewType: interviewType,
+      difficulty: 'Intermediate',
+      targetQuestionCount: targetQuestionCount,
+    ));
+  }
+
+  /// Non-blocking background sync with remote backend if available
+  Future<StartInterviewResponse?> syncCloudSessionInBackground(StartInterviewRequest request) async {
+    try {
+      final response = await _dio
+          .post('/interview/start', data: request.toJson())
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200 && response.data != null) {
+        return StartInterviewResponse.fromJson(response.data);
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// POST /api/v1/interview/start — Starts session and returns initial greeting & Q1 instantly
   Future<StartInterviewResponse?> startInterview(StartInterviewRequest request) async {
     try {
       final response = await _dio
           .post('/interview/start', data: request.toJson())
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(seconds: 2));
       if (response.statusCode == 200 && response.data != null) {
         return StartInterviewResponse.fromJson(response.data);
       }
     } catch (e) {
-      debugPrint('⚡ Server startInterview offline/cold start: $e — using Instant AI Engine');
+      debugPrint('⚡ Instant local AI session starting: $e');
     }
 
     // Instant High-Performance Adaptive AI Generator

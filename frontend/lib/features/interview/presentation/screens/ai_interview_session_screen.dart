@@ -57,12 +57,12 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   bool _isFetchingHint = false;
 
   // Backend Integration State
-  bool _isInitializing = true;
+  bool _isInitializing = false;
   bool _isTerminatingSession = false;
   bool _isAiSystemUnderService = false;
-  String _initializationStatus = 'Connecting to Render AI Engine...';
+  String _initializationStatus = 'Connecting to AI Engine...';
   String? _sessionId;
-  bool _backendConnected = false;
+  bool _backendConnected = true;
 
   Timer? _countdownTimer;
   int _secondsRemaining = 150; // 2 min 30 sec per question
@@ -103,72 +103,24 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     _flutterTts = FlutterTts();
     final setupConfig = ref.read(interviewSetupProvider);
     _currentSpeechRate = setupConfig.speechRate;
-
     final persona = setupConfig.voicePersona.toLowerCase();
 
     try {
-      // Set iOS audio category for loud speaker output even if ringer is silent
-      await _flutterTts.setIosAudioCategory(
-        IosTextToSpeechAudioCategory.playback,
-        [
-          IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
-          IosTextToSpeechAudioCategoryOptions.allowBluetooth,
-        ],
-      );
-
       if (persona == 'ryan') {
         await _flutterTts.setLanguage('en-GB');
         await _flutterTts.setPitch(0.96);
       } else if (persona == 'aria') {
         await _flutterTts.setLanguage('en-US');
         await _flutterTts.setPitch(1.05);
-      } else if (persona == 'guy') {
-        await _flutterTts.setLanguage('en-US');
-        await _flutterTts.setPitch(0.98);
       } else {
-        // Christopher — Executive Director (Natural deep American male pitch)
         await _flutterTts.setLanguage('en-US');
         await _flutterTts.setPitch(0.95);
-      }
-
-      // Explicit Android/iOS TTS Voice Discovery for High Quality Neural Voices
-      final dynamic rawVoices = await _flutterTts.getVoices;
-      if (rawVoices is List && rawVoices.isNotEmpty) {
-        Map<String, String>? selectedVoice;
-        final bool wantsFemale = (persona == 'aria');
-
-        for (var item in rawVoices) {
-          if (item is Map) {
-            final String name = (item['name'] ?? '').toString().toLowerCase();
-            final String locale = (item['locale'] ?? '').toString().toLowerCase();
-
-            if (!locale.startsWith('en')) continue;
-
-            if (wantsFemale) {
-              if (name.contains('female') || name.contains('woman') || name.contains('zira') || name.contains('sfd') || name.contains('sfg') || name.contains('tpd') || name.contains('network')) {
-                selectedVoice = {'name': item['name'].toString(), 'locale': item['locale'].toString()};
-                break;
-              }
-            } else {
-              // Male requested (Christopher, Guy, Ryan)
-              if (name.contains('male') || name.contains('man') || name.contains('guy') || name.contains('david') || name.contains('george') || name.contains('iom') || name.contains('iol') || name.contains('iob') || name.contains('tpf') || name.contains('sfc') || name.contains('network')) {
-                selectedVoice = {'name': item['name'].toString(), 'locale': item['locale'].toString()};
-                break;
-              }
-            }
-          }
-        }
-
-        if (selectedVoice != null) {
-          debugPrint('🎙️ Setting High-Quality TTS Voice: ${selectedVoice['name']} (${selectedVoice['locale']})');
-          await _flutterTts.setVoice(selectedVoice);
-        }
       }
 
       await _flutterTts.setSpeechRate(_currentSpeechRate);
       await _flutterTts.setVolume(1.0);
     } catch (e) {
-      debugPrint('TTS init warning: $e');
+      debugPrint('TTS fast init warning: $e');
     }
 
     _flutterTts.setCompletionHandler(() {
@@ -187,6 +139,41 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
           _isAiSpeaking = false;
         });
       }
+    });
+
+    // Background asynchronous voice discovery (non-blocking)
+    Future.microtask(() async {
+      try {
+        await _flutterTts.setIosAudioCategory(
+          IosTextToSpeechAudioCategory.playback,
+          [
+            IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
+            IosTextToSpeechAudioCategoryOptions.allowBluetooth,
+          ],
+        );
+        final dynamic rawVoices = await _flutterTts.getVoices;
+        if (rawVoices is List && rawVoices.isNotEmpty) {
+          Map<String, String>? selectedVoice;
+          final bool wantsFemale = (persona == 'aria');
+          for (var item in rawVoices) {
+            if (item is Map) {
+              final String name = (item['name'] ?? '').toString().toLowerCase();
+              final String locale = (item['locale'] ?? '').toString().toLowerCase();
+              if (!locale.startsWith('en')) continue;
+              if (wantsFemale && (name.contains('female') || name.contains('woman') || name.contains('network'))) {
+                selectedVoice = {'name': item['name'].toString(), 'locale': item['locale'].toString()};
+                break;
+              } else if (!wantsFemale && (name.contains('male') || name.contains('man') || name.contains('network'))) {
+                selectedVoice = {'name': item['name'].toString(), 'locale': item['locale'].toString()};
+                break;
+              }
+            }
+          }
+          if (selectedVoice != null) {
+            await _flutterTts.setVoice(selectedVoice);
+          }
+        }
+      } catch (_) {}
     });
   }
 
@@ -374,13 +361,8 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     }
   }
 
-  /// Initializes live interview session instantly
+  /// Initializes live interview session instantly (< 200ms)
   Future<void> _initBackendSession() async {
-    setState(() {
-      _isInitializing = true;
-      _initializationStatus = 'Initializing AI Interview Engine...';
-    });
-
     final api = ref.read(aiInterviewServiceProvider);
     final setupConfig = ref.read(interviewSetupProvider);
     final authState = ref.read(authProvider);
@@ -389,9 +371,53 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         ? setupConfig.candidateName.trim()
         : (authState.fullName.trim().isNotEmpty ? authState.fullName.trim() : 'Candidate');
 
+    final role = setupConfig.jobRole.trim().isNotEmpty ? setupConfig.jobRole : 'Senior Software Engineer';
+    final persona = setupConfig.voicePersona.toUpperCase();
+
+    // 1. Instant Pre-generated Question 1 (< 5ms in memory)
+    final instantSession = api.generateInstantSession(
+      candidateName: candidateName,
+      jobRole: role,
+      interviewType: setupConfig.interviewType,
+      targetQuestionCount: setupConfig.targetQuestionCount,
+    );
+
+    final greetingText = instantSession.initialGreeting;
+    final questionText = instantSession.currentQuestion;
+
+    if (mounted) {
+      setState(() {
+        _sessionId = instantSession.sessionId;
+        _currentQuestionText = questionText;
+        _transitionPhrase = instantSession.transitionPhrase;
+        _currentQuestionIndex = 1;
+        _totalQuestions = instantSession.totalTargetQuestions;
+        _isInitializing = false;
+        _isAiSystemUnderService = false;
+        _backendConnected = true;
+
+        _transcriptHistory.add({
+          'speaker': 'AI Interviewer ($persona)',
+          'time': '00:02',
+          'text': greetingText,
+          'isAi': 'true',
+        });
+        _transcriptHistory.add({
+          'speaker': 'AI Interviewer ($persona)',
+          'time': '00:05',
+          'text': questionText,
+          'isAi': 'true',
+        });
+      });
+
+      // Immediate voice output & typewriter subtitle animation
+      _speakAiText('$greetingText. $questionText');
+    }
+
+    // 2. Non-blocking asynchronous cloud session sync in background
     final request = StartInterviewRequest(
       candidateName: candidateName,
-      jobRole: setupConfig.jobRole.trim().isNotEmpty ? setupConfig.jobRole : 'Senior AI & Full-Stack Engineer',
+      jobRole: role,
       jobDescription: setupConfig.jobDescriptionText,
       experienceLevel: setupConfig.experienceLevel.trim().isNotEmpty ? setupConfig.experienceLevel : '1 - 3 Years',
       interviewType: setupConfig.interviewType,
@@ -403,44 +429,13 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       resumePath: setupConfig.resumePath,
     );
 
-    // Instant Start — fast probe with fallback
-    final sessionData = await api.startInterview(request);
-
-    if (mounted) {
-      final greetingText = (sessionData != null && sessionData.initialGreeting.isNotEmpty)
-          ? sessionData.initialGreeting
-          : 'Welcome $candidateName! I am your AI Technical Interviewer today. Based on your profile in ${request.jobRole}, let us begin.';
-
-      final questionText = (sessionData != null && sessionData.currentQuestion.isNotEmpty)
-          ? sessionData.currentQuestion
-          : 'Tell me about a complex technical project you developed in ${request.jobRole}. What architectural decisions and trade-offs did you make?';
-
-      setState(() {
-        _sessionId = sessionData?.sessionId ?? 'session_${DateTime.now().millisecondsSinceEpoch}';
-        _currentQuestionText = questionText;
-        _transitionPhrase = sessionData?.transitionPhrase ?? 'Let us begin with your technical evaluation.';
-        _currentQuestionIndex = sessionData?.turnNumber ?? 1;
-        _totalQuestions = sessionData?.totalTargetQuestions ?? setupConfig.targetQuestionCount;
-        _isInitializing = false;
-        _isAiSystemUnderService = false;
-        _backendConnected = true;
-
-        _transcriptHistory.add({
-          'speaker': 'AI Interviewer (${setupConfig.voicePersona.toUpperCase()})',
-          'time': '00:02',
-          'text': greetingText,
-          'isAi': 'true',
+    api.syncCloudSessionInBackground(request).then((cloudSession) {
+      if (cloudSession != null && mounted) {
+        setState(() {
+          _sessionId = cloudSession.sessionId;
         });
-        _transcriptHistory.add({
-          'speaker': 'AI Interviewer (${setupConfig.voicePersona.toUpperCase()})',
-          'time': '00:05',
-          'text': questionText,
-          'isAi': 'true',
-        });
-      });
-
-      _speakAiText('$greetingText. $questionText');
-    }
+      }
+    });
   }
 
   void _startQuestionTimer() {
