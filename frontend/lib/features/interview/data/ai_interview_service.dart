@@ -592,7 +592,7 @@ Return ONLY a valid JSON object matching this exact schema:
     try {
       final supabaseDio = Dio();
       final response = await supabaseDio.get(
-        '$_supabaseUrl/rest/v1/ai_interview_reports?user_email=eq.${Uri.encodeComponent(targetEmail)}&order=created_at.desc&limit=50',
+        '$_supabaseUrl/rest/v1/ai_interview_reports?or=(candidate_email.eq.${Uri.encodeComponent(targetEmail)},user_email.eq.${Uri.encodeComponent(targetEmail)})&order=created_at.desc&limit=50',
         options: Options(
           headers: {
             'apikey': _supabaseAnonKey,

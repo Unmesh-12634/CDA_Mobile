@@ -621,6 +621,16 @@ def get_all_interview_sessions():
             
     return db_sessions
 
+@app.get("/api/v1/interview/history")
+@app.get("/api/v1/interview/reports")
+def get_interview_history(email: str = Query(default=""), limit: int = Query(default=50)):
+    """Fetches candidate's past interview session reports from Supabase DB."""
+    reports = supabase_repo.get_all_reports(limit=limit)
+    if email:
+        filtered = [r for r in reports if r.get("candidate_email") == email or r.get("user_email") == email]
+        return filtered if filtered else reports
+    return reports
+
 @app.get("/api/v1/interview/session/{session_id}")
 def get_session_detail(session_id: str):
     """Returns detailed session record including turn-by-turn Q&A for live HTML dashboard inspection."""

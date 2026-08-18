@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../shared/widgets/glass_card.dart';
+import '../../../auth/data/auth_provider.dart';
 import '../../data/ai_interview_service.dart';
 
 class InterviewReportsHistoryScreen extends ConsumerStatefulWidget {
@@ -24,7 +25,8 @@ class _InterviewReportsHistoryScreenState extends ConsumerState<InterviewReports
 
   Future<void> _loadHistory() async {
     final api = ref.read(aiInterviewServiceProvider);
-    final fetched = await api.fetchInterviewHistory();
+    final userEmail = ref.read(authProvider).user?.email ?? '';
+    final fetched = await api.fetchInterviewHistory(email: userEmail);
     if (mounted) {
       setState(() {
         _isLoading = false;
