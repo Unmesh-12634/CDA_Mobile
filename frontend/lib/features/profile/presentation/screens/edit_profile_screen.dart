@@ -47,7 +47,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final ImagePicker _picker = ImagePicker();
 
   final List<Map<String, dynamic>> _presetAvatars = [
-    {'label': 'Arjun V', 'initials': 'AV', 'color': const Color(0xFF4648D4), 'icon': Icons.code_rounded},
+    {'label': 'Arjun V', 'initials': 'AV', 'color': const Color(0xFF0F2088), 'icon': Icons.code_rounded},
     {'label': 'Flutter Dev', 'initials': 'FD', 'color': const Color(0xFF0EA5E9), 'icon': Icons.flutter_dash_rounded},
     {'label': 'Java Lead', 'initials': 'JL', 'color': const Color(0xFF10B981), 'icon': Icons.terminal_rounded},
     {'label': 'AI Expert', 'initials': 'AI', 'color': const Color(0xFFEC4899), 'icon': Icons.psychology_rounded},

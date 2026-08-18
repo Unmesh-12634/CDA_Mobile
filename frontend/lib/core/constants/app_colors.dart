@@ -19,9 +19,14 @@ abstract class AppColors {
   static const Color credDarkBorder    = Color(0xFF1E2D4A);   // metallic electric-blue border
   static const Color credDarkGlow      = Color(0xFF2D4268);   // ambient border glow
 
+  // Official Cranes Brand Colors
+  static const Color cranesNavy = Color(0xFF0F2088); // #0F2088 Official Cranes Color
+  static const Color cranesRoyal = Color(0xFF1B32A4);
+  static const Color cranesLightNavy = Color(0xFF2848D0);
+
   // Primary & Secondary Accents
-  static const Color primary = Color(0xFF4648D4);
-  static const Color primaryContainer = Color(0xFF6063EE);
+  static const Color primary = Color(0xFF0F2088);
+  static const Color primaryContainer = Color(0xFF1B32A4);
   static const Color onPrimary = Color(0xFFFFFFFF);
   static const Color onPrimaryContainer = Color(0xFFFFFFFF);
 
@@ -36,7 +41,7 @@ abstract class AppColors {
   static const Color credGold = Color(0xFFF59E0B);
   static const Color credNeonCyan = Color(0xFF0EA5E9);
   static const Color credEmerald = Color(0xFF10B981);
-  static const Color credPurple = Color(0xFF6366F1);
+  static const Color credPurple = Color(0xFF0F2088);
 
   // Text & Ink Colors
   static const Color onSurface = Color(0xFF191C1E);
@@ -54,7 +59,7 @@ abstract class AppColors {
 
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF4648D4), Color(0xFF6063EE)],
+    colors: [Color(0xFF0F2088), Color(0xFF1E35B3)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

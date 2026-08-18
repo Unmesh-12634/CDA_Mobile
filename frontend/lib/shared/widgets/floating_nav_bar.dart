@@ -129,18 +129,18 @@ class FloatingNavBar extends StatelessWidget {
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
-                    colors: [Color(0xFF4648D4), Color(0xFF6B6EF9)],
+                    colors: [Color(0xFF0F2088), Color(0xFF1E35B3)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Color(0xFF4648D4),
+                      color: Color(0xFF0F2088),
                       blurRadius: 0,
                       spreadRadius: 0,
                     ),
                     BoxShadow(
-                      color: Color(0x884648D4),
+                      color: Color(0x660F2088),
                       blurRadius: 20,
                       spreadRadius: 2,
                       offset: Offset(0, 6),
@@ -178,7 +178,7 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const activeColor = Color(0xFF3B82F6); // electric vibrant blue
+    final activeColor = isDark ? const Color(0xFF6082EC) : const Color(0xFF0F2088); // Cranes #0F2088
     final inactiveColor = isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8);
 
     return GestureDetector(

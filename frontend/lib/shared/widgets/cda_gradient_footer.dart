@@ -177,13 +177,13 @@ class CDAHomeFooter extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF4648D4), Color(0xFF6B6EF9)],
+                    colors: [Color(0xFF0F2088), Color(0xFF1E35B3)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF4648D4).withValues(alpha: 0.35),
+                      color: const Color(0xFF0F2088).withValues(alpha: 0.35),
                       blurRadius: 10,
                     ),
                   ],

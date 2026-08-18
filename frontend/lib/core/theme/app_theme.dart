@@ -96,7 +96,7 @@ class AppTheme {
         brightness: Brightness.dark,
         primary: Color(0xFF818CF8),          // soft indigo accent
         onPrimary: Colors.white,
-        primaryContainer: Color(0xFF4648D4),
+        primaryContainer: Color(0xFF0F2088),
         onPrimaryContainer: Colors.white,
         secondary: Color(0xFF38BDF8),         // electric cyan
         onSecondary: Colors.white,

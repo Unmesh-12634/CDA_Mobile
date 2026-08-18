@@ -472,7 +472,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             color: isPro
                 ? const Color(0xFFF59E0B).withValues(alpha: 0.18)
                 : (isDark
-                    ? const Color(0xFF4648D4).withValues(alpha: 0.12)
+                    ? const Color(0xFF0F2088).withValues(alpha: 0.15)
                     : Colors.black.withValues(alpha: 0.05)),
             blurRadius: 24,
             offset: const Offset(0, 6),

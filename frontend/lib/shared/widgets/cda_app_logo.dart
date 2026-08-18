@@ -64,7 +64,7 @@ class CDAAppLogo extends StatelessWidget {
                 offset: const Offset(0, 3),
               ),
               BoxShadow(
-                color: const Color(0xFF4648D4).withValues(alpha: isDark ? 0.20 : 0.10),
+                color: const Color(0xFF0F2088).withValues(alpha: isDark ? 0.25 : 0.12),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -105,7 +105,7 @@ class CDAAppLogo extends StatelessWidget {
               ),
               ShaderMask(
                 shaderCallback: (bounds) => const LinearGradient(
-                  colors: [Color(0xFFF59E0B), Color(0xFF4648D4)],
+                  colors: [Color(0xFFF59E0B), Color(0xFF0F2088)],
                 ).createShader(bounds),
                 child: Text(
                   'VARSITY',

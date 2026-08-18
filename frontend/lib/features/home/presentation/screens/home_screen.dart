@@ -811,7 +811,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF4648D4).withValues(alpha: 0.38),
+                color: const Color(0xFF0F2088).withValues(alpha: 0.38),
                 blurRadius: 32,
                 offset: const Offset(0, 12),
               ),
@@ -1254,7 +1254,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           const Color(0xFF312E81),
         ];
         final colorsB = [
-          const Color(0xFF4648D4),
+          const Color(0xFF0F2088),
           const Color(0xFF14B8A6),
           const Color(0xFFF97316),
           const Color(0xFF6366F1),
@@ -1327,7 +1327,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             padding: const EdgeInsets.all(20),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF1E1B8C), Color(0xFF4648D4)],
+                colors: [Color(0xFF0F2088), Color(0xFF1E35B3)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),

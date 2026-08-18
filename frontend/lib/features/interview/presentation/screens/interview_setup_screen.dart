@@ -486,8 +486,8 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
     if (t.contains('ai') || t.contains('ml') || t.contains('data science')) return const Color(0xFF10B981);
     if (t.contains('devops') || t.contains('cloud') || t.contains('aws') || t.contains('kubernetes')) return const Color(0xFFFF9900);
     if (t.contains('data') || t.contains('analyst')) return const Color(0xFF906BD8);
-    if (t.contains('full') || t.contains('stack')) return const Color(0xFF4648D4);
-    if (t.contains('backend') || t.contains('node') || t.contains('go')) return const Color(0xFF4648D4);
+    if (t.contains('full') || t.contains('stack')) return const Color(0xFF0F2088);
+    if (t.contains('backend') || t.contains('node') || t.contains('go')) return const Color(0xFF0F2088);
     return AppColors.primary;
   }
 

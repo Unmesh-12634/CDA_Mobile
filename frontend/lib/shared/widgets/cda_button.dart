@@ -235,18 +235,18 @@ class _PrimaryButton extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(100),
           gradient: const LinearGradient(
-            colors: [Color(0xFF4648D4), Color(0xFF6B6EF9), Color(0xFF818CF8)],
+            colors: [Color(0xFF0F2088), Color(0xFF1E35B3), Color(0xFF2848D0)],
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF6B6EF9).withValues(alpha: 0.45),
+              color: const Color(0xFF0F2088).withValues(alpha: 0.40),
               blurRadius: 18,
               offset: const Offset(0, 6),
             ),
             BoxShadow(
-              color: const Color(0xFF818CF8).withValues(alpha: 0.15 * glowT),
+              color: const Color(0xFF1E35B3).withValues(alpha: 0.15 * glowT),
               blurRadius: 28,
               spreadRadius: 2,
             ),
@@ -351,12 +351,12 @@ class _GhostButton extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(100),
               color: isDark
-                  ? const Color(0xFF6B6EF9).withValues(alpha: 0.10)
-                  : const Color(0xFF4648D4).withValues(alpha: 0.06),
+                  ? const Color(0xFF0F2088).withValues(alpha: 0.15)
+                  : const Color(0xFF0F2088).withValues(alpha: 0.06),
               border: Border.all(
                 color: isDark
-                    ? const Color(0xFF6B6EF9).withValues(alpha: 0.45)
-                    : const Color(0xFF4648D4).withValues(alpha: 0.3),
+                    ? const Color(0xFF6082EC).withValues(alpha: 0.45)
+                    : const Color(0xFF0F2088).withValues(alpha: 0.35),
                 width: 1.2,
               ),
             ),
