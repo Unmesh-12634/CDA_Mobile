@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/supabase_config.dart';
 import '../../../core/storage/secure_storage_service.dart';
+import '../../../core/storage/supabase_storage_service.dart';
 
 class UserProfile {
   final String name;
@@ -661,14 +662,35 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
   }
 
   Future<void> setAvatarImagePath(String? path) async {
-    state = state.copyWith(
-      avatarImagePath: path,
-      clearAvatarImagePath: path == null,
-    );
+    if (path == null) {
+      state = state.copyWith(
+        avatarImagePath: null,
+        clearAvatarImagePath: true,
+      );
+      await _saveProfile();
+      return;
+    }
+
+    // Set local path immediately for instantaneous UI feedback
+    state = state.copyWith(avatarImagePath: path);
+
+    // Upload to Supabase Storage 'avatars' bucket in background
+    if (!path.startsWith('http')) {
+      final userEmail = state.email.isNotEmpty ? state.email : (SupabaseConfig.client.auth.currentUser?.email ?? 'user');
+      final cloudUrl = await SupabaseStorageService().uploadAvatar(
+        filePath: path,
+        userEmail: userEmail,
+      );
+      if (cloudUrl != null) {
+        state = state.copyWith(avatarImagePath: cloudUrl);
+      }
+    }
+
     await _saveProfile();
   }
 
   Future<void> setResumeFile(String filePath, String fileName) async {
+    // Set immediate state
     state = state.copyWith(
       resumeFileName: fileName,
       resumeFilePath: filePath,
@@ -676,6 +698,23 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
       resumeUploadedAt: '${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
       isCvVerified: true,
     );
+
+    // Upload to Supabase Storage 'resumes' bucket
+    if (!filePath.startsWith('http')) {
+      final userEmail = state.email.isNotEmpty ? state.email : (SupabaseConfig.client.auth.currentUser?.email ?? 'user');
+      final cloudUrl = await SupabaseStorageService().uploadResume(
+        filePath: filePath,
+        fileName: fileName,
+        userEmail: userEmail,
+      );
+      if (cloudUrl != null) {
+        state = state.copyWith(
+          resumeUrl: cloudUrl,
+          resumeFilePath: cloudUrl,
+        );
+      }
+    }
+
     await _saveProfile();
   }
 }

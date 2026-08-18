@@ -282,17 +282,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
 
-  // ── GOOGLE SIGN IN ─────────────────────────────────────────
+  // ── GOOGLE SIGN IN (Native Android Account Picker + Supabase Auth) ───────────
   Future<bool> signInWithGoogle({required WidgetRef ref}) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final googleSignIn = GoogleSignIn(
+        serverClientId: '243036336007-qlsrkf4rg60c2i5qjh9uul4fq0efmj28.apps.googleusercontent.com',
         scopes: ['email', 'profile'],
       );
 
+      // 1. Opens Native Android Google Account Picker popup directly on device
       final googleUser = await googleSignIn.signIn();
       if (googleUser == null) {
-        // User cancelled the picker
         state = state.copyWith(isLoading: false, errorMessage: null);
         return false;
       }
@@ -304,6 +305,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final googleName = googleUser.displayName ?? googleUser.email.split('@').first;
       final googleEmail = googleUser.email;
 
+      debugPrint('🔑 [Auth] Google User Selected: $googleEmail, idToken present: ${idToken != null}');
+
+      // 2. Exchange idToken with Supabase Auth
       if (idToken != null) {
         try {
           final response = await _supabase.auth.signInWithIdToken(
@@ -311,32 +315,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
             idToken: idToken,
             accessToken: accessToken,
           );
-
           if (response.user != null) {
             _applySession(response.user!);
-            ref.read(userProfileProvider.notifier).updateProfile(
-                  name: state.fullName.isNotEmpty ? state.fullName : googleName,
-                );
-            debugPrint('[Auth] Google sign-in success with Supabase: ${response.user!.email}');
-            return true;
+            debugPrint('✅ [Auth] Supabase session verified: ${response.user!.email}');
           }
         } catch (supabaseErr) {
-          debugPrint('[Auth] Supabase idToken exchange note: $supabaseErr');
+          debugPrint('⚠️ [Auth] Supabase idToken exchange notice: $supabaseErr');
         }
       }
 
-      // Always record Google Sign-In user directly into Supabase DB tables
-      _recordUserInDatabase(
-        email: googleEmail,
-        fullName: googleName,
-        provider: 'google',
-      );
-
+      // 3. Cache session locally
       LocalCacheService().set('cda_auth_logged_in', true);
       LocalCacheService().set('cda_auth_email', googleEmail);
       LocalCacheService().set('cda_auth_name', googleName);
 
-      // Apply Google User state
+      // 4. Update Auth State
       state = state.copyWith(
         isAuthenticated: true,
         email: googleEmail,
@@ -345,28 +338,36 @@ class AuthNotifier extends StateNotifier<AuthState> {
         errorMessage: null,
       );
 
-      await ref.read(userProfileProvider.notifier).resetForUser(
-            googleEmail,
-            fullName: googleName,
-          );
-
-      debugPrint('[Auth] Signed in with Google Account: $googleName ($googleEmail)');
-      return true;
-    } on AuthException catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        errorMessage: _friendlyError(e.message),
+      // 5. Sync to public.users & public.user_auth in Supabase
+      _recordUserInDatabase(
+        email: googleEmail,
+        fullName: googleName,
+        provider: 'google',
       );
-      return false;
+
+      // 6. Reset Profile Provider
+      try {
+        await ref.read(userProfileProvider.notifier).resetForUser(
+              googleEmail,
+              fullName: googleName,
+            );
+      } catch (_) {}
+
+      debugPrint('🚀 [Auth] Google Sign-In SUCCESS ➔ Entering Home Dashboard');
+      return true;
     } catch (e) {
-      debugPrint('[Auth] Google Sign-In error: $e');
+      debugPrint('❌ [Auth] Google Sign-In error: $e');
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Google Sign-In error: ${e.toString().split('\n').first}',
+        errorMessage: 'Google Sign-In: ${e.toString().split('\n').first}',
       );
       return false;
     }
   }
+
+
+
+
 
   /// Persists user profile and auth provider record into Supabase PostgreSQL tables
   Future<void> _recordUserInDatabase({

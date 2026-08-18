@@ -23,7 +23,10 @@ import '../../../interview/data/interview_reports_provider.dart';
 import '../../../notifications/data/notifications_provider.dart';
 import '../../data/user_activities_provider.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../../../core/services/app_update_service.dart';
+import '../../../settings/presentation/widgets/update_prompt_dialog.dart';
 import '../widgets/ai_daily_challenge_card.dart';
+
 
 
 // ─────────────────────────────────────────────────────────────
@@ -171,9 +174,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             actionUrl: sub.isPremium ? '/subscription-details' : '/paywall',
           );
         } catch (_) {}
+
+        // 3. Check for app updates silently in background (In-App OTA)
+        try {
+          final updateInfo = await ref.read(appUpdateProvider.notifier).checkForUpdate(silent: true);
+          if (mounted && updateInfo.hasUpdate) {
+            UpdatePromptDialog.show(context, updateInfo);
+          }
+        } catch (_) {}
       });
     });
   }
+
 
   @override
   void dispose() {

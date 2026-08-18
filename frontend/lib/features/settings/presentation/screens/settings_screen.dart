@@ -16,6 +16,9 @@ import '../../../subscription/data/subscription_provider.dart';
 import '../../data/user_settings_provider.dart';
 import '../../../../core/utils/app_haptics.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../../../core/services/app_update_service.dart';
+import '../widgets/update_prompt_dialog.dart';
+
 
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -1167,6 +1170,94 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTick
                   ),
                 ),
               ],
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          // ── In-App OTA Auto-Updater ──
+          InkWell(
+            onTap: () async {
+              AppHaptics.selectionClick(ref);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Row(
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      ),
+                      SizedBox(width: 12),
+                      Text('Checking for latest updates...'),
+                    ],
+                  ),
+                  duration: Duration(seconds: 1),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+
+              final info = await ref.read(appUpdateProvider.notifier).checkForUpdate();
+              if (!context.mounted) return;
+
+              if (info.hasUpdate) {
+                UpdatePromptDialog.show(context, info);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('✅ You are on the latest version of CDA (v${info.currentVersion})!'),
+                    backgroundColor: const Color(0xFF10B981),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+              }
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF7C3AED).withValues(alpha: isDark ? 0.15 : 0.08),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF7C3AED).withValues(alpha: 0.4), width: 1.5),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF7C3AED),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.system_update_rounded, color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Check for App Updates',
+                          style: TextStyle(
+                            color: isDark ? Colors.white : AppColors.onSurface,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14.5,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Download and install latest features automatically',
+                          style: TextStyle(
+                            color: Color(0xFF7C3AED),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF7C3AED), size: 14),
+                ],
+              ),
             ),
           ),
         ],
