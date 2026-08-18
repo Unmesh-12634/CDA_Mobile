@@ -1,7 +1,4 @@
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
-import '../../../core/config/app_config.dart';
 import '../../../core/network/java_api_service.dart';
 import '../../../core/services/ai_quiz_generator_service.dart';
 import '../../auth/data/auth_provider.dart';

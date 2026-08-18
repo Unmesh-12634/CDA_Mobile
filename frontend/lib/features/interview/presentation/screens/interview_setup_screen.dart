@@ -1031,6 +1031,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
             final desc = sc['desc'] as String;
             final icon = sc['icon'] as IconData;
             final color = sc['color'] as Color;
+            final isSelected = _selectedBehavioralScenario == title;
 
             return GestureDetector(
               onTap: () {
@@ -1046,9 +1047,12 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: cs.surfaceContainerLow,
+                  color: isSelected ? color.withValues(alpha: 0.12) : cs.surfaceContainerLow,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: color.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: isSelected ? color : color.withValues(alpha: 0.3),
+                    width: isSelected ? 2.0 : 1.0,
+                  ),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

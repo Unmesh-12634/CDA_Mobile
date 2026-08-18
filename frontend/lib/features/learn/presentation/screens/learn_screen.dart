@@ -1318,9 +1318,9 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
                                 Container(
                                   width: 36,
                                   height: 36,
-                                  decoration: BoxDecoration(
+                                  decoration: const BoxDecoration(
                                     shape: BoxShape.circle,
-                                    gradient: const LinearGradient(
+                                    gradient: LinearGradient(
                                       colors: [Color(0xFF0284C7), Color(0xFF0369A1)],
                                     ),
                                   ),

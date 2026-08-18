@@ -329,16 +329,17 @@ class AiInterviewApiClient {
   InterviewFinishResponse _generateInstantFinishReport(String sessionId, {required String role, required int totalTurns}) {
     return InterviewFinishResponse(
       sessionId: sessionId,
-      candidateName: 'Candidate',
-      jobRole: role,
       overallScore: 88.0,
       technicalScore: 89.0,
       communicationScore: 86.0,
       problemSolvingScore: 89.0,
-      recommendation: 'STRONG HIRE — High technical mastery, clear architectural thinking, and structured communication.',
-      turnCount: totalTurns,
-      topStrengths: [
-        'Clear articulation of architectural trade-offs',
+      hiringReadiness: 'STRONG HIRE',
+      isTerminatedEarly: false,
+      completedTurns: totalTurns,
+      targetTurns: totalTurns,
+      summary: 'Candidate demonstrated strong technical mastery in $role, clear architectural thinking, and structured communication.',
+      strongAreas: [
+        'Clear articulation of architectural trade-offs in $role',
         'Strong grasp of concurrency, state management, and performance',
         'Structured problem-solving with scalable engineering practices',
       ],
@@ -346,7 +347,6 @@ class AiInterviewApiClient {
         'Incorporate more quantitative production metrics into system design examples',
         'Deepen discussion on edge-case error recovery and disaster recovery protocols',
       ],
-      detailedTurns: [],
     );
   }
 

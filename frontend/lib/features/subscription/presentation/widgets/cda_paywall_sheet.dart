@@ -37,9 +37,10 @@ class _CDAPaywallSheetState extends ConsumerState<CDAPaywallSheet> {
           billingCycle: _selectedPlan,
         );
 
-    final sub = ref.read(subscriptionProvider);
+    if (!mounted) return;
     Navigator.of(context).pop();
 
+    if (!mounted) return;
     // Show celebration dialog
     showDialog(
       context: context,

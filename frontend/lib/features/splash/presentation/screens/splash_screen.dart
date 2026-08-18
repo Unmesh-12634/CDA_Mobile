@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/config/supabase_config.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/storage/local_cache_service.dart';
-import '../../../../core/storage/secure_storage_service.dart';
 import '../../../../shared/widgets/cda_app_logo.dart';
 import '../../../auth/data/auth_provider.dart';
 import '../../../profile/data/user_profile_provider.dart';

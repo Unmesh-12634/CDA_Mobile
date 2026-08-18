@@ -26,11 +26,6 @@ class SubscriptionDetailsScreen extends ConsumerWidget {
         : Duration.zero;
 
     final int daysRemaining = diff.isNegative ? 0 : diff.inDays;
-    final String remainingLabel = diff.isNegative
-        ? 'Expired'
-        : diff.inDays > 0
-            ? '${diff.inDays} days left'
-            : '${diff.inHours}h ${diff.inMinutes % 60}m left';
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.credDarkBackground : AppColors.background,
