@@ -142,11 +142,12 @@ class AppUpdateNotifier extends StateNotifier<UpdateState> {
 
   /// Downloads the latest APK with live percentage and triggers native installation
   Future<bool> downloadAndInstall({String? customUrl}) async {
-    final url = customUrl ?? state.updateInfo?.downloadUrl;
-    if (url == null || url.isEmpty) {
-      state = state.copyWith(status: UpdateStatus.error, errorMessage: 'Invalid download link');
-      return false;
-    }
+    final primaryUrl = customUrl ?? state.updateInfo?.downloadUrl;
+    final List<String> candidateUrls = [
+      if (primaryUrl != null && primaryUrl.isNotEmpty) primaryUrl,
+      'https://cda-ai-interview-engine.onrender.com/download/app-release.apk',
+      'https://github.com/Unmesh-12634/CDA_Mobile/releases/latest/download/app-release.apk',
+    ];
 
     try {
       state = state.copyWith(status: UpdateStatus.downloading, downloadProgress: 0.01);
@@ -168,17 +169,43 @@ class AppUpdateNotifier extends StateNotifier<UpdateState> {
         await existing.delete();
       }
 
-      // Download APK with stream progress
-      await _dio.download(
-        url,
-        savePath,
-        onReceiveProgress: (received, total) {
-          if (total > 0) {
-            final progress = (received / total).clamp(0.0, 1.0);
-            state = state.copyWith(downloadProgress: progress);
+      bool downloadSucceeded = false;
+      dynamic lastError;
+
+      // Try candidate download mirrors sequentially
+      for (final downloadUrl in candidateUrls) {
+        try {
+          debugPrint('[AppUpdateService] Attempting download from: $downloadUrl');
+          await _dio.download(
+            downloadUrl,
+            savePath,
+            options: Options(
+              followRedirects: true,
+              maxRedirects: 5,
+              receiveTimeout: const Duration(minutes: 3),
+            ),
+            onReceiveProgress: (received, total) {
+              if (total > 0) {
+                final progress = (received / total).clamp(0.0, 1.0);
+                state = state.copyWith(downloadProgress: progress);
+              }
+            },
+          );
+
+          final downloadedFile = File(savePath);
+          if (await downloadedFile.exists() && await downloadedFile.length() > 500000) {
+            downloadSucceeded = true;
+            break;
           }
-        },
-      );
+        } catch (e) {
+          debugPrint('[AppUpdateService] Mirror $downloadUrl failed: $e. Trying next mirror...');
+          lastError = e;
+        }
+      }
+
+      if (!downloadSucceeded) {
+        throw Exception('All download mirrors failed. Last error: $lastError');
+      }
 
       state = state.copyWith(
         status: UpdateStatus.readyToInstall,
@@ -197,7 +224,7 @@ class AppUpdateNotifier extends StateNotifier<UpdateState> {
       debugPrint('[AppUpdateService] Download/Install error: $e');
       state = state.copyWith(
         status: UpdateStatus.error,
-        errorMessage: 'Failed to download update. Please check internet connection.',
+        errorMessage: 'Failed to download update. Please check internet connection or download from GitHub release.',
       );
       return false;
     }

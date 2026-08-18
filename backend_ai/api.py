@@ -564,6 +564,23 @@ def get_dashboard_ui():
         return FileResponse(str(dashboard_path))
     return HTMLResponse("<h1>CDA AI System Dashboard Online</h1>")
 
+@app.get("/download/app-release.apk")
+@app.get("/api/v1/update/latest.apk")
+def download_latest_apk():
+    """Serves the latest compiled Android APK for in-app updates."""
+    apk_paths = [
+        BASE_DIR / "static" / "app-release.apk",
+        BASE_DIR.parent / "frontend" / "build" / "app" / "outputs" / "flutter-apk" / "app-release.apk",
+    ]
+    for p in apk_paths:
+        if p.exists():
+            return FileResponse(
+                str(p),
+                media_type="application/vnd.android.package-archive",
+                filename="cda-latest.apk",
+            )
+    return JSONResponse(status_code=404, content={"detail": "APK binary not found."})
+
 @app.get("/api/v1/interview/sessions")
 def get_all_interview_sessions():
     """Returns all active & completed candidate interview sessions from DB & active memory."""
