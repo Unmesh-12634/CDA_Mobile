@@ -805,7 +805,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(28),
             gradient: const LinearGradient(
-              colors: [Color(0xFF3B3EC8), Color(0xFF5A5CF0), Color(0xFF7B7DFF)],
+              colors: [Color(0xFF0F2088), Color(0xFF162DA4), Color(0xFF1E3CBF)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -3234,9 +3234,9 @@ class _DonutProgressPainter extends CustomPainter {
       final activePaint = Paint()
         ..shader = const SweepGradient(
           colors: [
-            Color(0xFF7C3AED), // primary purple
-            Color(0xFFC084FC), // light violet
-            Color(0xFF7C3AED),
+            Color(0xFF0F2088), // Official Cranes Navy
+            Color(0xFF1E35B3), // Electric Royal Blue
+            Color(0xFF0F2088),
           ],
           stops: [0.0, 0.5, 1.0],
           transform: GradientRotation(-3.14159 / 2), // start at top

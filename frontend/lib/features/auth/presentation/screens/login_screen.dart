@@ -398,12 +398,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               height: 50,
                               width: double.infinity,
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF38BDF8) : const Color(0xFF0F172A),
+                                color: isDark ? const Color(0xFF1B32A4) : const Color(0xFF0F2088),
                                 borderRadius: BorderRadius.circular(12),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: (isDark ? const Color(0xFF38BDF8) : const Color(0xFF0F172A))
-                                        .withValues(alpha: 0.25),
+                                    color: const Color(0xFF0F2088).withValues(alpha: 0.35),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -411,18 +410,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                               child: Center(
                                 child: authState.isLoading
-                                    ? SizedBox(
+                                    ? const SizedBox(
                                         width: 22,
                                         height: 22,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2.5,
-                                          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                                          color: Colors.white,
                                         ),
                                       )
-                                    : Text(
+                                    : const Text(
                                         'Sign in',
                                         style: TextStyle(
-                                          color: isDark ? const Color(0xFF0F172A) : Colors.white,
+                                          color: Colors.white,
                                           fontSize: 15,
                                           fontWeight: FontWeight.w800,
                                           letterSpacing: 0.2,

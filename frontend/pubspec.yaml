@@ -1,7 +1,7 @@
 name: cda_student_app
 description: "CDA (Cranes Digital Academy) Student Mobile Application"
 publish_to: 'none'
-version: 2.0.2+10
+version: 2.0.3+11
 
 
 
