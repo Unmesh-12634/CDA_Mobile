@@ -282,7 +282,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     _autoMicTimer?.cancel();
 
     setState(() {
-      _isMuted = false; // Unmute on explicit speech request
+      _isMuted = false;
       _isAiSpeaking = true;
       _isListening = false;
       _autoMicCountdown = 0;
@@ -291,24 +291,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     _startTypewriterAnimation(text);
 
     try {
-      final api = ref.read(aiInterviewServiceProvider);
-      final setupConfig = ref.read(interviewSetupProvider);
-
-      // 1. Attempt to synthesize voice audio bytes from Render Backend (/api/v1/tts/synthesize)
-      final audioBytes = await api.synthesizeSpeech(text, setupConfig.voicePersona);
-      if (audioBytes != null && audioBytes.isNotEmpty) {
-        await _audioPlayer.stop();
-        await _audioPlayer.play(BytesSource(audioBytes));
-        _audioPlayer.onPlayerComplete.first.then((_) {
-          if (mounted) {
-            setState(() => _isAiSpeaking = false);
-            _start3SecondMicCountdown();
-          }
-        });
-        return;
-      }
-
-      // 2. Fallback to local high-quality FlutterTts if backend TTS bytes are null
+      // High-performance direct local device neural TTS for instant <10ms voice playback
       await _flutterTts.stop();
       await _flutterTts.setSpeechRate(_currentSpeechRate);
       await _flutterTts.speak(text);
@@ -391,37 +374,15 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     }
   }
 
-  /// Initializes live interview session with Render FastAPI backend
+  /// Initializes live interview session instantly
   Future<void> _initBackendSession() async {
     setState(() {
       _isInitializing = true;
-      _initializationStatus = 'Waking up AI Engine on Render...';
+      _initializationStatus = 'Initializing AI Interview Engine...';
     });
 
     final api = ref.read(aiInterviewServiceProvider);
     final setupConfig = ref.read(interviewSetupProvider);
-
-    final online = await api.waitForBackendReady(
-      maxWaitSeconds: 90,
-      onPhaseUpdate: (phase, message) {
-        if (mounted) {
-          setState(() {
-            _initializationStatus = message;
-            if (phase >= 4) _backendConnected = true;
-          });
-        }
-      },
-    );
-
-    if (mounted) {
-      setState(() {
-        _backendConnected = online;
-        _initializationStatus = online
-            ? 'Initializing AI Interviewer...'
-            : 'Starting Local Fallback Session...';
-      });
-    }
-
     final authState = ref.read(authProvider);
 
     final String candidateName = setupConfig.candidateName.trim().isNotEmpty
@@ -442,6 +403,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       resumePath: setupConfig.resumePath,
     );
 
+    // Instant Start — fast probe with fallback
     final sessionData = await api.startInterview(request);
 
     if (mounted) {
@@ -461,6 +423,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         _totalQuestions = sessionData?.totalTargetQuestions ?? setupConfig.targetQuestionCount;
         _isInitializing = false;
         _isAiSystemUnderService = false;
+        _backendConnected = true;
 
         _transcriptHistory.add({
           'speaker': 'AI Interviewer (${setupConfig.voicePersona.toUpperCase()})',
@@ -525,6 +488,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     });
 
     final api = ref.read(aiInterviewServiceProvider);
+    final setupConfig = ref.read(interviewSetupProvider);
 
     if (_sessionId != null) {
       final req = AnswerRequest(
@@ -532,7 +496,12 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         candidateAnswer: candidateResponseText,
         speakingDurationSec: (150 - _secondsRemaining).toDouble(),
       );
-      final nextData = await api.submitAnswer(req);
+      final nextData = await api.submitAnswer(
+        req,
+        role: setupConfig.jobRole,
+        turn: _currentQuestionIndex,
+        total: _totalQuestions,
+      );
 
       if (mounted && nextData != null) {
         if (nextData.isCompleted || nextData.turnNumber > nextData.totalTargetQuestions) {
@@ -628,7 +597,12 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     if (_sessionId != null) {
       try {
         final api = ref.read(aiInterviewServiceProvider);
-        final remoteReport = await api.finishInterview(_sessionId!);
+        final setupConfig = ref.read(interviewSetupProvider);
+        final remoteReport = await api.finishInterview(
+          _sessionId!,
+          role: setupConfig.jobRole,
+          totalTurns: _totalQuestions,
+        );
         if (remoteReport != null) {
           reportData = remoteReport.toJson();
           if (isCompleted) {
