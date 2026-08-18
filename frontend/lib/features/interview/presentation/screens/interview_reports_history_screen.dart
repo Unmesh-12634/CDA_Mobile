@@ -25,7 +25,7 @@ class _InterviewReportsHistoryScreenState extends ConsumerState<InterviewReports
 
   Future<void> _loadHistory() async {
     final api = ref.read(aiInterviewServiceProvider);
-    final userEmail = ref.read(authProvider).user?.email ?? '';
+    final userEmail = ref.read(authProvider).email;
     final fetched = await api.fetchInterviewHistory(email: userEmail);
     if (mounted) {
       setState(() {

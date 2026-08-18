@@ -200,6 +200,22 @@ class _LearnScreenState extends ConsumerState<LearnScreen> with WidgetsBindingOb
           }
         }
       }
+
+      // Preload live comment counts for all reels directly from reel_comments
+      final commentsRes = await SupabaseConfig.client
+          .from('reel_comments')
+          .select('reel_id');
+      if (commentsRes.isNotEmpty) {
+        final Map<String, int> counts = {};
+        for (final row in commentsRes) {
+          final rId = row['reel_id']?.toString();
+          if (rId != null) {
+            counts[rId] = (counts[rId] ?? 0) + 1;
+          }
+        }
+        _commentCountMap.addAll(counts);
+      }
+
       if (mounted) setState(() {});
     } catch (e) {
       debugPrint('Reels state load notice: $e');
@@ -1066,15 +1082,41 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
   bool _isLoading = true;
   bool _isPosting = false;
   String? _deletingCommentId;
+  RealtimeChannel? _commentsChannel;
 
   @override
   void initState() {
     super.initState();
     _fetchComments();
+    _subscribeCommentsRealtime();
+  }
+
+  void _subscribeCommentsRealtime() {
+    try {
+      _commentsChannel = SupabaseConfig.client
+          .channel('public:reel_comments:${widget.reel.id}')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'reel_comments',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'reel_id',
+              value: widget.reel.id,
+            ),
+            callback: (payload) {
+              _fetchComments();
+            },
+          )
+          .subscribe();
+    } catch (e) {
+      debugPrint('Realtime comments channel notice: $e');
+    }
   }
 
   @override
   void dispose() {
+    _commentsChannel?.unsubscribe();
     _commentCtrl.dispose();
     super.dispose();
   }
@@ -1095,8 +1137,19 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
     if (text.isEmpty || _isPosting) return;
 
     final profile = ref.read(userProfileProvider);
-    final userEmail = profile.email.isNotEmpty ? profile.email : ref.read(authProvider).email;
-    final userName = profile.name.isNotEmpty ? profile.name : (ref.read(authProvider).fullName.isNotEmpty ? ref.read(authProvider).fullName : 'Learner');
+    final auth = ref.read(authProvider);
+    final currentUser = SupabaseConfig.client.auth.currentUser;
+
+    final userEmail = profile.email.isNotEmpty
+        ? profile.email
+        : (auth.email.isNotEmpty ? auth.email : (currentUser?.email ?? 'learner@cda.com'));
+
+    final userName = profile.name.isNotEmpty
+        ? profile.name
+        : (auth.fullName.isNotEmpty
+            ? auth.fullName
+            : (currentUser?.userMetadata?['full_name']?.toString() ??
+               (currentUser?.email?.split('@').first ?? 'Learner')));
 
     setState(() => _isPosting = true);
 
@@ -1112,7 +1165,9 @@ class _ReelCommentsBottomSheetState extends ConsumerState<_ReelCommentsBottomShe
     if (mounted) {
       if (newComment != null) {
         setState(() {
-          _comments.insert(0, newComment);
+          if (!_comments.any((c) => c.id == newComment.id)) {
+            _comments.insert(0, newComment);
+          }
           _commentCtrl.clear();
           _isPosting = false;
         });

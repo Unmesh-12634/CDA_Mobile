@@ -29,7 +29,7 @@ class ReelModel {
     required this.authorName,
     required this.viewsCount,
     required this.likesCount,
-    this.commentsCount = 42,
+    this.commentsCount = 0,
   });
 
   factory ReelModel.fromMap(Map<String, dynamic> map) {
@@ -44,9 +44,9 @@ class ReelModel {
       category: map['category']?.toString() ?? 'Engineering',
       tags: tagsList,
       authorName: map['authorName']?.toString() ?? map['author_name']?.toString() ?? 'Senior Mentor',
-      viewsCount: (map['viewsCount'] as num?)?.toInt() ?? (map['views_count'] as num?)?.toInt() ?? 1000,
-      likesCount: (map['likesCount'] as num?)?.toInt() ?? (map['likes_count'] as num?)?.toInt() ?? 300,
-      commentsCount: (map['commentsCount'] as num?)?.toInt() ?? (map['comments_count'] as num?)?.toInt() ?? 42,
+      viewsCount: (map['viewsCount'] as num?)?.toInt() ?? (map['views_count'] as num?)?.toInt() ?? 0,
+      likesCount: (map['likesCount'] as num?)?.toInt() ?? (map['likes_count'] as num?)?.toInt() ?? 0,
+      commentsCount: (map['commentsCount'] as num?)?.toInt() ?? (map['comments_count'] as num?)?.toInt() ?? 0,
     );
   }
 }
