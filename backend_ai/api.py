@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, status, BackgroundTasks, Response
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, status, BackgroundTasks, Response, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
