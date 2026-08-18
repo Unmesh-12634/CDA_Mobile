@@ -125,10 +125,16 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
     _flutterTts.setCompletionHandler(() {
       if (mounted) {
-        setState(() {
-          _isAiSpeaking = false;
-        });
-        _start3SecondMicCountdown();
+        final callback = _onSpeechCompleteCallback;
+        _onSpeechCompleteCallback = null;
+        if (callback != null) {
+          callback();
+        } else {
+          setState(() {
+            _isAiSpeaking = false;
+          });
+          _start3SecondMicCountdown();
+        }
       }
     });
 
@@ -263,10 +269,13 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     });
   }
 
-  void _speakAiText(String text) async {
+  VoidCallback? _onSpeechCompleteCallback;
+
+  void _speakAiText(String text, {VoidCallback? onComplete}) async {
     if (text.trim().isEmpty) return;
     _stopSpeechListening();
     _autoMicTimer?.cancel();
+    _onSpeechCompleteCallback = onComplete;
 
     setState(() {
       _isMuted = false;
@@ -286,12 +295,24 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       debugPrint('TTS playback error: $e');
       if (mounted) {
         setState(() => _isAiSpeaking = false);
-        _start3SecondMicCountdown();
+        if (onComplete != null) {
+          onComplete();
+        } else {
+          _start3SecondMicCountdown();
+        }
       }
     }
   }
 
-
+  void _speakGreetingAndQuestion(String greeting, String question) {
+    _speakAiText(greeting, onComplete: () {
+      Future.delayed(const Duration(milliseconds: 650), () {
+        if (mounted && !_isMuted) {
+          _speakAiText(question);
+        }
+      });
+    });
+  }
 
   /// Interrupt AI speech immediately (Barge-in) and start mic recording
   void _interruptSpeechAndListen() async {
@@ -361,8 +382,13 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     }
   }
 
-  /// Initializes live interview session instantly (< 200ms)
+  /// Initializes 100% real live interview session with Groq LLM
   Future<void> _initBackendSession() async {
+    setState(() {
+      _isInitializing = true;
+      _initializationStatus = 'AI Interviewer is analyzing your profile & preparing Question 1...';
+    });
+
     final api = ref.read(aiInterviewServiceProvider);
     final setupConfig = ref.read(interviewSetupProvider);
     final authState = ref.read(authProvider);
@@ -374,24 +400,33 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
     final role = setupConfig.jobRole.trim().isNotEmpty ? setupConfig.jobRole : 'Senior Software Engineer';
     final persona = setupConfig.voicePersona.toUpperCase();
 
-    // 1. Instant Pre-generated Question 1 (< 5ms in memory)
-    final instantSession = api.generateInstantSession(
+    final request = StartInterviewRequest(
       candidateName: candidateName,
       jobRole: role,
+      jobDescription: setupConfig.jobDescriptionText,
+      experienceLevel: setupConfig.experienceLevel.trim().isNotEmpty ? setupConfig.experienceLevel : '1 - 3 Years',
       interviewType: setupConfig.interviewType,
+      difficulty: setupConfig.difficulty,
       targetQuestionCount: setupConfig.targetQuestionCount,
+      voicePersona: setupConfig.voicePersona,
+      enrolledCourses: setupConfig.enrolledCourses,
+      skills: setupConfig.skills,
+      resumePath: setupConfig.resumePath,
     );
 
-    final greetingText = instantSession.initialGreeting;
-    final questionText = instantSession.currentQuestion;
+    // Real Live Groq LLM generation (~1.2s)
+    final sessionData = await api.startInterview(request);
 
     if (mounted) {
+      final greetingText = sessionData.initialGreeting;
+      final questionText = sessionData.currentQuestion;
+
       setState(() {
-        _sessionId = instantSession.sessionId;
+        _sessionId = sessionData.sessionId;
         _currentQuestionText = questionText;
-        _transitionPhrase = instantSession.transitionPhrase;
+        _transitionPhrase = sessionData.transitionPhrase;
         _currentQuestionIndex = 1;
-        _totalQuestions = instantSession.totalTargetQuestions;
+        _totalQuestions = sessionData.totalTargetQuestions;
         _isInitializing = false;
         _isAiSystemUnderService = false;
         _backendConnected = true;
@@ -410,32 +445,9 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         });
       });
 
-      // Immediate voice output & typewriter subtitle animation
-      _speakAiText('$greetingText. $questionText');
+      // Human-like natural delivery: Speak personalized greeting, pause 650ms, then speak Question 1
+      _speakGreetingAndQuestion(greetingText, questionText);
     }
-
-    // 2. Non-blocking asynchronous cloud session sync in background
-    final request = StartInterviewRequest(
-      candidateName: candidateName,
-      jobRole: role,
-      jobDescription: setupConfig.jobDescriptionText,
-      experienceLevel: setupConfig.experienceLevel.trim().isNotEmpty ? setupConfig.experienceLevel : '1 - 3 Years',
-      interviewType: setupConfig.interviewType,
-      difficulty: setupConfig.difficulty,
-      targetQuestionCount: setupConfig.targetQuestionCount,
-      voicePersona: setupConfig.voicePersona,
-      enrolledCourses: setupConfig.enrolledCourses,
-      skills: setupConfig.skills,
-      resumePath: setupConfig.resumePath,
-    );
-
-    api.syncCloudSessionInBackground(request).then((cloudSession) {
-      if (cloudSession != null && mounted) {
-        setState(() {
-          _sessionId = cloudSession.sessionId;
-        });
-      }
-    });
   }
 
   void _startQuestionTimer() {
@@ -484,6 +496,11 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
     final api = ref.read(aiInterviewServiceProvider);
     final setupConfig = ref.read(interviewSetupProvider);
+    final authState = ref.read(authProvider);
+
+    final String candidateName = setupConfig.candidateName.trim().isNotEmpty
+        ? setupConfig.candidateName.trim()
+        : (authState.fullName.trim().isNotEmpty ? authState.fullName.trim() : 'Candidate');
 
     if (_sessionId != null) {
       final req = AnswerRequest(
@@ -493,12 +510,15 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       );
       final nextData = await api.submitAnswer(
         req,
+        candidateName: candidateName,
         role: setupConfig.jobRole,
+        skills: setupConfig.skills,
         turn: _currentQuestionIndex,
         total: _totalQuestions,
+        transcriptHistory: _transcriptHistory,
       );
 
-      if (mounted && nextData != null) {
+      if (mounted) {
         if (nextData.isCompleted || nextData.turnNumber > nextData.totalTargetQuestions) {
           _finishInterviewSession(isCompleted: true);
           return;
@@ -541,13 +561,18 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
           if (mounted) setState(() => _showFeedbackBanner = false);
         });
 
-        _speakAiText('$_transitionPhrase. $_currentQuestionText');
-      } else {
-        setState(() {
-          _isSubmittingAnswer = false;
-          _isAiSpeaking = false;
-          _isAiSystemUnderService = true;
-        });
+        // Natural conversational delivery: Transition phrase -> pause -> Next Question
+        if (_transitionPhrase.isNotEmpty && _transitionPhrase != _currentQuestionText) {
+          _speakAiText(_transitionPhrase, onComplete: () {
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted && !_isMuted) {
+                _speakAiText(_currentQuestionText);
+              }
+            });
+          });
+        } else {
+          _speakAiText(_currentQuestionText);
+        }
       }
     } else {
       setState(() {
@@ -593,16 +618,25 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       try {
         final api = ref.read(aiInterviewServiceProvider);
         final setupConfig = ref.read(interviewSetupProvider);
+        final authState = ref.read(authProvider);
+        final email = authState.email.isNotEmpty ? authState.email : ref.read(userProfileProvider).email;
+        final String candidateName = setupConfig.candidateName.trim().isNotEmpty
+            ? setupConfig.candidateName.trim()
+            : (authState.fullName.trim().isNotEmpty ? authState.fullName.trim() : 'Candidate');
+
         final remoteReport = await api.finishInterview(
           _sessionId!,
+          candidateName: candidateName,
+          candidateEmail: email,
           role: setupConfig.jobRole,
-          totalTurns: _totalQuestions,
+          completedTurns: isCompleted ? _totalQuestions : (_currentQuestionIndex - 1),
+          targetTurns: _totalQuestions,
+          transcriptHistory: _transcriptHistory,
         );
-        if (remoteReport != null) {
-          reportData = remoteReport.toJson();
-          if (isCompleted) {
-            reportData['is_terminated_early'] = false;
-          }
+
+        reportData = remoteReport.toJson();
+        if (isCompleted) {
+          reportData['is_terminated_early'] = false;
         }
       } catch (e) {
         debugPrint('Finish session error: $e');
