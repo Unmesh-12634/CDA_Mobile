@@ -58,21 +58,24 @@ class InterviewService:
         memory.current_question = q1
 
         # 6. Persist initial session record directly into Supabase PostgreSQL DB
-        db_session_payload = {
-            "session_id": memory.session_id,
-            "candidate_name": config.candidate_name,
-            "job_role": config.job_role,
-            "seniority_level": config.experience_level,
-            "interview_type": config.interview_type.value,
-            "difficulty": config.difficulty.value,
-            "target_question_count": config.target_question_count,
-            "current_turn": 1,
-            "session_status": "IN_PROGRESS",
-            "rubric_id": rubric_id,
-            "config_data": config.model_dump(),
-            "turn_records": [],
-        }
-        self.repo.create_session(db_session_payload)
+        try:
+            db_session_payload = {
+                "session_id": memory.session_id,
+                "candidate_name": config.candidate_name,
+                "job_role": config.job_role,
+                "seniority_level": config.experience_level,
+                "interview_type": config.interview_type.value,
+                "difficulty": config.difficulty.value,
+                "target_question_count": config.target_question_count,
+                "current_turn": 1,
+                "session_status": "IN_PROGRESS",
+                "rubric_id": rubric_id,
+                "config_data": config.model_dump(mode="json"),
+                "turn_records": [],
+            }
+            self.repo.create_session(db_session_payload)
+        except Exception as e:
+            logger.warning(f"Non-fatal warning creating session in Supabase DB: {e}")
 
         return InterviewResponse(
             session_id=memory.session_id,

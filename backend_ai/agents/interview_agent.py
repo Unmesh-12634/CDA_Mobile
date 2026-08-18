@@ -22,11 +22,26 @@ class InterviewerAgent:
         self.groq_service = groq_service
 
     def generate_initial_greeting(self, memory: InterviewMemory) -> str:
-        """Generates a warm, professional human interviewer welcome greeting instantly (0ms)."""
+        """Generates a warm, professional human interviewer welcome greeting dynamically using Groq LLM."""
         name = memory.config.candidate_name or "Candidate"
         role = memory.config.job_role
         level = memory.profile.experience_level or "Entry-Level"
-        return f"Good morning, {name}! I'm delighted to welcome you to our interview for the {level} {role} position. I'm looking forward to learning more about your skills and experience, and I wish you all the best for today's session."
+
+        prompt = GREETING_USER_PROMPT.format(
+            candidate_name=name,
+            job_role=role,
+            experience_level=level,
+        )
+
+        greeting = self.groq_service.generate(
+            prompt=prompt,
+            system_prompt=GREETING_SYSTEM_PROMPT,
+            temperature=0.7,
+        )
+
+        if not greeting:
+            return f"Good day, {name}! Welcome to your technical interview for the {level} {role} position. I'm excited to speak with you today about your technical background. Let's get started!"
+        return greeting.strip()
 
     def generate_closing_statement(self, memory: InterviewMemory) -> str:
         """Generates a warm, realistic human closing statement."""
