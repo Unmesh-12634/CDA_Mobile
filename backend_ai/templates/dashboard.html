@@ -216,8 +216,21 @@
 
             tbody.innerHTML = sessions.map(s => {
                 const turns = s.turn_records || s.turn_history || [];
-                const score = s.overall_score ? `${s.overall_score.toFixed(1)}/10` : 'Pending';
-                const statusColor = s.session_status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30';
+                let scoreText = 'In Progress';
+                if (s.overall_score !== undefined && s.overall_score !== null && s.overall_score > 0) {
+                    const sc = s.overall_score > 10 ? (s.overall_score / 10.0) : s.overall_score;
+                    scoreText = `${sc.toFixed(1)}/10`;
+                } else if (turns.length > 0) {
+                    const validScores = turns.map(t => (t.overall_score || 0)).filter(v => v > 0);
+                    if (validScores.length > 0) {
+                        const avg = validScores.reduce((a, b) => a + b, 0) / validScores.length;
+                        const norm = avg > 10 ? (avg / 10.0) : avg;
+                        scoreText = `${norm.toFixed(1)}/10`;
+                    }
+                }
+                
+                const isComplete = (s.session_status || '').toLowerCase() === 'completed';
+                const statusColor = isComplete ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30';
                 
                 return `
                     <tr class="hover:bg-gray-800/40 transition">
@@ -226,12 +239,12 @@
                             <div class="text-xs font-mono text-gray-500">${(s.session_id || '').substring(0, 18)}...</div>
                         </td>
                         <td class="p-4 font-semibold text-indigo-300">${s.job_role || 'Software Engineer'}</td>
-                        <td class="p-4 text-xs font-mono text-gray-400">${s.difficulty || 'Intermediate'} • ${s.seniority_level || 'Mid'}</td>
+                        <td class="p-4 text-xs font-mono text-gray-400">${s.difficulty || 'Intermediate'} • ${s.seniority_level || 'Mid-Level'}</td>
                         <td class="p-4 font-mono font-bold text-white">${s.current_turn || turns.length} / ${s.target_question_count || 5} Qs</td>
-                        <td class="p-4 font-mono font-extrabold text-amber-400">${score}</td>
+                        <td class="p-4 font-mono font-extrabold text-amber-400">${scoreText}</td>
                         <td class="p-4">
                             <span class="px-2.5 py-1 text-xs font-mono rounded-full border ${statusColor}">
-                                ${(s.session_status || 'active').toUpperCase()}
+                                ${(s.session_status || 'IN_PROGRESS').toUpperCase()}
                             </span>
                         </td>
                         <td class="p-4 text-right">
@@ -282,27 +295,35 @@
                 if (turns.length === 0) {
                     modalBody.innerHTML = `<div class="p-6 text-center text-gray-400">No question turns recorded for this session yet.</div>`;
                 } else {
-                    modalBody.innerHTML = turns.map((t, idx) => `
+                    modalBody.innerHTML = turns.map((t, idx) => {
+                        const qText = t.question_text || t.question || t.ai_question || 'Technical scenario question';
+                        const aText = t.candidate_answer || t.answer || 'Answer recorded.';
+                        const scoreVal = t.overall_score || t.technical_accuracy || 8.0;
+                        const scoreDisplay = scoreVal > 10 ? (scoreVal / 10.0).toFixed(1) : Number(scoreVal).toFixed(1);
+                        const clarityVal = t.clarity_score || t.communication_clarity || 8.0;
+                        const clarityDisplay = clarityVal > 10 ? (clarityVal / 10.0).toFixed(1) : Number(clarityVal).toFixed(1);
+
+                        return `
                         <div class="glass-panel p-5 rounded-xl border border-darkBorder space-y-4">
                             <div class="flex items-center justify-between border-b border-darkBorder pb-3">
                                 <span class="font-mono text-xs font-bold text-indigo-400">TURN ${idx + 1} OF ${turns.length}</span>
                                 <div class="flex items-center space-x-3 text-xs font-mono">
-                                    <span class="text-emerald-400">Clarity: ${t.clarity_score || t.clarity || 8.0}/10</span>
-                                    <span class="text-amber-400">Engineering: ${t.engineering_judgement_score || 8.5}/10</span>
+                                    <span class="text-emerald-400">Clarity: ${clarityDisplay}/10</span>
+                                    <span class="text-amber-400">Score: ${scoreDisplay}/10</span>
                                 </div>
                             </div>
 
                             <div>
                                 <div class="text-xs font-mono text-indigo-300 uppercase mb-1">🤖 AI System Question:</div>
                                 <div class="text-sm font-semibold text-white bg-darkBg/60 p-3 rounded-lg border border-darkBorder">
-                                    ${t.question || t.ai_question || 'What is your core architectural approach?'}
+                                    ${qText}
                                 </div>
                             </div>
 
                             <div>
                                 <div class="text-xs font-mono text-emerald-400 uppercase mb-1">🎤 Candidate Answer:</div>
                                 <div class="text-sm text-gray-200 bg-darkBg/40 p-3 rounded-lg border border-darkBorder italic">
-                                    "${t.answer || t.candidate_answer || 'No speech recorded.'}"
+                                    "${aText}"
                                 </div>
                             </div>
 
@@ -315,7 +336,8 @@
                                 </div>
                             ` : ''}
                         </div>
-                    `).join('');
+                    `;
+                    }).join('');
                 }
 
                 document.getElementById('qa-modal').classList.remove('hidden');

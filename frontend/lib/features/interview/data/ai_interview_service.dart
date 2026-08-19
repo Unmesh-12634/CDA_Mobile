@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -202,6 +203,120 @@ class AiInterviewApiClient {
 
   static const String _groqModel = 'openai/gpt-oss-120b';
   static const String _groqEndpoint = 'https://api.groq.com/openai/v1/chat/completions';
+  static String _generateUuid() {
+    final random = math.Random();
+    const hexDigits = "0123456789abcdef";
+    List<String> uuid = List<String>.filled(36, '');
+    for (int i = 0; i < 36; i++) {
+      int hexPos = random.nextInt(16);
+      uuid[i] = hexDigits[hexPos];
+    }
+    uuid[14] = "4";
+    uuid[19] = hexDigits[(int.parse(uuid[19], radix: 16) & 0x3) | 0x8];
+    uuid[8] = uuid[13] = uuid[18] = uuid[23] = "-";
+    return uuid.join('');
+  }
+
+  static void _syncSessionStartToSupabase({
+    required String sessionId,
+    required String candidateName,
+    required String jobRole,
+    required int targetTurns,
+    required List<String> skills,
+    required String experienceLevel,
+    required String firstQuestion,
+  }) async {
+    try {
+      final supabase = Supabase.instance.client;
+      await supabase.from('ai_interview_session').upsert({
+        'session_id': sessionId,
+        'candidate_name': candidateName,
+        'job_role': jobRole,
+        'target_question_count': targetTurns,
+        'current_turn': 1,
+        'session_status': 'IN_PROGRESS',
+        'difficulty': 'Intermediate',
+        'seniority_level': experienceLevel.isNotEmpty ? experienceLevel : 'Mid-Level',
+        'turn_records': [
+          {
+            'turn_number': 1,
+            'question_text': firstQuestion,
+            'candidate_answer': '',
+            'overall_score': 0.0,
+          }
+        ],
+        'config_data': {
+          'candidate_name': candidateName,
+          'job_role': jobRole,
+          'skills': skills,
+          'experience_level': experienceLevel,
+          'target_question_count': targetTurns,
+        },
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+      debugPrint('📡 [CLOUD DB SYNC] Created live session $sessionId in Supabase ai_interview_session!');
+    } catch (e) {
+      debugPrint('Session start DB sync notice: $e');
+    }
+  }
+
+  static void _syncTurnToSupabase({
+    required String sessionId,
+    required int turnNumber,
+    required String candidateAnswer,
+    required double score,
+    required String feedback,
+    required String nextQuestion,
+    required bool isCompleted,
+  }) async {
+    try {
+      final supabase = Supabase.instance.client;
+      final existing = await supabase.from('ai_interview_session').select('turn_records').eq('session_id', sessionId).maybeSingle();
+      List<dynamic> turns = [];
+      if (existing != null && existing['turn_records'] is List) {
+        turns = List<dynamic>.from(existing['turn_records'] as List);
+      }
+
+      final normalizedScore = score > 10 ? (score / 10.0) : score;
+
+      // Update current turn record with answer, score, feedback
+      if (turns.isNotEmpty && turns.last is Map) {
+        final last = Map<String, dynamic>.from(turns.last as Map);
+        last['candidate_answer'] = candidateAnswer;
+        last['overall_score'] = normalizedScore;
+        last['feedback'] = feedback;
+        turns[turns.length - 1] = last;
+      } else {
+        turns.add({
+          'turn_number': turnNumber,
+          'candidate_answer': candidateAnswer,
+          'overall_score': normalizedScore,
+          'feedback': feedback,
+        });
+      }
+
+      // If next question available, add placeholder for next turn
+      if (!isCompleted && nextQuestion.isNotEmpty) {
+        turns.add({
+          'turn_number': turnNumber + 1,
+          'question_text': nextQuestion,
+          'candidate_answer': '',
+          'overall_score': 0.0,
+        });
+      }
+
+      await supabase.from('ai_interview_session').update({
+        'current_turn': turnNumber,
+        'session_status': isCompleted ? 'COMPLETED' : 'IN_PROGRESS',
+        'turn_records': turns,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('session_id', sessionId);
+      debugPrint('📡 [CLOUD DB SYNC] Updated Turn $turnNumber for session $sessionId!');
+    } catch (e) {
+      debugPrint('Turn DB sync notice: $e');
+    }
+  }
 
   /// Starts 100% real live LLM interview using candidate's real name, resume details, and skills
   Future<StartInterviewResponse> startInterview(StartInterviewRequest request) async {
@@ -210,6 +325,15 @@ class AiInterviewApiClient {
       final liveGroq = await _callGroqForStart(request);
       if (liveGroq != null) {
         debugPrint('🚀 [GROQ LLM] Generated 100% Real Live Greeting & Q1 for ${request.candidateName}');
+        _syncSessionStartToSupabase(
+          sessionId: liveGroq.sessionId,
+          candidateName: request.candidateName,
+          jobRole: request.jobRole,
+          targetTurns: request.targetQuestionCount > 0 ? request.targetQuestionCount : 5,
+          skills: request.skills,
+          experienceLevel: request.experienceLevel,
+          firstQuestion: liveGroq.currentQuestion ?? '',
+        );
         return liveGroq;
       }
     } catch (e) {
@@ -253,6 +377,15 @@ class AiInterviewApiClient {
       );
       if (liveEval != null) {
         debugPrint('🎯 [GROQ LLM] Evaluated Turn $turn: Score=${liveEval.lastEvaluationScore}');
+        _syncTurnToSupabase(
+          sessionId: request.sessionId,
+          turnNumber: turn,
+          candidateAnswer: request.candidateAnswer,
+          score: liveEval.lastEvaluationScore ?? 80.0,
+          feedback: liveEval.lastFeedback ?? '',
+          nextQuestion: liveEval.currentQuestion ?? '',
+          isCompleted: liveEval.isCompleted,
+        );
         return liveEval;
       }
     } catch (e) {
@@ -284,7 +417,12 @@ class AiInterviewApiClient {
         transcriptHistory: transcriptHistory,
       );
       if (groqReport != null) {
-        _saveReportToSupabase(groqReport, candidateEmail: candidateEmail, jobRole: role);
+        _saveReportToSupabase(
+          groqReport,
+          candidateEmail: candidateEmail,
+          jobRole: role,
+          sessionId: sessionId,
+        );
         return groqReport;
       }
     } catch (e) {
@@ -368,8 +506,9 @@ Return ONLY a valid JSON object matching this schema:
             final question = (parsed['question'] ?? parsed['current_question'] ?? parsed['question_1'] ?? parsed['first_question'])?.toString() ?? 'Could you explain a complex project you developed in $jobRole?';
             final transition = (parsed['transition'] ?? parsed['transition_phrase'] ?? parsed['phrase'])?.toString() ?? 'Let us begin with your technical assessment.';
 
+            final sessionId = _generateUuid();
             return StartInterviewResponse(
-              sessionId: 'ai_groq_${DateTime.now().millisecondsSinceEpoch}',
+              sessionId: sessionId,
               isCompleted: false,
               initialGreeting: greeting,
               currentQuestion: question,
@@ -546,27 +685,56 @@ Return ONLY a valid JSON object matching this exact schema:
     return null;
   }
 
-  static void _saveReportToSupabase(InterviewFinishResponse report, {required String candidateEmail, required String jobRole}) async {
-    if (candidateEmail.isEmpty) return;
+  static void _saveReportToSupabase(
+    InterviewFinishResponse report, {
+    required String candidateEmail,
+    required String jobRole,
+    required String sessionId,
+  }) async {
     try {
       final supabase = Supabase.instance.client;
-      await supabase.from('ai_interview_reports').insert({
-        'session_id': report.sessionId,
-        'candidate_email': candidateEmail,
-        'target_role': jobRole,
-        'overall_score': report.overallScore,
-        'technical_score': report.technicalScore,
-        'communication_score': report.communicationScore,
-        'problem_solving_score': report.problemSolvingScore,
-        'hiring_readiness': report.hiringReadiness,
-        'feedback_summary': report.summary,
-        'rubric_breakdown': {
-          'strong_areas': report.strongAreas,
-          'areas_for_improvement': report.areasForImprovement,
-        },
-        'created_at': DateTime.now().toIso8601String(),
-      });
-      debugPrint('💾 Saved AI Interview Report to Supabase for $candidateEmail');
+
+      // 1. Update session status and scores in ai_interview_session
+      try {
+        final normalizedScore = report.overallScore > 10 ? (report.overallScore / 10.0) : report.overallScore;
+        final normalizedTech = report.technicalScore > 10 ? (report.technicalScore / 10.0) : report.technicalScore;
+        final normalizedComm = report.communicationScore > 10 ? (report.communicationScore / 10.0) : report.communicationScore;
+        final normalizedProb = report.problemSolvingScore > 10 ? (report.problemSolvingScore / 10.0) : report.problemSolvingScore;
+
+        await supabase.from('ai_interview_session').update({
+          'session_status': 'COMPLETED',
+          'overall_score': normalizedScore,
+          'technical_score': normalizedTech,
+          'communication_score': normalizedComm,
+          'problem_solving_score': normalizedProb,
+          'hire_recommendation': report.hiringReadiness,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('session_id', sessionId);
+        debugPrint('📡 [CLOUD DB SYNC] Marked session $sessionId as COMPLETED in ai_interview_session DB!');
+      } catch (e) {
+        debugPrint('Session complete DB notice: $e');
+      }
+
+      // 2. Insert into ai_interview_reports for persistent history
+      if (candidateEmail.isNotEmpty) {
+        await supabase.from('ai_interview_reports').insert({
+          'session_id': sessionId,
+          'candidate_email': candidateEmail,
+          'target_role': jobRole,
+          'overall_score': report.overallScore,
+          'technical_score': report.technicalScore,
+          'communication_score': report.communicationScore,
+          'problem_solving_score': report.problemSolvingScore,
+          'hiring_readiness': report.hiringReadiness,
+          'feedback_summary': report.summary,
+          'rubric_breakdown': {
+            'strong_areas': report.strongAreas,
+            'areas_for_improvement': report.areasForImprovement,
+          },
+          'created_at': DateTime.now().toIso8601String(),
+        });
+        debugPrint('💾 [CLOUD DB SYNC] Saved AI Interview Report to Supabase for $candidateEmail');
+      }
     } catch (e) {
       debugPrint('Notice saving report to Supabase: $e');
     }
