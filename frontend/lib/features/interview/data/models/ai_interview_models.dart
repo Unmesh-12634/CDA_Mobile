@@ -173,6 +173,7 @@ class InterviewFinishResponse {
   final String summary;
   final List<String> strongAreas;
   final List<String> areasForImprovement;
+  final List<Map<String, dynamic>> recommendedCourses;
 
   InterviewFinishResponse({
     required this.sessionId,
@@ -187,9 +188,16 @@ class InterviewFinishResponse {
     required this.summary,
     required this.strongAreas,
     required this.areasForImprovement,
+    this.recommendedCourses = const [],
   });
 
   factory InterviewFinishResponse.fromJson(Map<String, dynamic> json) {
+    final rawCourses = json['recommended_courses'] ?? json['cda_learning_recommendations'];
+    List<Map<String, dynamic>> courses = [];
+    if (rawCourses is List) {
+      courses = rawCourses.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+
     return InterviewFinishResponse(
       sessionId: json['session_id'] ?? '',
       overallScore: (json['overall_score'] as num?)?.toDouble() ?? 0.0,
@@ -203,6 +211,7 @@ class InterviewFinishResponse {
       summary: json['summary'] ?? 'Session analysis generated.',
       strongAreas: (json['strong_areas'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
       areasForImprovement: (json['areas_for_improvement'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      recommendedCourses: courses,
     );
   }
 
@@ -220,6 +229,8 @@ class InterviewFinishResponse {
       'summary': summary,
       'strong_areas': strongAreas,
       'areas_for_improvement': areasForImprovement,
+      'recommended_courses': recommendedCourses,
+      'cda_learning_recommendations': recommendedCourses,
     };
   }
 }

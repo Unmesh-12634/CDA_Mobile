@@ -273,25 +273,25 @@ class _InterviewAnalysisScreenState extends ConsumerState<InterviewAnalysisScree
                   ),
                   const SizedBox(height: 14),
 
-                  ...((data['cda_learning_recommendations'] as List?) ?? [
+                  ...((data['recommended_courses'] as List?) ?? (data['cda_learning_recommendations'] as List?) ?? [
                     {
-                      'course_id': 'c0000000-0000-0000-0000-000000000001',
-                      'title': 'Full-Stack Java Enterprise & Microservices Masterclass',
+                      'course_id': 'c001',
+                      'title': 'Advanced Java Full-Stack & Microservices Engineering',
                       'category': 'Java & Backend',
                       'reason': 'Targeted practice for identified Concurrency, Spring Data JPA, and Microservices transaction boundaries.',
                       'priority': 'HIGH',
-                      'cda_learning_url': 'https://www.youtube.com/watch?v=Uf6PXnagtsg',
-                      'estimated_duration': '12 Weeks',
+                      'cda_learning_url': 'https://cranesvarsity.com/courses/advanced-java-fullstack',
+                      'estimated_duration': '60 Hours',
                       'tags': ['#Java', '#SpringBoot', '#Microservices', '#Kafka'],
                     },
                     {
-                      'course_id': 'c0000000-0000-0000-0000-000000000002',
-                      'title': 'System Design: Microservices, Distributed Caching & Sharding',
+                      'course_id': 'c003',
+                      'title': 'Distributed Systems & High-Concurrency Backend Masterclass',
                       'category': 'System Design',
-                      'reason': 'Production readiness optimization for distributed systems and horizontal scaling.',
+                      'reason': 'Production readiness optimization for distributed systems, Redis caching, and horizontal scaling.',
                       'priority': 'HIGH',
-                      'cda_learning_url': 'https://www.youtube.com/watch?v=Uf6PXnagtsg',
-                      'estimated_duration': '8 Weeks',
+                      'cda_learning_url': 'https://cranesvarsity.com/courses/distributed-systems-masterclass',
+                      'estimated_duration': '50 Hours',
                       'tags': ['#SystemDesign', '#DistributedSystems', '#Redis', '#AWS'],
                     },
                   ]).map((rec) {
@@ -300,9 +300,12 @@ class _InterviewAnalysisScreenState extends ConsumerState<InterviewAnalysisScree
                     final category = (recMap['category'] as String?) ?? 'Engineering';
                     final reason = (recMap['reason'] as String?) ?? 'Fills technical gap identified during interview.';
                     final priority = (recMap['priority'] as String?) ?? 'HIGH';
-                    final url = (recMap['cda_learning_url'] as String?) ?? 'https://www.youtube.com/watch?v=Uf6PXnagtsg';
-                    final duration = (recMap['estimated_duration'] as String?) ?? '12 Weeks';
-                    final List<String> tags = (recMap['tags'] as List?)?.map((t) => t.toString()).toList() ?? ['#CDA', '#TechMastery'];
+                    final url = (recMap['cda_learning_url'] as String?) ?? (recMap['course_url'] as String?) ?? 'https://cranesvarsity.com';
+                    final duration = (recMap['estimated_duration'] as String?) ?? '${recMap['duration_hours'] ?? 40} Hours';
+                    final List<String> tags = (recMap['tags'] as List?)?.map((t) => t.toString()).toList() ?? 
+                        ((recMap['skills_covered'] as List?)?.map((s) => '#$s').toList() ?? ['#CDA', '#TechMastery']);
+
+                    final isYouTube = url.contains('youtube.com') || url.contains('youtu.be');
 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -401,16 +404,16 @@ class _InterviewAnalysisScreenState extends ConsumerState<InterviewAnalysisScree
                             width: double.infinity,
                             child: ElevatedButton.icon(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFE11D48),
+                                backgroundColor: isYouTube ? const Color(0xFFE11D48) : AppColors.primary,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                 elevation: 0,
                               ),
-                              icon: const Icon(Icons.play_circle_filled_rounded, size: 18),
-                              label: const Text(
-                                'WATCH MASTERCLASS ON YOUTUBE',
-                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                              icon: Icon(isYouTube ? Icons.play_circle_filled_rounded : Icons.school_rounded, size: 18),
+                              label: Text(
+                                isYouTube ? 'WATCH MASTERCLASS ON YOUTUBE' : 'EXPLORE CDA COURSE & SYLLABUS',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                               ),
                               onPressed: () async {
                                 final uri = Uri.parse(url);
@@ -418,11 +421,9 @@ class _InterviewAnalysisScreenState extends ConsumerState<InterviewAnalysisScree
                                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                                 } catch (e) {
                                   if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                      content: Text('Could not open link: $url'),
-                                      backgroundColor: Colors.redAccent,
-                                      behavior: SnackBarBehavior.floating,
-                                    ));
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Could not open $url')),
+                                    );
                                   }
                                 }
                               },

@@ -612,6 +612,91 @@ Return ONLY a valid JSON object matching this schema:
     return null;
   }
 
+  /// Fetches all active CDA Courses directly from Supabase DB or curated fallback
+  static Future<List<Map<String, dynamic>>> fetchCdaCourses() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final res = await supabase
+          .from('cda_courses')
+          .select('*')
+          .eq('is_active', true)
+          .order('rating', ascending: false);
+      if (res.isNotEmpty) {
+        return List<Map<String, dynamic>>.from(res);
+      }
+    } catch (e) {
+      debugPrint('fetchCdaCourses notice: $e');
+    }
+    return [
+      {
+        'id': 'c001',
+        'title': 'Advanced Java Full-Stack & Microservices Engineering',
+        'description': 'Master Core Java 21, Spring Boot 3, Spring Security, Apache Kafka, Docker, and Kubernetes deployment.',
+        'course_url': 'https://cranesvarsity.com/courses/advanced-java-fullstack',
+        'skills_covered': ['Java', 'Spring Boot', 'Microservices', 'Kafka', 'PostgreSQL', 'Docker'],
+        'difficulty': 'Advanced',
+        'duration_hours': 60,
+        'rating': 4.95,
+        'instructor_name': 'Prof. Rajesh Sharma (Lead Architect)',
+      },
+      {
+        'id': 'c002',
+        'title': 'Flutter & Cross-Platform Mobile System Architecture',
+        'description': 'Build production-grade mobile applications with Flutter 3.27, Riverpod 2.0, Clean Architecture, and offline sync.',
+        'course_url': 'https://cranesvarsity.com/courses/flutter-mobile-architect',
+        'skills_covered': ['Flutter', 'Dart', 'Riverpod', 'Clean Architecture', 'Mobile System Design'],
+        'difficulty': 'Intermediate',
+        'duration_hours': 45,
+        'rating': 4.90,
+        'instructor_name': 'Arjun Nair (Senior Mobile Lead)',
+      },
+      {
+        'id': 'c003',
+        'title': 'Distributed Systems & High-Concurrency Backend Masterclass',
+        'description': 'Learn how to architect resilient distributed systems with Redis caching, rate limiting, horizontal scaling, and fault tolerance.',
+        'course_url': 'https://cranesvarsity.com/courses/distributed-systems-masterclass',
+        'skills_covered': ['Distributed Systems', 'Redis', 'System Design', 'Caching', 'Concurrency'],
+        'difficulty': 'Advanced',
+        'duration_hours': 50,
+        'rating': 4.98,
+        'instructor_name': 'Dr. Vikram Kelkar (Ex-FAANG Architect)',
+      },
+      {
+        'id': 'c004',
+        'title': 'Data Structures, Algorithms & Competitive Problem Solving',
+        'description': 'Master Dynamic Programming, Graph Theory, Trie trees, Binary Search variations, and asymptotic optimization.',
+        'course_url': 'https://cranesvarsity.com/courses/dsa-problem-solving',
+        'skills_covered': ['DSA', 'Algorithms', 'Data Structures', 'Dynamic Programming', 'Problem Solving'],
+        'difficulty': 'Intermediate',
+        'duration_hours': 55,
+        'rating': 4.92,
+        'instructor_name': 'Sneha Iyer (Algorithms Specialist)',
+      },
+      {
+        'id': 'c005',
+        'title': 'Generative AI, LLM Engineering & Applied RAG Systems',
+        'description': 'Construct production LLM pipelines with Python FastAPI, LangChain, Vector DBs (pgvector, Pinecone), and LoRA fine-tuning.',
+        'course_url': 'https://cranesvarsity.com/courses/genai-llm-engineering',
+        'skills_covered': ['Python', 'Generative AI', 'LLM', 'FastAPI', 'pgvector', 'RAG'],
+        'difficulty': 'Advanced',
+        'duration_hours': 40,
+        'rating': 4.96,
+        'instructor_name': 'Aakash Deshmukh (AI Research Scientist)',
+      },
+      {
+        'id': 'c006',
+        'title': 'PostgreSQL Database Internals & Query Performance Optimization',
+        'description': 'Deep-dive into PostgreSQL execution plans, B-Tree vs GIN indexing, vacuuming, table partitioning, and transactions.',
+        'course_url': 'https://cranesvarsity.com/courses/postgresql-performance-tuning',
+        'skills_covered': ['PostgreSQL', 'SQL', 'Database Design', 'Query Optimization', 'Indexing'],
+        'difficulty': 'Intermediate',
+        'duration_hours': 35,
+        'rating': 4.89,
+        'instructor_name': 'Manoj Kumar (Principal DBA)',
+      }
+    ];
+  }
+
   static Future<InterviewFinishResponse?> _callGroqForReport({
     required String sessionId,
     required String candidateName,
@@ -621,8 +706,13 @@ Return ONLY a valid JSON object matching this schema:
     required List<Map<String, String>> transcriptHistory,
   }) async {
     final transcript = transcriptHistory.map((t) => "${t['speaker']}: ${t['text']}").join("\n");
+    final cdaCourses = await fetchCdaCourses();
+    final coursesSnippet = cdaCourses.map((c) {
+      final skills = (c['skills_covered'] is List) ? (c['skills_covered'] as List).join(', ') : '';
+      return "- Course Title: ${c['title']}\n  Description: ${c['description']}\n  Skills: $skills\n  URL: ${c['course_url'] ?? 'https://cranesvarsity.com'}\n  Duration: ${c['duration_hours'] ?? 40} Hours\n  Instructor: ${c['instructor_name'] ?? 'Senior Mentor'}";
+    }).join("\n\n");
 
-    final systemPrompt = '''You are the Head of Engineering at Cranes Digital Academy generating the comprehensive Final Interview Assessment Report.
+    final systemPrompt = '''You are the Head of Engineering and Chief Evaluator at Cranes Digital Academy generating the comprehensive Final Interview Assessment Report.
 Candidate: $candidateName
 Target Role: $role
 Completed Questions: $completedTurns / $targetTurns
@@ -630,18 +720,37 @@ Completed Questions: $completedTurns / $targetTurns
 FULL INTERVIEW TRANSCRIPT:
 $transcript
 
+AVAILABLE CDA COURSES IN DATABASE CATALOG:
+$coursesSnippet
+
 TASK:
-Analyze the complete transcript and generate an in-depth hiring evaluation.
+1. Deeply analyze the candidate's actual answers in the transcript and grade their performance realistically from 0.0 to 100.0 across Overall, Technical Depth, STAR Communication, and Problem Solving based on their genuine technical correctness.
+2. Identify 2-3 genuine strengths demonstrated in their answers.
+3. Identify 2-3 actionable areas for improvement based on gaps, inaccuracies, or omitted edge cases in their transcript.
+4. Select 1 to 3 best matching courses from the AVAILABLE CDA COURSES to help the candidate bridge their identified technical gaps, explaining the exact reason why each course is recommended for them.
+
 Return ONLY a valid JSON object matching this exact schema:
 {
-  "overall_score": 88.0,
-  "technical_score": 89.0,
-  "communication_score": 85.0,
-  "problem_solving_score": 90.0,
-  "hiring_readiness": "STRONG HIRE",
+  "overall_score": 82.0,
+  "technical_score": 84.0,
+  "communication_score": 80.0,
+  "problem_solving_score": 85.0,
+  "hiring_readiness": "HIRE",
   "summary": "Executive summary (3 sentences) evaluating candidate's readiness and depth...",
-  "strong_areas": ["Key strength 1", "Key strength 2", "Key strength 3"],
-  "areas_for_improvement": ["Actionable improvement 1", "Actionable improvement 2"]
+  "strong_areas": ["Key strength 1", "Key strength 2"],
+  "areas_for_improvement": ["Actionable improvement 1", "Actionable improvement 2"],
+  "recommended_courses": [
+    {
+      "course_id": "course_slug",
+      "title": "Exact Course Title from Available Catalog",
+      "category": "Backend / Mobile / AI / DSA",
+      "reason": "Personalized reason explaining what specific gap this course will fix for the candidate...",
+      "priority": "HIGH",
+      "cda_learning_url": "Exact Course URL from Catalog",
+      "estimated_duration": "40 Hours",
+      "tags": ["#Java", "#Microservices"]
+    }
+  ]
 }''';
 
     final response = await http.post(
@@ -654,18 +763,24 @@ Return ONLY a valid JSON object matching this exact schema:
         'model': _groqModel,
         'messages': [
           {'role': 'system', 'content': systemPrompt},
-          {'role': 'user', 'content': 'Generate final hiring report.'}
+          {'role': 'user', 'content': 'Generate final hiring report with database course recommendations.'}
         ],
         'temperature': 0.5,
         'response_format': {'type': 'json_object'},
       }),
-    ).timeout(const Duration(seconds: 7));
+    ).timeout(const Duration(seconds: 9));
 
     if (response.statusCode == 200) {
       final decoded = jsonDecode(utf8.decode(response.bodyBytes));
       final content = decoded['choices']?[0]?['message']?['content'];
       if (content != null) {
         final parsed = jsonDecode(content) as Map<String, dynamic>;
+        final rawCourses = parsed['recommended_courses'] ?? parsed['cda_learning_recommendations'];
+        List<Map<String, dynamic>> courses = [];
+        if (rawCourses is List) {
+          courses = rawCourses.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        }
+
         return InterviewFinishResponse(
           sessionId: sessionId,
           overallScore: (parsed['overall_score'] as num?)?.toDouble() ?? 85.0,
@@ -679,6 +794,7 @@ Return ONLY a valid JSON object matching this exact schema:
           summary: parsed['summary']?.toString() ?? 'Comprehensive evaluation completed.',
           strongAreas: (parsed['strong_areas'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ['Technical proficiency', 'Problem solving'],
           areasForImprovement: (parsed['areas_for_improvement'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ['System design metrics'],
+          recommendedCourses: courses,
         );
       }
     }
@@ -727,13 +843,19 @@ Return ONLY a valid JSON object matching this exact schema:
           'problem_solving_score': report.problemSolvingScore,
           'hiring_readiness': report.hiringReadiness,
           'feedback_summary': report.summary,
+          'strong_areas': report.strongAreas,
+          'areas_for_improvement': report.areasForImprovement,
+          'recommended_courses': report.recommendedCourses,
           'rubric_breakdown': {
             'strong_areas': report.strongAreas,
             'areas_for_improvement': report.areasForImprovement,
+            'recommended_courses': report.recommendedCourses,
+            'cda_learning_recommendations': report.recommendedCourses,
           },
+          'full_report_json': report.toJson(),
           'created_at': DateTime.now().toIso8601String(),
         });
-        debugPrint('💾 [CLOUD DB SYNC] Saved AI Interview Report to Supabase for $candidateEmail');
+        debugPrint('💾 [CLOUD DB SYNC] Saved AI Interview Report with ${report.recommendedCourses.length} real courses to Supabase!');
       }
     } catch (e) {
       debugPrint('Notice saving report to Supabase: $e');

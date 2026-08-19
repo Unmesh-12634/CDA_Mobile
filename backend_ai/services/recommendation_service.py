@@ -6,6 +6,7 @@ mapping candidate weak competencies to actual CDA courses, video modules, and we
 
 import logging
 from typing import List, Dict, Any
+import requests
 from models.interview import InterviewReport
 from services.supabase_service import SupabaseRepository
 
@@ -88,22 +89,26 @@ class RecommendationService:
     def _fetch_db_courses(self) -> List[Dict[str, Any]]:
         """Attempts to fetch active courses from Supabase cda_courses table with fallback."""
         try:
-            res = self.supabase.client.table("cda_courses").select("*").eq("is_active", True).execute()
-            if res.data and len(res.data) > 0:
-                courses = []
-                for row in res.data:
-                    courses.append({
-                        "course_id": row.get("id"),
-                        "title": row.get("title"),
-                        "category": row.get("category"),
-                        "description": row.get("description", ""),
-                        "keywords": [t.replace("#", "").lower() for t in (row.get("tags") or [])] + [row.get("category", "").lower()],
-                        "tags": row.get("tags") or ["#CDA", "#TechMastery"],
-                        "cda_learning_url": row.get("link_url") or TARGET_COURSE_URL,
-                        "estimated_duration": row.get("estimated_duration") or "10 Weeks",
-                        "badge": f"CDA {row.get('category')} Specialist",
-                    })
-                return courses
+            endpoint = f"{self.supabase.url}/rest/v1/cda_courses?is_active=eq.true&order=rating.desc"
+            res = requests.get(endpoint, headers=self.supabase.headers, timeout=10)
+            if res.status_code == 200:
+                data = res.json()
+                if data and len(data) > 0:
+                    courses = []
+                    for row in data:
+                        skills = row.get("skills_covered") or []
+                        courses.append({
+                            "course_id": row.get("id"),
+                            "title": row.get("title"),
+                            "category": (skills[0] if skills else "Engineering") + " Architecture",
+                            "description": row.get("description", ""),
+                            "keywords": [s.lower() for s in skills] + [row.get("title", "").lower()],
+                            "tags": [f"#{s}" for s in skills] if skills else ["#CDA", "#TechMastery"],
+                            "cda_learning_url": row.get("course_url") or TARGET_COURSE_URL,
+                            "estimated_duration": f"{row.get('duration_hours', 40)} Hours",
+                            "badge": f"CDA {row.get('difficulty', 'Advanced')} Specialist",
+                        })
+                    return courses
         except Exception as e:
             logger.warning(f"Could not load courses from Supabase cda_courses table: {e}")
 
