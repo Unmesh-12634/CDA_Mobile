@@ -186,6 +186,54 @@ class QuizNotifier extends StateNotifier<QuizState> {
       }
     } catch (_) {}
 
+    // 1. Fetch questions from Supabase daily_questions DB
+    try {
+      final supabase = SupabaseConfig.client;
+      final dbQuestions = await supabase
+          .from('daily_questions')
+          .select('*')
+          .order('scheduled_date', ascending: false)
+          .limit(5);
+
+      if (dbQuestions.isNotEmpty) {
+        final parsed = (dbQuestions as List).map((row) {
+          final opts = [
+            row['option_a']?.toString() ?? '',
+            row['option_b']?.toString() ?? '',
+            row['option_c']?.toString() ?? '',
+            row['option_d']?.toString() ?? '',
+          ];
+          int correctIdx = 0;
+          final cor = (row['correct_option']?.toString() ?? 'A').toUpperCase().trim();
+          if (cor == 'B') correctIdx = 1;
+          if (cor == 'C') correctIdx = 2;
+          if (cor == 'D') correctIdx = 3;
+
+          return QuizQuestion(
+            id: row['id']?.toString() ?? 'q_db',
+            category: row['category']?.toString() ?? 'Software Engineering',
+            question: row['question_text']?.toString() ?? '',
+            options: opts,
+            correctOptionIndex: correctIdx,
+            explanation: row['explanation']?.toString() ?? 'Correct by technical best practices.',
+          );
+        }).toList();
+
+        if (parsed.isNotEmpty) {
+          state = state.copyWith(
+            isLoading: false,
+            questions: parsed,
+            skillFocus: parsed.first.category,
+            weaknessSummary: 'Daily Technical Mastery',
+            todayCompleted: todayAttempts,
+          );
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Supabase daily_questions notice: $e');
+    }
+
     // 2. Fetch fresh personalized questions directly via Groq AI Engine
     try {
       final drillModel = await AiQuizGeneratorService.generatePersonalizedDrill(
@@ -218,7 +266,6 @@ class QuizNotifier extends StateNotifier<QuizState> {
     );
   }
 
-
   void selectAnswer(int optionIndex) {
     if (state.selectedAnswers.containsKey(state.currentIndex)) return; // Already answered
 
@@ -246,7 +293,7 @@ class QuizNotifier extends StateNotifier<QuizState> {
       // 1. Trigger streak progression (even 1 completed quiz fulfills the daily streak)
       ref.read(weeklyGoalProvider.notifier).completeToday();
 
-      // 2. Persist result to database via Java backend
+      // 2. Persist result to database via Java backend & Supabase
       final profile = ref.read(userProfileProvider);
       final email = profile.email.isNotEmpty ? profile.email : ref.read(authProvider).email;
       int correctCount = 0;
@@ -256,6 +303,7 @@ class QuizNotifier extends StateNotifier<QuizState> {
         }
       }
 
+      // Java backend
       try {
         await JavaApiService.saveQuizResult(
           email: email,
@@ -266,6 +314,36 @@ class QuizNotifier extends StateNotifier<QuizState> {
           skillFocus: state.skillFocus,
         );
       } catch (_) {}
+
+      // Supabase quiz_attempts and user_progress sync
+      try {
+        final supabase = SupabaseConfig.client;
+        if (email.isNotEmpty) {
+          await supabase.from('quiz_attempts').insert({
+            'user_email': email,
+            'score': state.score,
+            'correct_count': correctCount,
+            'total_questions': state.questions.length,
+            'category': state.weaknessSummary,
+            'skill_focus': state.skillFocus,
+            'is_correct': correctCount >= (state.questions.length / 2),
+            'attempted_at': DateTime.now().toIso8601String(),
+          });
+
+          await supabase.from('user_progress').insert({
+            'user_email': email,
+            'item_type': 'quiz',
+            'item_id': state.currentQuestion.id,
+            'module_name': state.skillFocus,
+            'progress_pct': 100,
+            'time_spent_seconds': 120,
+            'last_accessed_at': DateTime.now().toIso8601String(),
+          });
+          debugPrint('📡 [CLOUD DB SYNC] Logged quiz attempt & progress to Supabase for $email');
+        }
+      } catch (e) {
+        debugPrint('Supabase quiz_attempts save notice: $e');
+      }
 
       state = state.copyWith(todayCompleted: state.todayCompleted + 1);
     }

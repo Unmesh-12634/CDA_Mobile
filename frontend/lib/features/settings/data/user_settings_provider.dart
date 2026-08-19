@@ -89,7 +89,7 @@ class UserSettingsNotifier extends StateNotifier<UserSettingsState> {
   }
 
   Future<void> loadSettings() async {
-    // 1. Instant load from local SharedPreferences disk
+    // 1. Instant local load from device disk (Phone storage)
     try {
       final prefs = await SharedPreferences.getInstance();
       state = state.copyWith(
@@ -103,31 +103,24 @@ class UserSettingsNotifier extends StateNotifier<UserSettingsState> {
       );
     } catch (_) {}
 
-    final user = SupabaseConfig.client.auth.currentUser;
-    final email = user?.email ?? '';
-    if (email.isEmpty) return;
-
-    // 2. Try Java Enterprise Backend
+    // 2. Cross-device Cloud Sync from Supabase
     try {
-      final javaSettings = await JavaApiService.fetchUserSettings(email: email);
-      if (javaSettings != null) {
-        state = UserSettingsState.fromJson(javaSettings).copyWith(isLoading: false);
-        return;
-      }
-    } catch (_) {}
+      final user = SupabaseConfig.client.auth.currentUser;
+      final email = user?.email ?? '';
+      if (email.isNotEmpty) {
+        final res = await SupabaseConfig.client
+            .from('user_settings')
+            .select()
+            .eq('user_email', email)
+            .maybeSingle();
 
-    // 3. Direct Supabase DB Fallback
-    try {
-      final res = await SupabaseConfig.client
-          .from('user_settings')
-          .select()
-          .eq('user_email', email)
-          .maybeSingle();
-
-      if (res != null) {
-        state = UserSettingsState.fromJson(res).copyWith(isLoading: false);
+        if (res != null) {
+          state = UserSettingsState.fromJson(res).copyWith(isLoading: false);
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('UserSettings cloud sync notice: $e');
+    }
   }
 
   Future<void> updateSettings({
@@ -151,10 +144,9 @@ class UserSettingsNotifier extends StateNotifier<UserSettingsState> {
       storageCacheMb: storageCacheMb,
     );
 
-
     state = updated;
 
-    // 1. Save to SharedPreferences for instant cold starts
+    // 1. Save directly into device phone storage (SharedPreferences)
     try {
       final prefs = await SharedPreferences.getInstance();
       if (aiVoicePersona != null) await prefs.setString('cda_pref_voice', aiVoicePersona);
@@ -164,24 +156,46 @@ class UserSettingsNotifier extends StateNotifier<UserSettingsState> {
       if (realtimeAudio != null) await prefs.setBool('cda_pref_realtime_audio', realtimeAudio);
       if (autoRecord != null) await prefs.setBool('cda_pref_auto_record', autoRecord);
       if (themeMode != null) await prefs.setString('cda_pref_theme', themeMode);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Local phone settings save notice: $e');
+    }
 
     // 2. Synchronize selected AI Voice Persona with AI Interview setup configuration
     if (aiVoicePersona != null) {
       ref.read(interviewSetupProvider.notifier).updateConfig(voicePersona: aiVoicePersona);
     }
 
-
-    final user = SupabaseConfig.client.auth.currentUser;
-    final email = user?.email ?? '';
-    if (email.isEmpty) return;
-    final payload = updated.toJson()..['user_email'] = email;
-
-    // 3. Save to Java Backend & Supabase DB
-    JavaApiService.saveUserSettings(payload);
+    // 3. Save to Supabase Cloud Tables (user_settings & user_interview_settings)
     try {
-      await SupabaseConfig.client.from('user_settings').upsert(payload);
-    } catch (_) {}
+      final user = SupabaseConfig.client.auth.currentUser;
+      final email = user?.email ?? state.userEmail;
+      if (email.isNotEmpty) {
+        final payload = updated.toJson()..['user_email'] = email;
+        JavaApiService.saveUserSettings(payload);
+
+        await SupabaseConfig.client.from('user_settings').upsert({
+          'user_email': email,
+          'push_notifications': updated.pushNotifications,
+          'email_notifications': updated.emailNotifications,
+          'haptic_feedback': updated.hapticFeedback,
+          'theme_mode': updated.themeMode,
+          'ai_voice_persona': updated.aiVoicePersona,
+          'realtime_audio': updated.realtimeAudio,
+          'auto_record': updated.autoRecord,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+
+        await SupabaseConfig.client.from('user_interview_settings').upsert({
+          'user_email': email,
+          'interviewer_voice': updated.aiVoicePersona,
+          'auto_submit_mic': updated.autoRecord,
+          'show_live_transcript': true,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
+    } catch (e) {
+      debugPrint('Cloud settings sync notice: $e');
+    }
   }
 }
 
