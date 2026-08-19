@@ -31,25 +31,39 @@ class _InterviewReportsHistoryScreenState extends ConsumerState<InterviewReports
       setState(() {
         _isLoading = false;
         _reports = fetched.map((item) {
-          final qaJson = item['detailed_qa_json'] as Map<String, dynamic>? ?? item;
-          final score = (item['overall_score'] as num?)?.toDouble() ?? (qaJson['overall_score'] as num?)?.toDouble() ?? 85.0;
-          final role = item['target_role'] ?? 'Software Developer';
+          final fullReport = (item['full_report_json'] is Map<String, dynamic>)
+              ? Map<String, dynamic>.from(item['full_report_json'] as Map)
+              : Map<String, dynamic>.from(item);
+
+          final score = (item['overall_score'] as num?)?.toDouble() ??
+              (fullReport['overall_score'] as num?)?.toDouble() ??
+              85.0;
+          final role = item['target_role'] ?? fullReport['target_role'] ?? 'Software Developer';
           final dateStr = item['created_at'] != null
               ? item['created_at'].toString().split('T').first
               : 'Recent Session';
-          final dynamicSkills = (item['strengths'] as List?)?.map((e) => e.toString()).toList() ??
-              (qaJson['skills'] as List?)?.map((e) => e.toString()).toList() ??
+
+          fullReport['overall_score'] ??= score;
+          fullReport['technical_score'] ??= item['technical_score'];
+          fullReport['communication_score'] ??= item['communication_score'];
+          fullReport['problem_solving_score'] ??= item['problem_solving_score'];
+          fullReport['strong_areas'] ??= item['strong_areas'] ?? item['strengths'];
+          fullReport['areas_for_improvement'] ??= item['areas_for_improvement'] ?? item['improvements'];
+          fullReport['recommended_courses'] ??= item['recommended_courses'];
+
+          final dynamicSkills = (fullReport['strong_areas'] as List?)?.map((e) => e.toString()).toList() ??
+              (item['strengths'] as List?)?.map((e) => e.toString()).toList() ??
               ['Technical', 'System Design'];
 
           return {
             'id': item['id']?.toString() ?? 'rep-${DateTime.now().millisecondsSinceEpoch}',
             'role': role,
             'date': dateStr,
-            'type': qaJson['interview_type'] ?? 'Technical Session',
+            'type': fullReport['interview_type'] ?? 'Technical Session',
             'score': score,
-            'hiringReadiness': score >= 80 ? 'STRONG CANDIDATE' : 'DEVELOPING CANDIDATE',
+            'hiringReadiness': score >= 80 ? 'STRONG CANDIDATE' : (score >= 65 ? 'DEVELOPING CANDIDATE' : 'NEEDS PREPARATION'),
             'skills': dynamicSkills,
-            'data': qaJson,
+            'data': fullReport,
           };
         }).toList();
       });
