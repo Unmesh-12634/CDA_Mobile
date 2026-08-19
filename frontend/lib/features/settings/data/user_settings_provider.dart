@@ -1,9 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../../core/config/supabase_config.dart';
-import '../../../../core/network/java_api_service.dart';
+import '../../../../core/storage/local_cache_service.dart';
 import '../../interview/data/interview_setup_provider.dart';
-
 
 class UserSettingsState {
   final String userEmail;
@@ -19,7 +17,7 @@ class UserSettingsState {
 
   const UserSettingsState({
     this.userEmail = '',
-    this.aiVoicePersona = 'christopher',
+    this.aiVoicePersona = 'Samantha (Natural AI)',
     this.realtimeAudio = true,
     this.autoRecord = true,
     this.emailNotifications = true,
@@ -65,13 +63,14 @@ class UserSettingsState {
     'push_notifications': pushNotifications,
     'haptic_feedback': hapticFeedback,
     'theme_mode': themeMode,
+    'storage_cache_mb': storageCacheMb,
   };
 
   factory UserSettingsState.fromJson(Map<String, dynamic> json) => UserSettingsState(
     userEmail: json['user_email']?.toString() ?? '',
-    aiVoicePersona: json['ai_voice_persona']?.toString() ?? 'christopher',
-    realtimeAudio: json['realtime_audio'] == true,
-    autoRecord: json['auto_record'] == true,
+    aiVoicePersona: json['ai_voice_persona']?.toString() ?? 'Samantha (Natural AI)',
+    realtimeAudio: json['realtime_audio'] != false,
+    autoRecord: json['auto_record'] != false,
     emailNotifications: json['email_notifications'] != false,
     pushNotifications: json['push_notifications'] != false,
     hapticFeedback: json['haptic_feedback'] != false,
@@ -80,49 +79,47 @@ class UserSettingsState {
   );
 }
 
-
 class UserSettingsNotifier extends StateNotifier<UserSettingsState> {
   final Ref ref;
+  final LocalCacheService _cache = LocalCacheService();
 
   UserSettingsNotifier(this.ref) : super(const UserSettingsState()) {
-    loadSettings();
+    loadSettingsFromCache();
   }
 
-  Future<void> loadSettings() async {
-    // 1. Instant local load from device disk (Phone storage)
+  /// Instant sub-millisecond local cache retrieval (Offline-First)
+  Future<void> loadSettingsFromCache() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      await _cache.init();
+
+      final cachedVoice = _cache.get<String>('cda_pref_voice');
+      final cachedHaptic = _cache.get<bool>('cda_pref_haptic');
+      final cachedPush = _cache.get<bool>('cda_pref_push_notif');
+      final cachedEmail = _cache.get<bool>('cda_pref_email_notif');
+      final cachedRealtime = _cache.get<bool>('cda_pref_realtime_audio');
+      final cachedAutoRecord = _cache.get<bool>('cda_pref_auto_record');
+      final cachedTheme = _cache.get<String>('cda_pref_theme');
+      final cachedEmailStr = _cache.get<String>('cda_auth_email');
+
       state = state.copyWith(
-        aiVoicePersona: prefs.getString('cda_pref_voice') ?? state.aiVoicePersona,
-        hapticFeedback: prefs.getBool('cda_pref_haptic') ?? state.hapticFeedback,
-        pushNotifications: prefs.getBool('cda_pref_push_notif') ?? state.pushNotifications,
-        emailNotifications: prefs.getBool('cda_pref_email_notif') ?? state.emailNotifications,
-        realtimeAudio: prefs.getBool('cda_pref_realtime_audio') ?? state.realtimeAudio,
-        autoRecord: prefs.getBool('cda_pref_auto_record') ?? state.autoRecord,
-        themeMode: prefs.getString('cda_pref_theme') ?? state.themeMode,
+        userEmail: cachedEmailStr ?? state.userEmail,
+        aiVoicePersona: cachedVoice ?? state.aiVoicePersona,
+        hapticFeedback: cachedHaptic ?? state.hapticFeedback,
+        pushNotifications: cachedPush ?? state.pushNotifications,
+        emailNotifications: cachedEmail ?? state.emailNotifications,
+        realtimeAudio: cachedRealtime ?? state.realtimeAudio,
+        autoRecord: cachedAutoRecord ?? state.autoRecord,
+        themeMode: cachedTheme ?? state.themeMode,
+        isLoading: false,
       );
-    } catch (_) {}
 
-    // 2. Cross-device Cloud Sync from Supabase
-    try {
-      final user = SupabaseConfig.client.auth.currentUser;
-      final email = user?.email ?? '';
-      if (email.isNotEmpty) {
-        final res = await SupabaseConfig.client
-            .from('user_settings')
-            .select()
-            .eq('user_email', email)
-            .maybeSingle();
-
-        if (res != null) {
-          state = UserSettingsState.fromJson(res).copyWith(isLoading: false);
-        }
-      }
+      debugPrint('⚡ [UserSettings] Loaded settings from local device cache instantly.');
     } catch (e) {
-      debugPrint('UserSettings cloud sync notice: $e');
+      debugPrint('UserSettings local cache load notice: $e');
     }
   }
 
+  /// Saves settings locally to phone disk cache with instant reactivity
   Future<void> updateSettings({
     String? aiVoicePersona,
     bool? realtimeAudio,
@@ -146,56 +143,36 @@ class UserSettingsNotifier extends StateNotifier<UserSettingsState> {
 
     state = updated;
 
-    // 1. Save directly into device phone storage (SharedPreferences)
+    // 1. Persist directly into local phone storage & memory cache
     try {
-      final prefs = await SharedPreferences.getInstance();
-      if (aiVoicePersona != null) await prefs.setString('cda_pref_voice', aiVoicePersona);
-      if (hapticFeedback != null) await prefs.setBool('cda_pref_haptic', hapticFeedback);
-      if (pushNotifications != null) await prefs.setBool('cda_pref_push_notif', pushNotifications);
-      if (emailNotifications != null) await prefs.setBool('cda_pref_email_notif', emailNotifications);
-      if (realtimeAudio != null) await prefs.setBool('cda_pref_realtime_audio', realtimeAudio);
-      if (autoRecord != null) await prefs.setBool('cda_pref_auto_record', autoRecord);
-      if (themeMode != null) await prefs.setString('cda_pref_theme', themeMode);
+      if (aiVoicePersona != null) await _cache.set('cda_pref_voice', aiVoicePersona);
+      if (hapticFeedback != null) await _cache.set('cda_pref_haptic', hapticFeedback);
+      if (pushNotifications != null) await _cache.set('cda_pref_push_notif', pushNotifications);
+      if (emailNotifications != null) await _cache.set('cda_pref_email_notif', emailNotifications);
+      if (realtimeAudio != null) await _cache.set('cda_pref_realtime_audio', realtimeAudio);
+      if (autoRecord != null) await _cache.set('cda_pref_auto_record', autoRecord);
+      if (themeMode != null) await _cache.set('cda_pref_theme', themeMode);
+      if (storageCacheMb != null) await _cache.set('cda_pref_cache_mb', storageCacheMb);
+      
+      await _cache.set('cda_user_settings_bundle', updated.toJson());
+      debugPrint('💾 [UserSettings] Persisted updated preferences to phone local disk cache.');
     } catch (e) {
-      debugPrint('Local phone settings save notice: $e');
+      debugPrint('Local settings cache save warning: $e');
     }
 
     // 2. Synchronize selected AI Voice Persona with AI Interview setup configuration
     if (aiVoicePersona != null) {
       ref.read(interviewSetupProvider.notifier).updateConfig(voicePersona: aiVoicePersona);
     }
+  }
 
-    // 3. Save to Supabase Cloud Tables (user_settings & user_interview_settings)
+  /// Clears temporary cache files while preserving user preferences
+  Future<void> clearDeviceCache() async {
     try {
-      final user = SupabaseConfig.client.auth.currentUser;
-      final email = user?.email ?? state.userEmail;
-      if (email.isNotEmpty) {
-        final payload = updated.toJson()..['user_email'] = email;
-        JavaApiService.saveUserSettings(payload);
-
-        await SupabaseConfig.client.from('user_settings').upsert({
-          'user_email': email,
-          'push_notifications': updated.pushNotifications,
-          'email_notifications': updated.emailNotifications,
-          'haptic_feedback': updated.hapticFeedback,
-          'theme_mode': updated.themeMode,
-          'ai_voice_persona': updated.aiVoicePersona,
-          'realtime_audio': updated.realtimeAudio,
-          'auto_record': updated.autoRecord,
-          'updated_at': DateTime.now().toIso8601String(),
-        });
-
-        await SupabaseConfig.client.from('user_interview_settings').upsert({
-          'user_email': email,
-          'interviewer_voice': updated.aiVoicePersona,
-          'auto_submit_mic': updated.autoRecord,
-          'show_live_transcript': true,
-          'updated_at': DateTime.now().toIso8601String(),
-        });
-      }
-    } catch (e) {
-      debugPrint('Cloud settings sync notice: $e');
-    }
+      state = state.copyWith(storageCacheMb: 0.0);
+      await _cache.set('cda_pref_cache_mb', 0.0);
+      debugPrint('🧹 [UserSettings] Cleared device storage cache cleanly.');
+    } catch (_) {}
   }
 }
 

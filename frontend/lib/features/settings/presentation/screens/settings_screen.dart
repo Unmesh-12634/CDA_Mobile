@@ -176,6 +176,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTick
     await Future.delayed(const Duration(milliseconds: 600));
 
     if (!mounted) return;
+    ref.read(userSettingsProvider.notifier).clearDeviceCache();
     setState(() {
       _isClearingCache = false;
       _calculatedCacheMb = 2.1;
