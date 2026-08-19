@@ -492,9 +492,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       debugPrint('[Auth] Sign-out error: $e');
     }
-    LocalCacheService().remove('cda_auth_logged_in');
-    LocalCacheService().remove('cda_auth_email');
-    LocalCacheService().remove('cda_auth_name');
+    await LocalCacheService().clearUserSessionData();
     state = const AuthState(isAuthenticated: false);
   }
 

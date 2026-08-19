@@ -24,7 +24,7 @@ class AiInterviewSessionScreen extends ConsumerStatefulWidget {
 }
 
 class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _aiPulseController;
   late AnimationController _waveController;
 
@@ -83,6 +83,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _aiPulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
@@ -480,20 +481,47 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   Future<void> _nextQuestion({String? typedAnswer}) async {
     if (_isSubmittingAnswer) return;
 
+    final String rawCandidateText = (typedAnswer != null && typedAnswer.trim().isNotEmpty)
+        ? typedAnswer.trim()
+        : _liveSpokenText.trim();
+
+    final bool isExplicitSkip = rawCandidateText.toLowerCase() == 'skip this' ||
+        rawCandidateText.toLowerCase() == 'skip' ||
+        rawCandidateText.toLowerCase() == 'next';
+
+    // Loophole 2 Fix: Guard against accidental blank speech submission
+    if (rawCandidateText.isEmpty && !isExplicitSkip) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.mic_none_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Please speak your technical explanation into the mic or type your answer before submitting.',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: const Color(0xFFF59E0B),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
     _typewriterTimer?.cancel();
     _autoMicTimer?.cancel();
     _stopSpeechListening();
     await _flutterTts.stop();
 
-    String candidateResponseText = (typedAnswer != null && typedAnswer.trim().isNotEmpty)
-        ? typedAnswer.trim()
-        : (_liveSpokenText.trim().isNotEmpty
-            ? _liveSpokenText.trim()
-            : 'Candidate provided an answer.');
-
-    if (candidateResponseText.toLowerCase() == 'skip this' || candidateResponseText.toLowerCase() == 'skip') {
-      candidateResponseText = 'Candidate requested to skip this question.';
-    }
+    final String candidateResponseText = isExplicitSkip
+        ? 'Candidate requested to skip this question.'
+        : rawCandidateText;
 
     setState(() {
       _isSubmittingAnswer = true;
@@ -1776,5 +1804,39 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         ],
       ),
     );
+  }
+
+  // ── APP LIFECYCLE & DISPOSE CLEANUP (LOOPHOLE 1 FIX) ────────
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      _flushInterimSessionToCloud();
+    }
+  }
+
+  void _flushInterimSessionToCloud() {
+    if (_sessionId == null) return;
+    try {
+      SupabaseConfig.client.from('ai_interview_session').update({
+        'session_status': 'PAUSED_IN_PROGRESS',
+        'current_turn': _currentQuestionIndex,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('session_id', _sessionId!);
+      debugPrint('🛡️ [Session Auto-Flush] Preserved in-progress interview state to cloud.');
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _countdownTimer?.cancel();
+    _autoMicTimer?.cancel();
+    _typewriterTimer?.cancel();
+    _aiPulseController.dispose();
+    _waveController.dispose();
+    _audioPlayer.dispose();
+    _flutterTts.stop();
+    _chatAnswerCtrl.dispose();
+    super.dispose();
   }
 }

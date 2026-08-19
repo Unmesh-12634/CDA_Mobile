@@ -146,5 +146,29 @@ class LocalCacheService {
     final raw = get<Map>('liked_reels');
     if (raw == null) return {};
     return raw.map((k, v) => MapEntry(k.toString(), v == true));
+  /// Safely wipes user-specific profile, streaks, and session tokens on logout
+  /// while preserving device-level hardware preferences (Theme, AI Voice, Haptics).
+  Future<void> clearUserSessionData() async {
+    const userKeys = [
+      'cda_auth_token',
+      'cda_auth_email',
+      'cda_auth_user',
+      'cda_user_profile',
+      'cda_weekly_goal',
+      'bookmarked_reels',
+      'liked_reels',
+      'saved_job_ids',
+      'quiz_attempts_today',
+      'cda_user_streak',
+    ];
+
+    for (final key in userKeys) {
+      _memoryCache.remove(key);
+      try {
+        await _prefs?.remove(key);
+        await _storage.delete(key: key);
+      } catch (_) {}
+    }
+    debugPrint('🛡️ [LocalCacheService] Successfully purged user session data on logout.');
   }
 }

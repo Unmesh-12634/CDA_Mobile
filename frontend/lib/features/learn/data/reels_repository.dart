@@ -131,21 +131,25 @@ class ReelsRepository {
     return [];
   }
 
-  /// Toggle Like in Database
-  Future<bool> toggleLike(String reelId, String userEmail) async {
-    try {
-      final existing = await SupabaseConfig.client
-          .from('reel_likes')
-          .select('id')
-          .eq('reel_id', reelId)
-          .eq('user_email', userEmail);
+  /// Toggles like status with in-flight debouncing and database collision protection
+  Future<bool> toggleLike({
+    required String reelId,
+    required String userEmail,
+  }) async {
+    final cleanEmail = userEmail.trim();
+    if (cleanEmail.isEmpty || reelId.isEmpty) return false;
+    final lockKey = '$reelId-$cleanEmail';
+    if (_pendingLikes.contains(lockKey)) return false; // In-flight debounce
+    _pendingLikes.add(lockKey);
 
-      if (existing.isNotEmpty) {
+    try {
+      final isLiked = await hasUserLiked(reelId: reelId, userEmail: cleanEmail);
+      if (isLiked) {
         await SupabaseConfig.client
             .from('reel_likes')
             .delete()
             .eq('reel_id', reelId)
-            .eq('user_email', userEmail);
+            .eq('user_email', cleanEmail);
 
         try {
           final cur = await SupabaseConfig.client.from('reels').select('likes_count').eq('id', reelId).maybeSingle();
@@ -154,9 +158,9 @@ class ReelsRepository {
         } catch (_) {}
         return false;
       } else {
-        await SupabaseConfig.client.from('reel_likes').insert({
+        await SupabaseConfig.client.from('reel_likes').upsert({
           'reel_id': reelId,
-          'user_email': userEmail,
+          'user_email': cleanEmail,
           'created_at': DateTime.now().toIso8601String(),
         });
 
@@ -170,6 +174,8 @@ class ReelsRepository {
     } catch (e) {
       debugPrint('toggleLike error: $e');
       return false;
+    } finally {
+      Future.delayed(const Duration(milliseconds: 300), () => _pendingLikes.remove(lockKey));
     }
   }
 
