@@ -1957,6 +1957,9 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
         });
 
         if (path != null) {
+          // Upload to Supabase Storage 'resumes' bucket & update user profile
+          final cloudResumeUrl = await ref.read(userProfileProvider.notifier).setResumeFile(path, result.files.first.name);
+
           final api = ref.read(aiInterviewServiceProvider);
           final candidateName = ref.read(authProvider).fullName.trim();
           final resData = await api.parseResume(path, candidateName.isNotEmpty ? candidateName : 'Candidate');
@@ -1968,14 +1971,14 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
               _parsedResumeHackathons = resData.hackathons;
               _parsedResumeCertifications = resData.certifications;
             });
-            // ✅ FIX 5: Merge parsed resume skills with JD skills in provider
+            // Merge parsed resume skills with JD skills in provider
             final currentSetup = ref.read(interviewSetupProvider);
             final mergedSkills = {
               ...currentSetup.skills,
               ...resData.skills,
             }.toList();
             ref.read(interviewSetupProvider.notifier).updateConfig(
-              resumePath: _resumeFileName,
+              resumePath: cloudResumeUrl ?? _resumeFileName,
               skills: mergedSkills,
             );
           } else {
