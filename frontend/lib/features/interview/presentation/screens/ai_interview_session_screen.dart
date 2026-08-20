@@ -744,6 +744,8 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _outOfServiceTimer?.cancel();
     _typewriterTimer?.cancel();
     _stopSpeechListening();
     _flutterTts.stop();
@@ -1935,20 +1937,5 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
       }).eq('session_id', _sessionId!);
       debugPrint('🛡️ [Session Auto-Flush] Preserved in-progress interview state to cloud.');
     } catch (_) {}
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _outOfServiceTimer?.cancel();
-    _countdownTimer?.cancel();
-    _autoMicTimer?.cancel();
-    _typewriterTimer?.cancel();
-    _aiPulseController.dispose();
-    _waveController.dispose();
-    _audioPlayer.dispose();
-    _flutterTts.stop();
-    _chatAnswerCtrl.dispose();
-    super.dispose();
   }
 }
