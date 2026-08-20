@@ -60,9 +60,37 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   bool _isInitializing = false;
   bool _isTerminatingSession = false;
   bool _isAiSystemUnderService = false;
+  int _outOfServiceSeconds = 600; // 10-minute retry countdown
+  Timer? _outOfServiceTimer;
   String _initializationStatus = 'Connecting to AI Engine...';
   String? _sessionId;
   bool _backendConnected = true;
+
+  void _startOutOfServiceTimer() {
+    _outOfServiceTimer?.cancel();
+    setState(() {
+      _outOfServiceSeconds = 600;
+    });
+    _outOfServiceTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_outOfServiceSeconds > 0) {
+        setState(() {
+          _outOfServiceSeconds--;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  String _formatOutOfServiceTime(int totalSeconds) {
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
 
   Timer? _countdownTimer;
   int _secondsRemaining = 150; // 2 min 30 sec per question
@@ -457,6 +485,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
           _isInitializing = false;
           _isAiSystemUnderService = true;
         });
+        _startOutOfServiceTimer();
       }
     }
   }
@@ -792,76 +821,157 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
         backgroundColor: isDark ? AppColors.credDarkBackground : AppColors.background,
         body: SafeArea(
           child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(28.0),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    width: 100,
-                    height: 100,
+                    width: 90,
+                    height: 90,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: AppColors.error.withValues(alpha: 0.12),
+                      border: Border.all(
+                        color: AppColors.error.withValues(alpha: 0.3),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.error.withValues(alpha: 0.2),
+                          blurRadius: 20,
+                          spreadRadius: 4,
+                        ),
+                      ],
                     ),
                     child: const Center(
-                      child: Icon(Icons.cloud_off_rounded, color: AppColors.error, size: 50),
+                      child: Icon(Icons.cloud_off_rounded, color: AppColors.error, size: 44),
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
                   Text(
-                    'Service Notice',
+                    'AI Service Notice',
                     style: AppTypography.headlineMobile.copyWith(
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 22,
                       color: isDark ? Colors.white : AppColors.onSurface,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Text(
-                    'The AI Interview is temporarily out of service. Please try again in 10 mins.',
+                    'The AI Interview Service is currently out of service for now. Please try again in 10 mins.',
                     textAlign: TextAlign.center,
                     style: AppTypography.bodyMedium.copyWith(
-                      color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-                      fontSize: 14,
-                      height: 1.5,
+                      color: isDark ? const Color(0xFFE2E8F0) : AppColors.onSurface,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ⏱️ 10-Minute Live Countdown Timer Card
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.timer_outlined, color: Color(0xFFF59E0B), size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'RECOMMENDED RETRY WINDOW',
+                              style: AppTypography.codeMono.copyWith(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFFF59E0B),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _formatOutOfServiceTime(_outOfServiceSeconds),
+                          style: AppTypography.headlineMobile.copyWith(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            color: isDark ? Colors.white : AppColors.primary,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Render cloud service is spinning up. Free instances require a moment to cold start.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
-                  const SizedBox(height: 36),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      setState(() {
-                        _isAiSystemUnderService = false;
-                      });
-                      _initBackendSession();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(100),
+                  const SizedBox(height: 32),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        _outOfServiceTimer?.cancel();
+                        setState(() {
+                          _isAiSystemUnderService = false;
+                        });
+                        _initBackendSession();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
                       ),
-                    ),
-                    icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 18),
-                    label: const Text(
-                      'Retry AI Connection 🔄',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      icon: const Icon(Icons.refresh_rounded, color: Colors.white, size: 20),
+                      label: const Text(
+                        'Check Service & Retry 🔄',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () => GoRouter.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: isDark ? Colors.white : AppColors.onSurface,
-                      side: BorderSide(
-                        color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        _outOfServiceTimer?.cancel();
+                        GoRouter.of(context).pop();
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: isDark ? Colors.white : AppColors.onSurface,
+                        side: BorderSide(
+                          color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(100),
+                      icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                      label: const Text(
+                        'Back to Setup',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                       ),
                     ),
-                    icon: const Icon(Icons.arrow_back_rounded, size: 16),
-                    label: const Text('Back to Setup'),
                   ),
                 ],
               ),
@@ -1829,6 +1939,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _outOfServiceTimer?.cancel();
     _countdownTimer?.cancel();
     _autoMicTimer?.cancel();
     _typewriterTimer?.cancel();
