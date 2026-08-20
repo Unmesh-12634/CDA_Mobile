@@ -295,6 +295,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
               targetRole: targetRole,
             );
         debugPrint('[Auth] New account created: ${email.trim()}');
+
+        // Dispatch Welcome Email for New Registered Student
+        final welcomeSentKey = 'cda_welcome_sent_${email.trim().toLowerCase()}';
+        LocalCacheService().set(welcomeSentKey, true);
+        unawaited(
+          GmailSmtpService.sendWelcomeEmail(
+            recipientEmail: email.trim(),
+            recipientName: fullName.trim(),
+          ),
+        );
+
         return true;
       }
       // Email confirmation required
@@ -389,6 +400,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
               fullName: googleName,
             );
       } catch (_) {}
+
+      // Dispatch Welcome Email for New Google Students
+      final welcomeSentKey = 'cda_welcome_sent_${googleEmail.trim().toLowerCase()}';
+      final alreadySent = LocalCacheService().get<bool>(welcomeSentKey) ?? false;
+      if (!alreadySent) {
+        LocalCacheService().set(welcomeSentKey, true);
+        unawaited(
+          GmailSmtpService.sendWelcomeEmail(
+            recipientEmail: googleEmail.trim(),
+            recipientName: googleName.trim(),
+          ),
+        );
+      }
 
       debugPrint('🚀 [Auth] Google Sign-In SUCCESS ➔ Entering Home Dashboard');
       return true;
@@ -786,6 +810,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
       try {
         await _supabase.auth.signOut();
       } catch (_) {}
+
+      // Dispatch security confirmation email
+      if (email.isNotEmpty) {
+        unawaited(
+          GmailSmtpService.sendPasswordChangedConfirmation(
+            recipientEmail: email,
+            recipientName: state.fullName.isNotEmpty ? state.fullName : 'Student',
+          ),
+        );
+      }
 
       state = state.copyWith(
         isLoading: false,

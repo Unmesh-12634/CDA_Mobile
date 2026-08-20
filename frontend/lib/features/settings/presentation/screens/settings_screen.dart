@@ -15,7 +15,7 @@ import '../../../profile/data/user_profile_provider.dart';
 import '../../../subscription/data/subscription_provider.dart';
 import '../../data/user_settings_provider.dart';
 import '../../../../core/utils/app_haptics.dart';
-import '../../../../core/services/notification_service.dart';
+import '../../../../core/services/smart_nudge_scheduler.dart';
 import '../../../../core/services/app_update_service.dart';
 import '../widgets/update_prompt_dialog.dart';
 
@@ -920,9 +920,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> with SingleTick
               ref.read(userSettingsProvider.notifier).updateSettings(pushNotifications: val);
               AppHaptics.selectionClick(ref);
               if (val) {
-                NotificationService().showNotification(
-                  title: '🔔 Notifications Enabled',
-                  body: 'Daily AI Skill Drills and Mock Interview streak reminders are active.',
+                final auth = ref.read(authProvider);
+                final profile = ref.read(userProfileProvider);
+                SmartNudgeScheduler().triggerInstantTestNudge(
+                  studentName: profile.name.isNotEmpty ? profile.name : (auth.fullName.isNotEmpty ? auth.fullName : 'Learner'),
+                  targetRole: profile.targetRole.isNotEmpty ? profile.targetRole : (auth.targetRole.isNotEmpty ? auth.targetRole : 'Software Engineer'),
                 );
               }
             },

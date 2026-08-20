@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'dynamic_notification_engine.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -10,6 +12,10 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   bool _isInitialized = false;
+
+  /// Broadcast stream for handling notification tap navigation across the app
+  final StreamController<String> _payloadController = StreamController<String>.broadcast();
+  Stream<String> get onNotificationTapped => _payloadController.stream;
 
   Future<void> init() async {
     if (_isInitialized) return;
@@ -33,7 +39,11 @@ class NotificationService {
       await _notificationsPlugin.initialize(
         initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
-          debugPrint('Notification clicked with payload: ${response.payload}');
+          final payload = response.payload;
+          debugPrint('🔔 [NotificationService] Notification clicked with payload: $payload');
+          if (payload != null && payload.isNotEmpty) {
+            _payloadController.add(payload);
+          }
         },
       );
 
@@ -53,9 +63,9 @@ class NotificationService {
   }
 
   NotificationDetails _getChannelDetails({
-    String channelId = 'cda_pro_channel',
-    String channelName = 'CDA Pro & Career Alerts',
-    String channelDescription = 'Notifications for CDA Pro membership and career updates',
+    String channelId = 'cda_realtime_events',
+    String channelName = 'CDA Live Updates & Events',
+    String channelDescription = 'Real-time notifications for placement drives, AI interviews, and learning feeds',
     Importance importance = Importance.max,
     Priority priority = Priority.high,
   }) {
@@ -90,10 +100,15 @@ class NotificationService {
     required String title,
     required String body,
     String? payload,
+    String channelId = 'cda_realtime_events',
+    String channelName = 'CDA Live Updates & Events',
   }) async {
     try {
       if (!_isInitialized) await init();
-      final details = _getChannelDetails();
+      final details = _getChannelDetails(
+        channelId: channelId,
+        channelName: channelName,
+      );
       await _notificationsPlugin.show(
         id,
         title,
@@ -101,10 +116,23 @@ class NotificationService {
         details,
         payload: payload,
       );
-      debugPrint('🔔 Phone notification dispatched: "$title"');
+      debugPrint('🔔 Phone notification dispatched: "$title" (Route: $payload)');
     } catch (e) {
       debugPrint('Error showing local notification: $e');
     }
+  }
+
+  /// Displays a dynamically computed smart notification (Zomato/Duolingo style)
+  Future<void> showSmartNotification(SmartNotificationPayload payload, {int? id}) async {
+    final notifId = id ?? DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    await showNotification(
+      id: notifId,
+      title: payload.title,
+      body: payload.body,
+      payload: payload.payloadRoute,
+      channelId: 'cda_smart_nudges',
+      channelName: 'CDA AI Study & Placement Nudges',
+    );
   }
 
   /// Instant notification when upgraded to CDA Pro
@@ -114,7 +142,7 @@ class NotificationService {
       id: 201,
       title: '👑 $planName Activated!',
       body: 'Your CDA Pro pass is live until $expFormatted. Enjoy unlimited AI Mock Interviews and priority recruiter placement!',
-      payload: 'subscription_active',
+      payload: '/profile',
     );
   }
 
@@ -124,7 +152,7 @@ class NotificationService {
       id: 202,
       title: '⚠️ CDA Pro Ending in $timeRemaining',
       body: 'Your "$planName" will expire soon. Tap to renew now and continue unlimited practice without interruption.',
-      payload: 'subscription_expiring',
+      payload: '/profile',
     );
   }
 
@@ -134,7 +162,7 @@ class NotificationService {
       id: 203,
       title: '⚠️ CDA Pro Pass Expired',
       body: 'Your $planName period has ended. Renew anytime to restore unlimited AI interviews and Pro badge.',
-      payload: 'subscription_expired',
+      payload: '/profile',
     );
   }
 
@@ -168,7 +196,7 @@ class NotificationService {
         id: 777,
         title: '👑 CDA Pro Active • $timeRemaining',
         body: 'Your "${planName ?? 'CDA Pro'}" is active until $expFormatted. Unlimited AI mock interviews unlocked!',
-        payload: 'subscription_details',
+        payload: '/profile',
       );
     } else {
       // Free Tier Student Alert
@@ -176,8 +204,9 @@ class NotificationService {
         id: 888,
         title: '🚀 Upgrade to CDA Pro ($trialsRemaining Free Trials Left)',
         body: '⚡ Unlock unlimited AI mock interviews & FAANG placement passes starting at ₹9! Tap to explore Pro plans.',
-        payload: 'open_paywall',
+        payload: '/profile',
       );
     }
   }
 }
+

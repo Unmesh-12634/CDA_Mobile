@@ -141,6 +141,16 @@ final _router = GoRouter(
       ),
     ),
     GoRoute(
+      path: '/reels',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const LearnScreen(),
+      ),
+    ),
+    GoRoute(
       path: '/daily-challenge',
       parentNavigatorKey: _rootNavigatorKey,
       pageBuilder: (context, state) => _buildAppleTransitionPage(
@@ -345,3 +355,4 @@ CustomTransitionPage<T> _buildAppleTransitionPage<T>({
 }
 
 final routerProvider = Provider<GoRouter>((_) => _router);
+GoRouter get appRouter => _router;
