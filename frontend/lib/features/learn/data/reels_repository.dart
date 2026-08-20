@@ -86,6 +86,29 @@ class ReelCommentModel {
 }
 
 class ReelsRepository {
+  final Set<String> _pendingLikes = {};
+
+  /// Checks if the user has liked a specific reel
+  Future<bool> hasUserLiked({
+    required String reelId,
+    required String userEmail,
+  }) async {
+    final cleanEmail = userEmail.trim();
+    final cleanId = reelId.trim();
+    if (cleanEmail.isEmpty || cleanId.isEmpty) return false;
+    try {
+      final res = await SupabaseConfig.client
+          .from('reel_likes')
+          .select('id')
+          .eq('reel_id', cleanId)
+          .eq('user_email', cleanEmail)
+          .maybeSingle();
+      return res != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Fetches Top reels from Java Backend or Supabase PostgreSQL
   Future<List<ReelModel>> fetchTopReels({int limit = 10, String? skill}) async {
     // 1. Try Java Enterprise Backend
@@ -132,42 +155,40 @@ class ReelsRepository {
   }
 
   /// Toggles like status with in-flight debouncing and database collision protection
-  Future<bool> toggleLike({
-    required String reelId,
-    required String userEmail,
-  }) async {
+  Future<bool> toggleLike(String reelId, String userEmail) async {
     final cleanEmail = userEmail.trim();
-    if (cleanEmail.isEmpty || reelId.isEmpty) return false;
-    final lockKey = '$reelId-$cleanEmail';
+    final cleanId = reelId.trim();
+    if (cleanEmail.isEmpty || cleanId.isEmpty) return false;
+    final lockKey = '$cleanId-$cleanEmail';
     if (_pendingLikes.contains(lockKey)) return false; // In-flight debounce
     _pendingLikes.add(lockKey);
 
     try {
-      final isLiked = await hasUserLiked(reelId: reelId, userEmail: cleanEmail);
+      final isLiked = await hasUserLiked(reelId: cleanId, userEmail: cleanEmail);
       if (isLiked) {
         await SupabaseConfig.client
             .from('reel_likes')
             .delete()
-            .eq('reel_id', reelId)
+            .eq('reel_id', cleanId)
             .eq('user_email', cleanEmail);
 
         try {
-          final cur = await SupabaseConfig.client.from('reels').select('likes_count').eq('id', reelId).maybeSingle();
+          final cur = await SupabaseConfig.client.from('reels').select('likes_count').eq('id', cleanId).maybeSingle();
           final count = (cur?['likes_count'] as num?)?.toInt() ?? 1;
-          await SupabaseConfig.client.from('reels').update({'likes_count': count > 0 ? count - 1 : 0}).eq('id', reelId);
+          await SupabaseConfig.client.from('reels').update({'likes_count': count > 0 ? count - 1 : 0}).eq('id', cleanId);
         } catch (_) {}
         return false;
       } else {
         await SupabaseConfig.client.from('reel_likes').upsert({
-          'reel_id': reelId,
+          'reel_id': cleanId,
           'user_email': cleanEmail,
           'created_at': DateTime.now().toIso8601String(),
         });
 
         try {
-          final cur = await SupabaseConfig.client.from('reels').select('likes_count').eq('id', reelId).maybeSingle();
+          final cur = await SupabaseConfig.client.from('reels').select('likes_count').eq('id', cleanId).maybeSingle();
           final count = (cur?['likes_count'] as num?)?.toInt() ?? 0;
-          await SupabaseConfig.client.from('reels').update({'likes_count': count + 1}).eq('id', reelId);
+          await SupabaseConfig.client.from('reels').update({'likes_count': count + 1}).eq('id', cleanId);
         } catch (_) {}
         return true;
       }

@@ -146,6 +146,8 @@ class LocalCacheService {
     final raw = get<Map>('liked_reels');
     if (raw == null) return {};
     return raw.map((k, v) => MapEntry(k.toString(), v == true));
+  }
+
   /// Safely wipes user-specific profile, streaks, and session tokens on logout
   /// while preserving device-level hardware preferences (Theme, AI Voice, Haptics).
   Future<void> clearUserSessionData() async {

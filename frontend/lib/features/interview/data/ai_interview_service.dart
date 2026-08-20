@@ -332,7 +332,7 @@ class AiInterviewApiClient {
           targetTurns: request.targetQuestionCount > 0 ? request.targetQuestionCount : 5,
           skills: request.skills,
           experienceLevel: request.experienceLevel,
-          firstQuestion: liveGroq.currentQuestion ?? '',
+          firstQuestion: liveGroq.currentQuestion,
         );
         return liveGroq;
       }

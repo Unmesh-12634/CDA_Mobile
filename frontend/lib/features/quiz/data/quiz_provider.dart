@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/config/supabase_config.dart';
 import '../../../core/network/java_api_service.dart';
 import '../../../core/services/ai_quiz_generator_service.dart';
 import '../../auth/data/auth_provider.dart';

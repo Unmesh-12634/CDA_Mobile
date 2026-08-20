@@ -15,6 +15,7 @@ import '../../data/interview_setup_provider.dart';
 import '../../../auth/data/auth_provider.dart';
 import '../../../profile/data/user_profile_provider.dart';
 import '../../../home/data/weekly_goal_provider.dart';
+import '../../../../core/config/supabase_config.dart';
 
 class AiInterviewSessionScreen extends ConsumerStatefulWidget {
   const AiInterviewSessionScreen({super.key});
