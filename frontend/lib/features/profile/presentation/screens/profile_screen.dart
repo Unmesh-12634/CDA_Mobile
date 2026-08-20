@@ -2174,7 +2174,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onTap: () => CDAPaywallSheet.show(context),
           ),
           const Divider(height: 1, color: Colors.white10),
-          // 5. Sign Out
+          // 5. Privacy Policy & Data Security
+          _buildSettingsTile(
+            context,
+            icon: Icons.privacy_tip_outlined,
+            title: 'Privacy Policy & Data Security',
+            subtitle: 'Audio transcription, resume storage & encryption info',
+            isDark: isDark,
+            iconColor: const Color(0xFF38BDF8),
+            onTap: () => _showPrivacyPolicySheet(context),
+          ),
+          const Divider(height: 1, color: Colors.white10),
+          // 6. Terms of Service & AI Disclaimers
+          _buildSettingsTile(
+            context,
+            icon: Icons.description_outlined,
+            title: 'Terms of Service',
+            subtitle: 'AI evaluation disclaimers & academy guidelines',
+            isDark: isDark,
+            iconColor: const Color(0xFFA855F7),
+            onTap: () => _showTermsOfServiceSheet(context),
+          ),
+          const Divider(height: 1, color: Colors.white10),
+          // 7. Sign Out
           _buildSettingsTile(
             context,
             icon: Icons.logout_rounded,
@@ -2229,6 +2251,146 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         Icons.chevron_right_rounded,
         size: 20,
         color: isDark ? const Color(0xFF64748B) : AppColors.outline,
+      ),
+    );
+  }
+
+  void _showPrivacyPolicySheet(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (_, scrollCtrl) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: ListView(
+            controller: scrollCtrl,
+            children: [
+              Center(
+                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: const Color(0xFF38BDF8).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.privacy_tip_rounded, color: Color(0xFF38BDF8), size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Privacy Policy & Data Security', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text('Cranes Digital Academy (CDA)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                '1. Audio & Speech Processing\n'
+                'During AI mock interview sessions, your microphone captures audio solely for on-device speech-to-text transcription. Voice streams are used exclusively to evaluate technical and STAR communication answers in real time and are never sold or distributed to third parties.\n\n'
+                '2. Resume & Profile Information\n'
+                'PDF resumes and profile photos are securely stored in encrypted cloud storage buckets (Supabase Storage). Only skills, past projects, and experience required for generating personalized interview drills are processed by AI models.\n\n'
+                '3. On-Device Storage & Local Cache\n'
+                'User preferences, dark mode settings, audio playback speed, and liked reels are stored locally on your device storage for seamless offline access.\n\n'
+                '4. Data Retention & Security\n'
+                'All network communication utilizes Transport Layer Security (TLS 1.3/HTTPS). Your mock interview assessment scores and analytics reports remain confidential to your student account.',
+                style: TextStyle(fontSize: 13.5, height: 1.6, color: Color(0xFF94A3B8)),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('I Understand', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showTermsOfServiceSheet(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (_, scrollCtrl) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: ListView(
+            controller: scrollCtrl,
+            children: [
+              Center(
+                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: const Color(0xFFA855F7).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.gavel_rounded, color: Color(0xFFA855F7), size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Terms of Service & AI Disclaimers', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text('Version 2.2.0 • Effective 2026', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                '1. Educational Purpose & AI Disclaimers\n'
+                'The CDA Career Companion app uses artificial intelligence (Groq LLM) for technical interview preparation, skill assessment, and quiz drills. AI-generated scores, feedback, and job recommendations are strictly for coaching guidance and do not constitute formal employment guarantees.\n\n'
+                '2. Student Conduct & Acceptable Use\n'
+                'Students agree not to upload abusive, harmful, or copyrighted materials in resume uploads, comments, or interview responses. Respectful communication is required across all community reels and discussion boards.\n\n'
+                '3. Pro Membership & Course Access\n'
+                'Subscriptions provide enhanced access to unlimited AI interview rounds and comprehensive performance roadmaps according to selected tier plans.\n\n'
+                '4. Cranes Digital Academy Accreditation\n'
+                'Course certificates and milestone badges are issued upon successful completion of core curriculum modules and verified mock assessments.',
+                style: TextStyle(fontSize: 13.5, height: 1.6, color: Color(0xFF94A3B8)),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Accept Terms', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

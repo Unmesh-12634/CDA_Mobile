@@ -45,5 +45,13 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>CDA needs microphone access to record and evaluate your responses during AI mock interview sessions.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>CDA uses speech recognition to transcribe your interview answers in real time.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>CDA needs photo library access to let you select a profile picture.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>CDA needs camera access to take a photo for your profile avatar.</string>
 </dict>
 </plist>
