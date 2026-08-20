@@ -394,7 +394,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   activeColor: AppColors.primary,
                   contentPadding: EdgeInsets.zero,
                   title: Text('Daily Quiz Reminders', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: isDark ? Colors.white : AppColors.onSurface)),
-                  subtitle: Text('Get notified for daily streak & XP questions', style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant)),
+                  subtitle: Text('Get notified for daily streak & technical practice questions', style: TextStyle(fontSize: 11, color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant)),
                   onChanged: (v) => setSheetState(() => quizReminders = v),
                 ),
                 SwitchListTile.adaptive(

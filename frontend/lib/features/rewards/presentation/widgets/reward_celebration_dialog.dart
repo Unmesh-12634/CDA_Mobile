@@ -132,7 +132,7 @@ class _RewardCelebrationContent extends ConsumerWidget {
               duration: const Duration(milliseconds: 1000),
               tween: IntTween(begin: 0, end: coinsEarned),
               builder: (context, val, _) => Text(
-                '+$val XP POINTS',
+                '+$val SKILL POINTS',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
