@@ -1762,17 +1762,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  // ── 7. Live Recent AI Mock Interview Reports ───────────────────────────────
+  // ── 7. Live Recent AI Mock Interview Reports (Top 2 Latest) ─────────────────
   Widget _buildRecentInterviewHistory(BuildContext context, bool isDark) {
     if (_recentInterviews.isEmpty) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionHeader(context, 'AI MOCK INTERVIEW HISTORY', isDark),
-          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildSectionHeader(context, 'AI MOCK INTERVIEW HISTORY', isDark),
+              TextButton(
+                onPressed: () => context.push('/interview/reports'),
+                child: const Text(
+                  'All Reports',
+                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           GlassCard(
             padding: const EdgeInsets.all(18),
-            onTap: () => context.push('/interview/setup'),
+            onTap: () => context.push('/interview/reports'),
             child: Row(
               children: [
                 Container(
@@ -1781,7 +1793,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     color: AppColors.primary.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.mic_rounded, color: AppColors.primary, size: 22),
+                  child: const Icon(Icons.psychology_rounded, color: AppColors.primary, size: 22),
                 ),
                 const SizedBox(width: 14),
                 const Expanded(
@@ -1789,7 +1801,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Start your first AI Mock Interview',
+                        'AI Mock Interview History',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -1798,7 +1810,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Practice real questions with instant voice feedback',
+                        'View all comprehensive performance reports & feedback',
                         style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5),
                       ),
                     ],
@@ -1812,28 +1824,52 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       );
     }
 
+    final topTwoInterviews = _recentInterviews.take(2).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildSectionHeader(context, 'RECENT AI MOCK INTERVIEWS', isDark),
-            TextButton(
-              onPressed: () => context.push('/interview/history'),
-              child: const Text(
-                'View All',
-                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
+            _buildSectionHeader(context, 'AI MOCK INTERVIEW HISTORY', isDark),
+            InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => context.push('/interview/reports'),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _completedInterviewsCount > 2 ? 'View All ($_completedInterviewsCount)' : 'All Reports',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_forward_ios_rounded, size: 11, color: AppColors.primary),
+                  ],
+                ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        ..._recentInterviews.map((rep) {
+        const SizedBox(height: 10),
+        ...topTwoInterviews.map((rep) {
           return Padding(
             padding: const EdgeInsets.only(bottom: 10.0),
             child: GlassCard(
-              onTap: () => context.push('/interview/analysis/${rep['id']}'),
+              onTap: () {
+                final repId = rep['id']?.toString() ?? '';
+                if (repId.isNotEmpty && !repId.startsWith('rep-')) {
+                  context.push('/interview/analysis/$repId');
+                } else {
+                  context.push('/interview/reports');
+                }
+              },
               padding: const EdgeInsets.all(14),
               child: Row(
                 children: [
@@ -1843,7 +1879,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       color: AppColors.primary.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.mic_rounded, color: AppColors.primary, size: 20),
+                    child: const Icon(Icons.psychology_rounded, color: AppColors.primary, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1888,6 +1924,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         color: rep['badgeColor'] as Color,
                       ),
                     ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: isDark ? Colors.white38 : Colors.black26,
                   ),
                 ],
               ),
@@ -2177,7 +2219,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onTap: () => context.go('/learn'),
           ),
           const Divider(height: 1, color: Colors.white10),
-          // 4. Upgrade CDA Pro
+          // 4. AI Mock Interview Reports & History
+          _buildSettingsTile(
+            context,
+            icon: Icons.psychology_rounded,
+            title: 'AI Mock Interview Reports',
+            subtitle: _completedInterviewsCount > 0
+                ? '$_completedInterviewsCount completed mock interview sessions'
+                : 'View past mock interview sessions & detailed analysis',
+            isDark: isDark,
+            iconColor: const Color(0xFF0EA5E9),
+            onTap: () => context.push('/interview/reports'),
+          ),
+          const Divider(height: 1, color: Colors.white10),
+          // 5. Upgrade CDA Pro
           _buildSettingsTile(
             context,
             icon: Icons.workspace_premium_rounded,

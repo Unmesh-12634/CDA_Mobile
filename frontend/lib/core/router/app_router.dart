@@ -175,6 +175,16 @@ final _router = GoRouter(
       ),
     ),
     GoRoute(
+      path: '/interview/history',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) => _buildAppleTransitionPage(
+        context: context,
+        state: state,
+        isSlide: true,
+        child: const InterviewReportsHistoryScreen(),
+      ),
+    ),
+    GoRoute(
       path: '/interview/diagnostics',
       parentNavigatorKey: _rootNavigatorKey,
       pageBuilder: (context, state) => _buildAppleTransitionPage(
