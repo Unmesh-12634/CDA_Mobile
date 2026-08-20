@@ -299,21 +299,29 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
 
   Future<void> _loadProfile() async {
     try {
-      final user = SupabaseConfig.client.auth.currentUser;
-      if (user != null && user.email != null && user.email!.isNotEmpty) {
-        await refreshProfileFromDb(user.email);
-        return;
-      }
+      // 1. Immediately restore cached profile from local secure storage
       final storage = ref.read(secureStorageProvider);
       final raw = await storage.getUserProfile();
-      if (raw != null) {
-        final Map<String, dynamic> json = jsonDecode(raw);
-        final loaded = UserProfile.fromJson(json);
-        if (loaded.email.isNotEmpty) {
-          state = loaded;
-        }
+      if (raw != null && raw.isNotEmpty) {
+        try {
+          final Map<String, dynamic> json = jsonDecode(raw);
+          final loaded = UserProfile.fromJson(json);
+          if (loaded.email.isNotEmpty) {
+            state = loaded;
+            debugPrint('⚡ [Profile Cache] Restored local profile for ${loaded.email} (Avatar: ${loaded.avatarImagePath}, Resume: ${loaded.resumeFileName})');
+          }
+        } catch (_) {}
       }
-    } catch (_) {}
+
+      // 2. Fetch latest live record from Supabase DB to sync avatar & resume across devices/re-logins
+      final user = SupabaseConfig.client.auth.currentUser;
+      final targetEmail = user?.email ?? (state.email.isNotEmpty ? state.email : null);
+      if (targetEmail != null && targetEmail.isNotEmpty) {
+        await refreshProfileFromDb(targetEmail);
+      }
+    } catch (e) {
+      debugPrint('Profile init load error: $e');
+    }
   }
 
   Future<void> resetForUser(String email, {String? fullName, String? phone, String? targetRole}) async {
@@ -327,6 +335,11 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
     final initials = nameToUse.trim().isNotEmpty
         ? nameToUse.trim().split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').take(2).join()
         : (cleanEmail.isNotEmpty ? cleanEmail[0].toUpperCase() : 'U');
+
+    final existingAvatar = (state.email == cleanEmail) ? state.avatarImagePath : null;
+    final existingResumeUrl = (state.email == cleanEmail) ? state.resumeUrl : null;
+    final existingResumeName = (state.email == cleanEmail) ? state.resumeFileName : null;
+    final existingSkills = (state.email == cleanEmail) ? state.skills : <String>[];
 
     state = UserProfile(
       name: nameToUse,
@@ -346,9 +359,11 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
       portfolioUrl: '',
       isEmailVerified: false,
       avatarInitials: initials,
-      avatarImagePath: null,
-      isCvVerified: false,
-      skills: [],
+      avatarImagePath: existingAvatar,
+      resumeUrl: existingResumeUrl,
+      resumeFileName: existingResumeName,
+      isCvVerified: existingResumeUrl != null && existingResumeUrl.isNotEmpty,
+      skills: existingSkills,
       domainScores: const {
         'Java & Spring Boot': 0.70,
         'Flutter & Mobile Apps': 0.65,
@@ -404,10 +419,23 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
           final dbPortfolio = res['portfolio_url']?.toString() ?? state.portfolioUrl;
           final dbEmailVerified = res['is_email_verified'] == true;
 
+          // 1. Resolve Avatar URL from database
+          String? dbAvatar = res['avatar_url']?.toString();
+          if (dbAvatar != null && dbAvatar.trim().isEmpty) dbAvatar = null;
+          if (dbAvatar != null) {
+            if (!dbAvatar.startsWith('http')) {
+              dbAvatar = SupabaseConfig.client.storage.from('avatars').getPublicUrl(dbAvatar);
+            }
+          }
+          dbAvatar ??= state.avatarImagePath;
+
+          // 2. Resolve Resume URL & filename from database
           String? dbResumeUrl = res['resume_url']?.toString();
           if (dbResumeUrl != null && dbResumeUrl.trim().isEmpty) dbResumeUrl = null;
-          if (dbResumeUrl != null && !dbResumeUrl.startsWith('http')) {
-            dbResumeUrl = (state.resumeUrl != null && state.resumeUrl!.startsWith('http')) ? state.resumeUrl : null;
+          if (dbResumeUrl != null) {
+            if (!dbResumeUrl.startsWith('http')) {
+              dbResumeUrl = SupabaseConfig.client.storage.from('resumes').getPublicUrl(dbResumeUrl);
+            }
           }
           dbResumeUrl ??= state.resumeUrl;
 
@@ -418,13 +446,6 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
               dbResumeFileName = Uri.decodeComponent(lastPart);
             }
           }
-
-          String? dbAvatar = res['avatar_url']?.toString();
-          if (dbAvatar != null && dbAvatar.trim().isEmpty) dbAvatar = null;
-          if (dbAvatar != null && !dbAvatar.startsWith('http')) {
-            dbAvatar = (state.avatarImagePath != null && state.avatarImagePath!.startsWith('http')) ? state.avatarImagePath : null;
-          }
-          dbAvatar ??= state.avatarImagePath;
 
           final initials = dbName.trim().isNotEmpty
               ? dbName.trim().split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').take(2).join()
@@ -498,7 +519,14 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
             isCvVerified: dbResumeUrl != null && dbResumeUrl.isNotEmpty,
             domainScores: top5Domains,
           );
-          debugPrint('✅ Refreshed 100% real profile from Supabase DB for $targetEmail (Resume: $dbResumeFileName, Strength: ${(state.profileStrengthPercentage * 100).toInt()}%)');
+
+          // Persist the freshly synced database profile into local storage
+          try {
+            final storage = ref.read(secureStorageProvider);
+            await storage.saveUserProfile(jsonEncode(state.toJson()));
+          } catch (_) {}
+
+          debugPrint('✅ Refreshed 100% real profile from Supabase DB for $targetEmail (Avatar: $dbAvatar, Resume: $dbResumeFileName)');
         }
     } catch (dbErr) {
       debugPrint('Supabase profile refresh notice: $dbErr');
