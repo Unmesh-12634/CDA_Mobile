@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/config/supabase_config.dart';
 import '../../../../shared/providers/selected_skill_provider.dart';
 import '../../../interview/data/interview_setup_provider.dart';
 import '../../../interview/data/interview_blocks_provider.dart';
@@ -599,17 +600,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                                   child: Text(profile.avatarInitials.isNotEmpty ? profile.avatarInitials : 'UN', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
                                                 ),
                                               )
-                                            : Center(
-                                                child: Text(profile.avatarInitials.isNotEmpty ? profile.avatarInitials : 'UN', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                                            : Image.network(
+                                                SupabaseConfig.client.storage.from('avatars').getPublicUrl('avatar_${profile.email.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_')}.jpg'),
+                                                width: 44,
+                                                height: 44,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) => Center(
+                                                  child: Text(profile.avatarInitials.isNotEmpty ? profile.avatarInitials : 'UN', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                                                ),
                                               ),
                                   )
-                                : Center(
-                                    child: Text(profile.avatarInitials.isNotEmpty ? profile.avatarInitials : 'UN',
-                                        style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 15)),
-                                  ),
+                                : profile.email.isNotEmpty
+                                    ? ClipOval(
+                                        child: Image.network(
+                                          SupabaseConfig.client.storage.from('avatars').getPublicUrl('avatar_${profile.email.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_')}.jpg'),
+                                          width: 44,
+                                          height: 44,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Center(
+                                            child: Text(profile.avatarInitials.isNotEmpty ? profile.avatarInitials : 'UN', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                                          ),
+                                        ),
+                                      )
+                                    : Center(
+                                        child: Text(profile.avatarInitials.isNotEmpty ? profile.avatarInitials : 'UN', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                                      ),
                           ),
                           Positioned(
                             right: 1,

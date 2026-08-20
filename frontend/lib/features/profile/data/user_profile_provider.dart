@@ -305,8 +305,14 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
       if (raw != null && raw.isNotEmpty) {
         try {
           final Map<String, dynamic> json = jsonDecode(raw);
-          final loaded = UserProfile.fromJson(json);
+          UserProfile loaded = UserProfile.fromJson(json);
           if (loaded.email.isNotEmpty) {
+            // Sanitize avatar image path: if it's a local file that no longer exists on disk, replace with Supabase Storage URL
+            if (loaded.avatarImagePath != null && !loaded.avatarImagePath!.startsWith('http')) {
+              final cleanEmail = loaded.email.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+              final cloudAvatar = SupabaseConfig.client.storage.from('avatars').getPublicUrl('avatar_$cleanEmail.jpg');
+              loaded = loaded.copyWith(avatarImagePath: cloudAvatar);
+            }
             state = loaded;
             debugPrint('⚡ [Profile Cache] Restored local profile for ${loaded.email} (Avatar: ${loaded.avatarImagePath}, Resume: ${loaded.resumeFileName})');
           }
@@ -336,7 +342,11 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
         ? nameToUse.trim().split(' ').map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').take(2).join()
         : (cleanEmail.isNotEmpty ? cleanEmail[0].toUpperCase() : 'U');
 
-    final existingAvatar = (state.email == cleanEmail) ? state.avatarImagePath : null;
+    final cleanEmailKey = cleanEmail.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+    final defaultCloudAvatar = SupabaseConfig.client.storage.from('avatars').getPublicUrl('avatar_$cleanEmailKey.jpg');
+    final existingAvatar = (state.email == cleanEmail && state.avatarImagePath != null && state.avatarImagePath!.startsWith('http'))
+        ? state.avatarImagePath
+        : defaultCloudAvatar;
     final existingResumeUrl = (state.email == cleanEmail) ? state.resumeUrl : null;
     final existingResumeName = (state.email == cleanEmail) ? state.resumeFileName : null;
     final existingSkills = (state.email == cleanEmail) ? state.skills : <String>[];
@@ -404,6 +414,8 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
           .eq('email', targetEmail)
           .maybeSingle();
 
+      final cleanEmail = targetEmail.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+
       if (res != null) {
           final dbName = res['full_name']?.toString() ?? state.name;
           final dbEmail = res['email']?.toString() ?? targetEmail;
@@ -420,21 +432,26 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
           final dbEmailVerified = res['is_email_verified'] == true;
 
           // 1. Resolve Avatar URL from database
-          String? dbAvatar = res['avatar_url']?.toString();
-          if (dbAvatar != null && dbAvatar.trim().isEmpty) dbAvatar = null;
+          String? dbAvatar = res['avatar_url']?.toString().trim();
+          if (dbAvatar != null && dbAvatar.isEmpty) dbAvatar = null;
           if (dbAvatar != null) {
             if (!dbAvatar.startsWith('http')) {
-              dbAvatar = SupabaseConfig.client.storage.from('avatars').getPublicUrl(dbAvatar);
+              dbAvatar = SupabaseConfig.client.storage.from('avatars').getPublicUrl('avatar_$cleanEmail.jpg');
             }
+          } else {
+            dbAvatar = SupabaseConfig.client.storage.from('avatars').getPublicUrl('avatar_$cleanEmail.jpg');
           }
-          dbAvatar ??= state.avatarImagePath;
+          if (!dbAvatar.startsWith('http')) {
+            dbAvatar = state.avatarImagePath;
+          }
 
           // 2. Resolve Resume URL & filename from database
-          String? dbResumeUrl = res['resume_url']?.toString();
-          if (dbResumeUrl != null && dbResumeUrl.trim().isEmpty) dbResumeUrl = null;
+          String? dbResumeUrl = res['resume_url']?.toString().trim();
+          if (dbResumeUrl != null && dbResumeUrl.isEmpty) dbResumeUrl = null;
           if (dbResumeUrl != null) {
             if (!dbResumeUrl.startsWith('http')) {
-              dbResumeUrl = SupabaseConfig.client.storage.from('resumes').getPublicUrl(dbResumeUrl);
+              final lastPart = dbResumeUrl.split('?').first.split('/').last;
+              dbResumeUrl = SupabaseConfig.client.storage.from('resumes').getPublicUrl('$cleanEmail/$lastPart');
             }
           }
           dbResumeUrl ??= state.resumeUrl;
@@ -535,13 +552,45 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
 
   Future<void> _saveProfile() async {
     try {
-      final storage = ref.read(secureStorageProvider);
-      await storage.saveUserProfile(jsonEncode(state.toJson()));
-
       final user = SupabaseConfig.client.auth.currentUser;
       final targetEmail = user?.email ?? (state.email.isNotEmpty ? state.email : null);
 
       if (targetEmail != null && targetEmail.isNotEmpty) {
+        String? finalAvatarUrl = state.avatarImagePath;
+        // If avatarImagePath is a local file path, upload it to Supabase Storage first
+        if (finalAvatarUrl != null && !finalAvatarUrl.startsWith('http')) {
+          final cloudUrl = await SupabaseStorageService().uploadAvatar(
+            filePath: finalAvatarUrl,
+            userEmail: targetEmail,
+          );
+          if (cloudUrl != null && cloudUrl.isNotEmpty) {
+            finalAvatarUrl = cloudUrl;
+            state = state.copyWith(avatarImagePath: cloudUrl);
+          } else {
+            final cleanEmail = targetEmail.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+            finalAvatarUrl = SupabaseConfig.client.storage.from('avatars').getPublicUrl('avatar_$cleanEmail.jpg');
+            state = state.copyWith(avatarImagePath: finalAvatarUrl);
+          }
+        }
+
+        String? finalResumeUrl = state.resumeUrl ?? state.resumeFilePath;
+        if (finalResumeUrl != null && !finalResumeUrl.startsWith('http')) {
+          final fileName = state.resumeFileName ?? 'resume.pdf';
+          final cloudUrl = await SupabaseStorageService().uploadResume(
+            filePath: finalResumeUrl,
+            fileName: fileName,
+            userEmail: targetEmail,
+          );
+          if (cloudUrl != null && cloudUrl.isNotEmpty) {
+            finalResumeUrl = cloudUrl;
+            state = state.copyWith(resumeUrl: cloudUrl, resumeFilePath: cloudUrl);
+          }
+        }
+
+        // Save updated state with cloud URLs to local secure storage
+        final storage = ref.read(secureStorageProvider);
+        await storage.saveUserProfile(jsonEncode(state.toJson()));
+
         try {
           final payload = <String, dynamic>{
             'email': targetEmail,
@@ -557,8 +606,8 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
             'github_url': state.githubUrl,
             'linkedin_url': state.linkedinUrl,
             'portfolio_url': state.portfolioUrl,
-            'resume_url': state.resumeUrl ?? state.resumeFilePath,
-            'avatar_url': state.avatarImagePath,
+            'resume_url': finalResumeUrl,
+            'avatar_url': finalAvatarUrl,
             'profile_strength_score': (state.profileStrengthPercentage * 100).toInt(),
             'updated_at': DateTime.now().toIso8601String(),
           };
@@ -572,6 +621,9 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
         } catch (dbErr) {
           debugPrint('Supabase profile save notice/error: $dbErr');
         }
+      } else {
+        final storage = ref.read(secureStorageProvider);
+        await storage.saveUserProfile(jsonEncode(state.toJson()));
       }
     } catch (e) {
       debugPrint('Save profile local error: $e');

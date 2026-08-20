@@ -421,6 +421,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
     }
 
+    if (profile.email.isNotEmpty) {
+      final cleanEmail = profile.email.replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '_');
+      final cloudUrl = SupabaseConfig.client.storage.from('avatars').getPublicUrl('avatar_$cleanEmail.jpg');
+      return ClipOval(
+        child: Image.network(
+          cloudUrl,
+          width: 80,
+          height: 80,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildAvatarFallback(profile.avatarInitials, isDark),
+        ),
+      );
+    }
+
     return _buildAvatarFallback(profile.avatarInitials, isDark);
   }
 
