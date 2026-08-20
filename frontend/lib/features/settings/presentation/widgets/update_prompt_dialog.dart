@@ -1,8 +1,103 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/constants/app_colors.dart';
 import '../../../../core/services/app_update_service.dart';
 import '../../../../core/utils/app_haptics.dart';
+
+class _ReleaseBullet {
+  final String title;
+  final String? description;
+  final String emoji;
+
+  const _ReleaseBullet({
+    required this.title,
+    this.description,
+    this.emoji = '✨',
+  });
+}
+
+List<_ReleaseBullet> _parseReleaseNotes(String raw) {
+  if (raw.trim().isEmpty) {
+    return const [
+      _ReleaseBullet(
+        title: 'Performance & Stability Improvements',
+        description: 'Under-the-hood speed optimizations and enhanced response times.',
+        emoji: '⚡',
+      ),
+      _ReleaseBullet(
+        title: 'Cloud Data Synchronization',
+        description: 'Enhanced profile, resume, and interview reliability.',
+        emoji: '☁️',
+      ),
+    ];
+  }
+
+  final lines = raw.split('\n');
+  final List<_ReleaseBullet> items = [];
+
+  for (final line in lines) {
+    var trimmed = line.trim();
+    if (trimmed.isEmpty) continue;
+    // Skip top markdown headers
+    if (trimmed.startsWith('#') || trimmed.toLowerCase().startsWith('what\'s new') || trimmed.toLowerCase().contains('updates:')) {
+      continue;
+    }
+
+    // Strip leading list bullets (- , * , 1. )
+    trimmed = trimmed.replaceFirst(RegExp(r'^[-*•\d.]+\s*'), '');
+    if (trimmed.isEmpty) continue;
+
+    // Detect leading emoji
+    String foundEmoji = '✨';
+    final emojiRegex = RegExp(r'^(\p{Extended_Pictographic}|\u200D)+', unicode: true);
+    final match = emojiRegex.firstMatch(trimmed);
+    if (match != null) {
+      foundEmoji = match.group(0) ?? '✨';
+      trimmed = trimmed.substring(match.end).trim();
+    }
+
+    // Parse **Title**: Description or **Title** - Description
+    String title = trimmed;
+    String? desc;
+
+    if (trimmed.contains('**')) {
+      final boldRegex = RegExp(r'\*\*([^*]+)\*\*(?::|-)?\s*(.*)');
+      final boldMatch = boldRegex.firstMatch(trimmed);
+      if (boldMatch != null) {
+        title = boldMatch.group(1)?.trim() ?? '';
+        desc = boldMatch.group(2)?.trim();
+        if (desc != null && desc.isEmpty) desc = null;
+      }
+    } else if (trimmed.contains(': ')) {
+      final parts = trimmed.split(': ');
+      title = parts.first.trim();
+      desc = parts.sublist(1).join(': ').trim();
+    }
+
+    // Clean remaining markdown
+    title = title.replaceAll('*', '').replaceAll('`', '').replaceAll('#', '').trim();
+    if (desc != null) {
+      desc = desc.replaceAll('*', '').replaceAll('`', '').replaceAll('#', '').trim();
+    }
+
+    if (title.isNotEmpty && !items.any((i) => i.title.toLowerCase() == title.toLowerCase())) {
+      items.add(_ReleaseBullet(
+        title: title,
+        description: desc,
+        emoji: foundEmoji,
+      ));
+    }
+  }
+
+  if (items.isEmpty) {
+    items.add(const _ReleaseBullet(
+      title: 'Latest Feature Upgrades & Bug Fixes',
+      description: 'Smoother performance, updated security, and cloud sync.',
+      emoji: '🚀',
+    ));
+  }
+
+  return items;
+}
 
 class UpdatePromptDialog extends ConsumerWidget {
   final AppUpdateInfo updateInfo;
@@ -23,27 +118,46 @@ class UpdatePromptDialog extends ConsumerWidget {
     final updateState = ref.watch(appUpdateProvider);
     final isDownloading = updateState.status == UpdateStatus.downloading;
     final progress = updateState.downloadProgress;
+    final releaseBullets = _parseReleaseNotes(updateInfo.releaseNotes);
+
+    const cranesNavy = Color(0xFF0F2088);
+    const cranesCyan = Color(0xFF0284C7);
 
     return Dialog(
-      backgroundColor: isDark ? const Color(0xFF1E1B4B) : Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-      elevation: 16,
-      child: Padding(
-        padding: const EdgeInsets.all(24),
+      backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      elevation: 20,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 400),
+        padding: const EdgeInsets.all(22),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with Icon
+            // Header with Rocket Icon + Version Chip
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF7C3AED).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(16),
+                    gradient: const LinearGradient(
+                      colors: [cranesNavy, cranesCyan],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: cranesNavy.withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  child: const Icon(Icons.system_update_rounded, color: Color(0xFF7C3AED), size: 28),
+                  child: const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 24),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -51,20 +165,52 @@ class UpdatePromptDialog extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Update Available! 🚀',
+                        'New Update Available',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w900,
-                          color: isDark ? Colors.white : AppColors.onSurface,
+                          letterSpacing: -0.3,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'v${updateInfo.currentVersion} ➔ v${updateInfo.latestVersion}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF7C3AED),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? cranesCyan.withValues(alpha: 0.15)
+                              : cranesNavy.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: isDark
+                                ? cranesCyan.withValues(alpha: 0.3)
+                                : cranesNavy.withValues(alpha: 0.15),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'v${updateInfo.currentVersion}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white60 : Colors.black54,
+                              ),
+                            ),
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 4),
+                              child: Icon(Icons.arrow_forward_rounded, size: 11, color: cranesCyan),
+                            ),
+                            Text(
+                              'v${updateInfo.latestVersion}',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? const Color(0xFF38BDF8) : cranesNavy,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -74,43 +220,85 @@ class UpdatePromptDialog extends ConsumerWidget {
             ),
             const SizedBox(height: 18),
 
-            // Release Notes Card
+            // Section Label
+            Text(
+              "WHAT'S NEW",
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.8,
+                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Formatted Scrollable Release Notes Card
             Container(
+              constraints: const BoxConstraints(maxHeight: 180),
               width: double.infinity,
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(16),
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    updateInfo.releaseTitle.isNotEmpty ? updateInfo.releaseTitle : 'What\'s New:',
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : AppColors.onSurface,
-                    ),
+              child: RawScrollbar(
+                thumbColor: isDark ? Colors.white24 : Colors.black26,
+                radius: const Radius.circular(10),
+                thickness: 4,
+                thumbVisibility: false,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    children: releaseBullets.map((bullet) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              bullet.emoji,
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    bullet.title,
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white : const Color(0xFF1E293B),
+                                      height: 1.25,
+                                    ),
+                                  ),
+                                  if (bullet.description != null && bullet.description!.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      bullet.description!,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    updateInfo.releaseNotes.isNotEmpty
-                        ? updateInfo.releaseNotes
-                        : '• Latest AI interviewer features\n• Performance optimizations and bug fixes',
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      height: 1.4,
-                      color: isDark ? const Color(0xFF94A3B8) : AppColors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
             // Download Progress Bar (When Downloading)
             if (isDownloading) ...[
@@ -126,7 +314,7 @@ class UpdatePromptDialog extends ConsumerWidget {
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF7C3AED),
+                      color: cranesCyan,
                     ),
                   ),
                 ],
@@ -135,10 +323,10 @@ class UpdatePromptDialog extends ConsumerWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(100),
                 child: LinearProgressIndicator(
-                  value: progress,
+                  value: progress > 0.0 ? progress : null,
                   minHeight: 8,
                   backgroundColor: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF7C3AED)),
+                  valueColor: const AlwaysStoppedAnimation<Color>(cranesCyan),
                 ),
               ),
               const SizedBox(height: 14),
@@ -158,40 +346,77 @@ class UpdatePromptDialog extends ConsumerWidget {
               children: [
                 if (!isDownloading)
                   Expanded(
-                    child: TextButton(
+                    flex: 1,
+                    child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        side: BorderSide(
+                          color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       child: Text(
                         'Later',
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white60 : Colors.black54,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
                         ),
                       ),
                     ),
                   ),
                 if (!isDownloading) const SizedBox(width: 10),
                 Expanded(
-                  flex: isDownloading ? 1 : 2,
-                  child: ElevatedButton(
-                    onPressed: isDownloading
-                        ? null
-                        : () async {
-                            AppHaptics.heavyImpact();
-                            await ref.read(appUpdateProvider.notifier).downloadAndInstall();
-                          },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7C3AED),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      elevation: 0,
+                  flex: 2,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [cranesNavy, cranesCyan],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: cranesNavy.withValues(alpha: 0.25),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      isDownloading ? 'Installing...' : 'Update Now',
-                      style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white),
+                    child: ElevatedButton(
+                      onPressed: isDownloading
+                          ? null
+                          : () async {
+                              AppHaptics.heavyImpact();
+                              await ref.read(appUpdateProvider.notifier).downloadAndInstall();
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isDownloading ? Icons.hourglass_top_rounded : Icons.download_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            isDownloading ? 'Installing...' : 'Update Now',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13.5,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
