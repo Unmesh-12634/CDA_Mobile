@@ -113,22 +113,79 @@ flowchart TD
 
 ## 🚀 Key Features & Business Logic Implemented
 
-### A. High-Speed AI Technical Interview System
-- **Zero Render Dependencies**: Removed legacy server proxies; client communicates directly with Groq and Supabase.
-- **Sub-1.2s Turn Generation**: Adaptive conversational turns formulated in real-time based on candidate speech input.
-- **Neural Voice & Speech-to-Text**: High-fidelity text-to-speech with pitch/speed control and live candidate speech capture.
-- **Live Scorecards & Transcripts**: Turn-by-turn criteria breakdown stored in `public.ai_interview_session`.
+### A. High-Speed AI Technical Interview System & Complete User Flow
+
+The AI Technical Interview system operates as a **100% direct client-to-cloud conversational engine** connecting Flutter directly to Groq LLMs and Supabase PostgreSQL.
+
+#### 🔄 End-to-End Interview User Flow & Execution Pipeline
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Candidate as 🎓 Engineering Candidate
+    participant UI as 📱 InterviewSetupScreen & SessionScreen
+    participant Supabase as 🗄️ Supabase DB (Profiles, Modes, Rubrics)
+    participant Groq as ⚡ Groq LLM Engine (<1.2s)
+    participant Audio as 🎙️ Neural TTS & Speech-to-Text
+
+    Note over Candidate,Supabase: Step 1: Configuration & Track Selection
+    Candidate->>UI: Selects Job Track (e.g., Embedded Systems / Java Fullstack)
+    UI->>Supabase: Fetch interview_profiles (JD & Prompt Context)
+    Supabase-->>UI: Return Profile Metadata, Skills & Guidelines
+    Candidate->>UI: Selects Interview Mode (Hard Mode / Rapid Fire / HR Round)
+    UI->>Supabase: Fetch interview_modes & evaluation_matrices
+
+    Note over UI,Audio: Step 2: Session Initialization (<1.2s)
+    Candidate->>UI: Taps "Launch AI Interview"
+    UI->>Groq: POST /chat/completions (JD Context + Strictness Rubric + Candidate Name)
+    Groq-->>UI: Returns JSON (Greeting + First Technical Question)
+    UI->>Audio: Neural TTS synthesizes natural interviewer voice
+    Audio-->>Candidate: Speaks Q1 aloud + Typewriter Subtitle on Screen
+
+    Note over Candidate,Groq: Step 3: Candidate Live Response & Speech Recognition
+    Candidate->>Audio: Speaks Technical Answer into Microphone (or types)
+    Audio->>UI: Live Real-Time Speech-to-Text Transcription
+
+    Note over UI,Groq: Step 4: Real-Time 4-Tier Turn Evaluation & Adaptive Next Question
+    UI->>Groq: Evaluates Turn (Spoken Answer + Rubrics + Previous Turn Memory)
+    Groq-->>UI: Returns JSON (Turn Score /100 + Rubric Breakdown + Adaptive Next Question)
+    UI->>Audio: Synthesizes Adaptive Follow-up / Next Technical Question
+    Audio-->>Candidate: Speaks Next Question
+
+    Note over Candidate,Supabase: Step 5: Final Comprehensive Scorecard Generation
+    Candidate->>UI: Completes Target Question Turns
+    UI->>Groq: Formulates Comprehensive Performance Evaluation & Recommendations
+    Groq-->>UI: Returns Deep Report (Strengths, Weaknesses, Recommended Topics)
+    UI->>Supabase: Persists Session to public.ai_interview_session (Transcript + Scores)
+    UI-->>Candidate: Displays Full Interactive Scorecard & Feedback Analysis
+```
+
+#### 🧠 Dynamic AI Question Generation & Context Injection
+Every question and evaluation prompt sent to Groq is dynamically constructed with:
+1. **Target Job Description (`public.interview_profiles`)**: Detailed domain requirements (e.g., FreeRTOS memory management, AUTOSAR CAN stack, Spring Security filter chains, RTL timing closure).
+2. **Mode Instructions (`public.interview_modes`)**:
+   - **Hard Mode (7 Qs, 120s)**: Probes deep edge-cases, memory constraints, and high-load system failures.
+   - **Rapid Fire Mode (3 Qs, 60s)**: High-speed recall testing core conceptual fundamentals.
+   - **HR & Behavioral Mode (5 Qs, 90s)**: Evaluates leadership, conflict resolution, and situational ownership using the **STAR** method.
+   - **Comprehensive Round (5 Qs, 90s)**: Balanced mix of architectural theory, coding trade-offs, and practical scenarios.
+3. **Turn-by-Turn Memory & Anti-Repetition Guard**: Injects previous questions and candidate responses to eliminate duplicates and enable deep, contextual follow-ups.
+
+---
 
 ### B. Standardized 4-Tier Rubric Matrix
-All candidate responses are graded against database-persisted weights:
-1. **Technical Depth & Accuracy (35%)**: Verification of core concepts, algorithmic correctness, and memory/concurrency trade-offs.
+Candidate responses are evaluated against database-persisted weights:
+1. **Technical Depth & Accuracy (35%)**: Core concept verification, algorithmic correctness, and memory/concurrency trade-offs.
 2. **Edge Cases & Failure Resilience (25%)**: Handling of boundary conditions, race conditions, memory leaks, and null checks.
 3. **Industry Terminology & Keywords (20%)**: Usage of domain-specific standards (e.g., AUTOSAR, Spring IoC, RTL synthesis, ACID).
-4. **Communication & Structure (20%)**: Clear explanation adhering to the **STAR (Situation, Task, Action, Result)** method.
+4. **Communication & Structure (20%)**: Clear, professional articulation adhering to the **STAR (Situation, Task, Action, Result)** method.
+
+---
 
 ### C. Universal Dynamic Card Architecture
 - In `interview_setup_screen.dart`, **`_buildUniversalOptionCard`** acts as a single reusable component.
 - Dynamically receives models from Supabase (`interview_profiles`, `interview_modes`, `interview_skill_drills`) and automatically renders interactive selection cards.
+
+---
 
 ### D. Real-Time Study Tracking (Strictly No XP Fluff)
 - **Foreground Stopwatch (`StudyTimeTrackerService`)**: Measures true active study seconds and minutes.
