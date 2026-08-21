@@ -913,7 +913,7 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Render cloud service is spinning up. Free instances require a moment to cold start.',
+                          'AI Interview Service is preparing your custom question matrix and rubrics.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 11,

@@ -57,7 +57,7 @@ class AiInterviewApiClient {
               : 0;
           debugPrint('❌ [API ERR] ${error.requestOptions.method} ${error.requestOptions.path} - ${error.response?.statusCode ?? 'NETWORK_ERROR'} (${latency}ms): ${error.message}');
           
-          // Auto-retry once on Render cold start or 5xx server errors
+          // Auto-retry once on temporary network timeout or 5xx server errors
           if (error.type == DioExceptionType.connectionTimeout ||
               error.type == DioExceptionType.receiveTimeout ||
               (error.response?.statusCode != null && error.response!.statusCode! >= 500)) {
@@ -99,7 +99,7 @@ class AiInterviewApiClient {
     return null;
   }
 
-  /// GET /api/v1/health — Checks Render backend reachability and calculates latency
+  /// GET /api/v1/health — Checks backend reachability and calculates latency
   Future<HealthResponse?> healthCheck() async {
     final stopwatch = Stopwatch()..start();
     try {
@@ -149,13 +149,13 @@ class AiInterviewApiClient {
     return {'is_healthy': false, 'status': 'error', 'latency_ms': stopwatch.elapsedMilliseconds};
   }
 
-  /// Polls health endpoint during Render cold start wake-up phase
+  /// Polls health endpoint during backend initialization
   Future<bool> waitForBackendReady({
     int maxWaitSeconds = 90,
     void Function(int phase, String message)? onPhaseUpdate,
   }) async {
     final stopwatch = Stopwatch()..start();
-    onPhaseUpdate?.call(0, 'Waking up AI Engine on Render...');
+    onPhaseUpdate?.call(0, 'Initializing AI Engine...');
 
     while (stopwatch.elapsed.inSeconds < maxWaitSeconds) {
       final elapsed = stopwatch.elapsed.inSeconds;

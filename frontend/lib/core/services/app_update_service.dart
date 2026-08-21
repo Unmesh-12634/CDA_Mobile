@@ -145,7 +145,6 @@ class AppUpdateNotifier extends StateNotifier<UpdateState> {
     final primaryUrl = customUrl ?? state.updateInfo?.downloadUrl;
     final List<String> candidateUrls = [
       if (primaryUrl != null && primaryUrl.isNotEmpty) primaryUrl,
-      'https://cda-ai-interview-engine.onrender.com/download/app-release.apk',
       'https://github.com/Unmesh-12634/CDA_Mobile/releases/latest/download/app-release.apk',
     ];
 

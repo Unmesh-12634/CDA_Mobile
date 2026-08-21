@@ -79,12 +79,12 @@ class InterviewSessionNotifier extends StateNotifier<InterviewSessionState> {
 
   InterviewSessionNotifier(this._apiClient) : super(const InterviewSessionState());
 
-  /// Starts live session on Render FastAPI backend and stores session_id
+  /// Starts live session with Groq / Backend AI engine and stores session_id
   Future<bool> startSession(StartInterviewRequest request) async {
     if (state.isInitializing) return false;
     state = state.copyWith(
       isInitializing: true,
-      initializationStatus: 'Waking up AI Engine on Render...',
+      initializationStatus: 'Initializing AI Interview Engine...',
       errorMessage: null,
     );
 
@@ -99,7 +99,7 @@ class InterviewSessionNotifier extends StateNotifier<InterviewSessionState> {
       if (!isOnline) {
         state = state.copyWith(
           isInitializing: false,
-          errorMessage: 'Backend engine offline or un-reachable on Render.',
+          errorMessage: 'Backend engine offline or un-reachable.',
         );
         return false;
       }

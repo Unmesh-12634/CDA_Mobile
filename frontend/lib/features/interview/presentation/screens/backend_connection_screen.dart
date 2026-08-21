@@ -78,7 +78,7 @@ class _BackendConnectionDiagnosticsScreenState
 
     _endpointResults.add({
       'name': 'GET /api/v1/health',
-      'desc': 'Render Cloud Server Connection Health',
+      'desc': 'Cloud / Local Server Connection Health',
       'status': healthResult['is_healthy'] == true ? 'PASSED 🟢' : 'FAILED 🔴',
       'latency': '${healthResult['latency_ms']} ms',
       'isOk': healthResult['is_healthy'] == true,
@@ -218,7 +218,7 @@ class _BackendConnectionDiagnosticsScreenState
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    isHealthy ? 'Render FastAPI Backend Online' : 'Backend Offline / Connecting...',
+                                    isHealthy ? 'AI Backend Online' : 'Backend Offline / Connecting...',
                                     style: AppTypography.titleMedium.copyWith(
                                       fontWeight: FontWeight.bold,
                                       color: isHealthy ? const Color(0xFF10B981) : AppColors.error,
@@ -505,9 +505,9 @@ class _BackendConnectionDiagnosticsScreenState
                   ),
                   const SizedBox(height: 10),
 
-                  _buildStepInfo('1. Start Backend Server', 'Run python in "ai Interviewer" directory or use Render live server.', Icons.dns_rounded, cs),
+                  _buildStepInfo('1. Direct AI Active', 'Direct Groq LLM & Supabase active, or local backend server.', Icons.dns_rounded, cs),
                   const SizedBox(height: 8),
-                  _buildStepInfo('2. Open Monitor in Laptop', 'Visit http://localhost:8000/ or the Render host URL.', Icons.open_in_browser_rounded, cs),
+                  _buildStepInfo('2. Open Monitor in Laptop', 'Visit http://localhost:8080/ or Supabase Dashboard.', Icons.open_in_browser_rounded, cs),
                   const SizedBox(height: 8),
                   _buildStepInfo('3. Start AI Interview', 'Perform an interview in the mobile app to watch live questions & answers populate!', Icons.touch_app_rounded, cs),
 

@@ -1,10 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 class AppConfig {
-  /// Production Cloud URL (Render)
-  static const String renderProductionUrl = 'https://cda-ai-interview-engine.onrender.com';
-
-  /// USB Reverse Port Forwarding & Localhost (Port 8000 for Python AI Engine)
+  /// USB Reverse Port Forwarding & Localhost (Port 8000 for Python AI Engine, 8080 for Backend)
   static const String usbLocalhost8000 = 'http://127.0.0.1:8000';
   static const String usbLocalhost8005 = 'http://127.0.0.1:8005';
   static const String usbLocalhost8080 = 'http://127.0.0.1:8080';
@@ -18,10 +15,9 @@ class AppConfig {
   static const String emulatorHostPort8080 = 'http://10.0.2.2:8080';
 
   static const List<String> candidateHosts = [
-    renderProductionUrl,
+    usbLocalhost8080,
     usbLocalhost8000,
     usbLocalhost8005,
-    usbLocalhost8080,
     defaultWifiHostPort8000,
     defaultWifiHostPort8080,
     hotspotHostPort8000,
@@ -30,7 +26,7 @@ class AppConfig {
     emulatorHostPort8080,
   ];
 
-  static String activeHost = renderProductionUrl;
+  static String activeHost = usbLocalhost8080;
 
 
   static void setActiveHost(String newHost) {
