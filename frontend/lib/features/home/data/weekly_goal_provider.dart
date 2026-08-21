@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/config/supabase_config.dart';
 import '../../../core/network/java_api_service.dart';
+import '../../../core/services/study_time_tracker_service.dart';
 import '../../../core/storage/local_cache_service.dart';
 import '../../../core/storage/secure_storage_service.dart';
 import '../../quiz/data/quiz_provider.dart';
@@ -212,7 +213,7 @@ class WeeklyGoalNotifier extends StateNotifier<WeeklyGoal> {
       try {
         final res = await SupabaseConfig.client
             .from('users')
-            .select('current_streak, weekly_days_completed, total_study_minutes, last_active_date')
+            .select('current_streak, weekly_days_completed, total_study_minutes, total_active_seconds, last_active_date')
             .eq('email', email)
             .maybeSingle();
 
@@ -220,6 +221,15 @@ class WeeklyGoalNotifier extends StateNotifier<WeeklyGoal> {
           final rawStreak = res['current_streak'] as int? ?? 0;
           final lastActive = res['last_active_date']?.toString();
           final streak = _calculateActiveStreak(rawStreak: rawStreak, lastActiveStr: lastActive);
+          final dbMinutes = res['total_study_minutes'] as int? ?? 0;
+          final dbSeconds = res['total_active_seconds'] as int? ?? (dbMinutes * 60);
+
+          // Populate cache if DB has newer values
+          final cachedSeconds = LocalCacheService().get<int>('cda_total_active_seconds') ?? 0;
+          if (dbSeconds > cachedSeconds) {
+            await LocalCacheService().set('cda_total_active_seconds', dbSeconds);
+            await LocalCacheService().set('cda_total_study_minutes', dbMinutes);
+          }
 
           List<bool> days = [false, false, false, false, false, false, false];
           if (res['weekly_days_completed'] is List) {
@@ -230,6 +240,7 @@ class WeeklyGoalNotifier extends StateNotifier<WeeklyGoal> {
           final now = DateTime.now();
           final startOfWeek = _getStartOfWeek(now);
           final completedCount = days.where((d) => d).length;
+          final actualHours = (dbMinutes ~/ 60);
 
           state = WeeklyGoal(
             targetDays: 7,
@@ -237,12 +248,12 @@ class WeeklyGoalNotifier extends StateNotifier<WeeklyGoal> {
             completedDaysCount: completedCount,
             progressPercent: completedCount / 7.0,
             nextGoalSuggestion: WeeklyGoal._getSuggestion(days, completedCount, 7),
-            totalHoursLearned: (res['total_study_minutes'] as int? ?? 0) ~/ 60,
+            totalHoursLearned: actualHours,
             streakCount: streak,
             weekStartDate: startOfWeek,
             lastActiveDate: lastActive,
           );
-          debugPrint('✅ Loaded 7-day learning goal from Supabase DB!');
+          debugPrint('✅ Loaded 7-day learning goal from Supabase DB (${dbMinutes}m / ${actualHours}h)!');
           return;
         }
       } catch (e) {
@@ -372,13 +383,16 @@ class WeeklyGoalNotifier extends StateNotifier<WeeklyGoal> {
 
     final completedCount = updatedDays.where((d) => d).length;
 
+    final realHours = StudyTimeTrackerService().getTotalStudyHours().floor();
+    final totalHours = realHours > state.totalHoursLearned ? realHours : state.totalHoursLearned;
+
     state = state.copyWith(
       targetDays: 7,
       completedDays: updatedDays,
       completedDaysCount: completedCount,
       progressPercent: (completedCount / 7.0).clamp(0.0, 1.0),
       streakCount: newStreak,
-      totalHoursLearned: state.totalHoursLearned + (wasAlreadyCompleted ? 0 : 2),
+      totalHoursLearned: totalHours,
       nextGoalSuggestion: WeeklyGoal._getSuggestion(updatedDays, completedCount, 7),
       lastActiveDate: todayStr,
     );

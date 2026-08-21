@@ -10,6 +10,7 @@ import 'core/services/network_connectivity_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/realtime_notification_bridge.dart';
 import 'core/services/smart_nudge_scheduler.dart';
+import 'core/services/study_time_tracker_service.dart';
 import 'features/auth/data/auth_provider.dart';
 
 void main() async {
@@ -17,6 +18,7 @@ void main() async {
   await LocalCacheService().init();
   await SupabaseConfig.initialize();
   await NotificationService().init();
+  StudyTimeTrackerService().initialize();
   runApp(const ProviderScope(child: CdaCareerCompanionApp()));
 }
 
