@@ -329,9 +329,3 @@ Developed with ❤️ for **CDA (Cranes Digital Academy)**.
 | **🎨 Kalal Mansi** | **Frontend & UI/UX Specialist** | • Flutter Frontend Feature Development<br>• UI/UX Design System & Mobile Screen Layouts<br>• Interactive Micro-animations, Transitions & Visual Polish |
 | **⚡ Shristi Bapna** | **Backend & Integration Specialist** | • Backend Integration & API Connectivity<br>• Client-Server Service Pipelines & Data Marshalling<br>• Business Logic & Integration Testing |
 | **🗄️ Archi Lodha** | **Database & Data Management Specialist** | • Supabase PostgreSQL Schema Architecture & Migration<br>• Database Modeling, Relationships & Performance Indexing<br>• Row Level Security (RLS) Policy Design & Optimization |
-
----
-
-## 🛡️ License & Copyright
-© 2026 **CDA (Cranes Digital Academy)**. All rights reserved.
-*Engineered with precision for next-generation engineers.*
