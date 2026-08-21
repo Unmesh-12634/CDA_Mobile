@@ -97,13 +97,27 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
     _progressAnim.forward();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // ✅ FIX 1: Write candidateName to provider immediately at setup open
+      // ✅ Auto-fetch candidate name from authenticated profile
       final authState = ref.read(authProvider);
+      final userProfile = ref.read(userProfileProvider);
       final realName = authState.fullName.trim().isNotEmpty
           ? authState.fullName.trim()
-          : 'Candidate';
+          : (userProfile.name.trim().isNotEmpty ? userProfile.name.trim() : 'Candidate');
+
+      // ✅ Auto-load existing profile resume if already uploaded
+      if (userProfile.resumeUrl != null || userProfile.resumeFileName != null || userProfile.resumeFilePath != null) {
+        setState(() {
+          _resumeFileName = userProfile.resumeFileName ?? 'Profile_Resume.pdf';
+          if (userProfile.skills.isNotEmpty) {
+            _parsedResumeSkills = List<String>.from(userProfile.skills);
+          }
+        });
+      }
+
       ref.read(interviewSetupProvider.notifier).updateConfig(
         candidateName: realName,
+        resumePath: userProfile.resumeUrl ?? userProfile.resumeFilePath ?? _resumeFileName,
+        skills: _parsedResumeSkills,
       );
       ref.read(aiInterviewServiceProvider).preWarmBackend();
     });
@@ -431,17 +445,36 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                         borderRadius: BorderRadius.circular(100)),
                     elevation: 0,
                   ),
-                  onPressed: _nextStep,
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Continue',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15)),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward_rounded, size: 18),
-                    ],
-                  ),
+                  onPressed: (_currentStep == 3 && _isAnalyzingResume) ? null : _nextStep,
+                  child: (_currentStep == 3 && _isAnalyzingResume)
+                      ? const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            ),
+                            SizedBox(width: 10),
+                            Text(
+                              'Analyzing Resume...',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                          ],
+                        )
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Continue',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 15)),
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward_rounded, size: 18),
+                          ],
+                        ),
                 ),
               ),
             if (isTapAdvanceStep)
@@ -1915,17 +1948,47 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
         _parsedResumeHackathons.isNotEmpty ||
         _parsedResumeCertifications.isNotEmpty;
 
+    final authState = ref.watch(authProvider);
+    final userProfile = ref.watch(userProfileProvider);
+    final candidateName = authState.fullName.trim().isNotEmpty
+        ? authState.fullName.trim()
+        : (userProfile.name.trim().isNotEmpty ? userProfile.name.trim() : 'Candidate');
+    final isFromProfile = userProfile.resumeUrl != null || userProfile.resumeFileName != null;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppConstants.marginMobile),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Your resume',
-              style: AppTypography.headlineMobile
-                  .copyWith(fontWeight: FontWeight.bold, color: cs.onSurface)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Your resume',
+                  style: AppTypography.headlineMobile
+                      .copyWith(fontWeight: FontWeight.bold, color: cs.onSurface)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.person_rounded, size: 12, color: AppColors.primary),
+                    const SizedBox(width: 4),
+                    Text(
+                      candidateName,
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 6),
           Text(
-            'Upload your PDF resume so AI parses your skills, projects, hackathons, and certifications upfront.',
+            'Upload or verify your PDF resume so AI extracts your exact skills, projects, and credentials before continuing.',
             style: AppTypography.bodyMedium
                 .copyWith(color: cs.onSurfaceVariant, height: 1.5),
           ),
@@ -1950,15 +2013,41 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        _resumeFileName ?? 'No resume uploaded',
-                        style: AppTypography.titleMedium.copyWith(
-                            fontWeight: FontWeight.bold, color: cs.onSurface),
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _resumeFileName ?? 'No resume uploaded',
+                              style: AppTypography.titleMedium.copyWith(
+                                  fontWeight: FontWeight.bold, color: cs.onSurface),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isFromProfile && _resumeFileName != null) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'PROFILE SYNCED',
+                                style: TextStyle(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF10B981),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        'PDF Document · Tap to change & analyze',
+                        _resumeFileName != null
+                            ? 'PDF Document · Tap to change or re-extract'
+                            : 'Tap to select PDF resume for extraction',
                         style: AppTypography.bodySmall
                             .copyWith(color: cs.onSurfaceVariant),
                       ),
@@ -1968,7 +2057,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                 IconButton(
                   icon: const Icon(Icons.swap_horiz_rounded,
                       color: AppColors.primary),
-                  onPressed: _pickResume,
+                  onPressed: _isAnalyzingResume ? null : _pickResume,
                   tooltip: 'Change & Analyze Resume',
                 ),
               ],
