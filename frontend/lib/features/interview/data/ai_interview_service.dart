@@ -1229,6 +1229,32 @@ Return ONLY a valid JSON object matching this exact schema:
     }
     return const EvaluationMatrix();
   }
+
+  /// Fetches Skill Drills from Supabase with built-in defaults
+  Future<List<SkillDrillModel>> fetchSkillDrills() async {
+    try {
+      final res = await Supabase.instance.client
+          .from('interview_skill_drills')
+          .select()
+          .order('name', ascending: true);
+      if (res.isNotEmpty) {
+        return res.map((item) => SkillDrillModel.fromJson(Map<String, dynamic>.from(item))).toList();
+      }
+    } catch (e) {
+      debugPrint('Supabase interview_skill_drills fetch fallback: $e');
+    }
+
+    return const [
+      SkillDrillModel(id: 'spring_boot', name: 'Spring Boot Microservices', description: 'REST APIs, Actuator, Security & JPA', iconKey: 'bolt', colorHex: 0xFF6DB33F, focusPrompt: 'Focus on Spring DI, Bean scopes, Transactional boundaries, JPA caching, and REST conventions.'),
+      SkillDrillModel(id: 'java_concurrency', name: 'Java Concurrency & Threads', description: 'Executors, Locks, Volatile & ForkJoin', iconKey: 'tune', colorHex: 0xFFE76F00, focusPrompt: 'Focus on Thread safety, atomic variables, ReentrantLock, deadlock prevention, and synchronized blocks.'),
+      SkillDrillModel(id: 'flutter_riverpod', name: 'Flutter & State Management', description: 'Riverpod, AsyncValue & Widget Lifecycle', iconKey: 'phone', colorHex: 0xFF54C5F8, focusPrompt: 'Focus on state immutability, notifier providers, async value handling, rebuild optimization, and keys.'),
+      SkillDrillModel(id: 'postgres_tuning', name: 'PostgreSQL & Query Tuning', description: 'B-Tree, EXPLAIN ANALYZE & Transactions', iconKey: 'storage', colorHex: 0xFF336791, focusPrompt: 'Focus on composite indexing, query execution plans, vacuuming, connection pooling, and isolation levels.'),
+      SkillDrillModel(id: 'dsa_leetcode', name: 'Data Structures & Algorithms', description: 'Trees, Graphs, DP & Time Complexity', iconKey: 'psychology', colorHex: 0xFF10B981, focusPrompt: 'Focus on asymptotic time/space bounds, recursion depth, tree traversal algorithms, and DP memoization.'),
+      SkillDrillModel(id: 'system_design', name: 'System Design & Distributed Systems', description: 'Load Balancing, Caching, CAP & Sharding', iconKey: 'lan', colorHex: 0xFF8B5CF6, focusPrompt: 'Focus on horizontal scalability, Redis caching topologies, partition tolerance, and message brokers.'),
+      SkillDrillModel(id: 'python_ai_rag', name: 'Python, FastAPI & AI RAG', description: 'LangChain, Vector DBs & Embeddings', iconKey: 'auto_awesome', colorHex: 0xFFF59E0B, focusPrompt: 'Focus on chunking heuristics, embedding distances, async endpoints, Pydantic serializers, and GIL.'),
+      SkillDrillModel(id: 'docker_k8s', name: 'Docker, Kubernetes & CI/CD', description: 'Containers, Pods, Helm & Pipelines', iconKey: 'cloud', colorHex: 0xFF0EA5E9, focusPrompt: 'Focus on multi-stage builds, ingress controllers, rolling deployments, configmaps, and secrets.'),
+    ];
+  }
 }
 
 /// Compatibility typedef for AiInterviewService

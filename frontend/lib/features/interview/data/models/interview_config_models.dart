@@ -149,3 +149,43 @@ class EvaluationMatrix {
     };
   }
 }
+
+class SkillDrillModel {
+  final String id;
+  final String name;
+  final String description;
+  final String iconKey;
+  final int colorHex;
+  final String focusPrompt;
+
+  const SkillDrillModel({
+    required this.id,
+    required this.name,
+    required this.description,
+    this.iconKey = 'bolt',
+    this.colorHex = 0xFF6DB33F,
+    this.focusPrompt = '',
+  });
+
+  factory SkillDrillModel.fromJson(Map<String, dynamic> json) {
+    return SkillDrillModel(
+      id: json['id'] as String? ?? 'general',
+      name: json['name'] as String? ?? 'Core Technical Skills',
+      description: json['description'] as String? ?? '',
+      iconKey: json['icon_key'] as String? ?? 'bolt',
+      colorHex: (json['color_hex'] as num?)?.toInt() ?? 0xFF6DB33F,
+      focusPrompt: json['focus_prompt'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'description': description,
+      'icon_key': iconKey,
+      'color_hex': colorHex,
+      'focus_prompt': focusPrompt,
+    };
+  }
+}
