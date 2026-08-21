@@ -321,19 +321,17 @@ flutter build apk --release --dart-define-from-file=../.env
 
 ## 👥 CDA Engineering Team & Contributors
 
-<div align="center">
+Developed with ❤️ for **CDA (Cranes Digital Academy)**.
 
-| Name / Role | Domain & Specialization |
-| :--- | :--- |
-| **Unmesh Joshi** | Lead Mobile Architect & Fullstack AI Systems Engineer |
-| **CDA Engineering Team** | Embedded Systems, VLSI & Enterprise Java Curriculum Contributors |
-| **Cranes Varsity Platform Division** | Technical Interview Assessment & Placement Review Board |
+| Team Member | Role & Specialization | Key Responsibilities & Contributions |
+| :--- | :--- | :--- |
+| **👑 Unmesh** | **Project Lead & Full-Stack Architect** | • Overall System Architecture & Engineering Leadership<br>• Flutter Mobile Frontend & Riverpod State Management<br>• Java 17 Spring Boot Enterprise Backend & REST APIs<br>• Direct Groq AI LLM Engine & Neural Voice Pipeline<br>• Level 4 Hardening, Local-First Cache & Cloud DB Integration |
+| **🎨 Kalal Mansi** | **Frontend & UI/UX Specialist** | • Flutter Frontend Feature Development<br>• UI/UX Design System & Mobile Screen Layouts<br>• Interactive Micro-animations, Transitions & Visual Polish |
+| **⚡ Shristi Bapna** | **Backend & Integration Specialist** | • Backend Integration & API Connectivity<br>• Client-Server Service Pipelines & Data Marshalling<br>• Business Logic & Integration Testing |
+| **🗄️ Archi Lodha** | **Database & Data Management Specialist** | • Supabase PostgreSQL Schema Architecture & Migration<br>• Database Modeling, Relationships & Performance Indexing<br>• Row Level Security (RLS) Policy Design & Optimization |
 
-</div>
+---
 
-<br/>
-
-<p align="center">
-  <strong>© 2026 Cranes Digital Academy (CDA). All rights reserved.</strong><br/>
-  <em>Engineered with precision for next-generation engineers.</em>
-</p>
+## 🛡️ License & Copyright
+© 2026 **CDA (Cranes Digital Academy)**. All rights reserved.
+*Engineered with precision for next-generation engineers.*
