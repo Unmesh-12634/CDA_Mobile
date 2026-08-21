@@ -1173,6 +1173,36 @@ class _AiInterviewSessionScreenState extends ConsumerState<AiInterviewSessionScr
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              Consumer(builder: (context, ref, _) {
+                                final modeName = ref.watch(interviewSetupProvider).modeDisplayName;
+                                final isHard = modeName.toLowerCase().contains('hard');
+                                final isRapid = modeName.toLowerCase().contains('rapid');
+                                final isHr = modeName.toLowerCase().contains('hr');
+                                final Color badgeColor = isHard
+                                    ? const Color(0xFFEF4444)
+                                    : isRapid
+                                        ? const Color(0xFFF59E0B)
+                                        : isHr
+                                            ? const Color(0xFF10B981)
+                                            : const Color(0xFF0284C7);
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: badgeColor.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    modeName.toUpperCase(),
+                                    style: TextStyle(
+                                      color: badgeColor,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 0.6,
+                                    ),
+                                  ),
+                                );
+                              }),
                             ],
                           ),
                           Row(

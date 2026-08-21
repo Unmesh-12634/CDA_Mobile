@@ -62,6 +62,8 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
   InterviewType? _selectedType = InterviewType.technical;
   double _difficulty = 2; // 1-Beginner, 2-Intermediate, 3-Advanced
   InterviewDuration _selectedDuration = InterviewDuration.standard;
+  String _selectedModeId = 'comprehensive';
+  String _selectedModeTitle = 'Comprehensive Round';
   final double _selectedSpeechRate = 0.50;
   final String _selectedVoicePersona = 'christopher'; // Default: Christopher — Executive Director
   String? _resumeFileName;
@@ -267,17 +269,6 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
         return 'Detailed Round';
       default:
         return 'Standard Round';
-    }
-  }
-
-  String get _durationQRange {
-    switch (_selectedDuration) {
-      case InterviewDuration.short:
-        return '3–5 questions';
-      case InterviewDuration.detailed:
-        return '8–12 questions';
-      default:
-        return '5–8 questions';
     }
   }
 
@@ -1400,7 +1391,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
   }
 
   // ─────────────────────────────────────────────────────────
-  // STEP 3 — Difficulty & Session Duration
+  // STEP 3 — Difficulty, Rigor Mode & Session Duration
   // ─────────────────────────────────────────────────────────
   Widget _buildStep3DiffDuration(ColorScheme cs) {
     return SingleChildScrollView(
@@ -1408,6 +1399,102 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _buildSectionChip(Icons.tune_rounded, 'INTERVIEW MODE & RIGOR', AppColors.primary),
+          const SizedBox(height: 14),
+
+          // 4 Interactive Mode Cards
+          Column(
+            children: [
+              _buildModeCard(
+                id: 'comprehensive',
+                title: 'Comprehensive Round',
+                subtitle: '5 Questions • Balanced technical depth, system design, and coding trade-offs.',
+                badge: 'BALANCED',
+                icon: Icons.layers_rounded,
+                color: const Color(0xFF0284C7),
+                qCount: 5,
+                cs: cs,
+              ),
+              const SizedBox(height: 10),
+              _buildModeCard(
+                id: 'hard_mode',
+                title: 'Hard Mode (Senior Staff Probing)',
+                subtitle: '7 Questions • Deep edge-case stress testing & strict performance evaluations.',
+                badge: 'STRICT PROBING',
+                icon: Icons.local_fire_department_rounded,
+                color: const Color(0xFFEF4444),
+                qCount: 7,
+                cs: cs,
+              ),
+              const SizedBox(height: 10),
+              _buildModeCard(
+                id: 'rapid_fire',
+                title: 'Rapid Fire Mode',
+                subtitle: '3 Questions • Fast 60-second diagnostic sprint testing instant recall.',
+                badge: 'RAPID SPRINT',
+                icon: Icons.bolt_rounded,
+                color: const Color(0xFFF59E0B),
+                qCount: 3,
+                cs: cs,
+              ),
+              const SizedBox(height: 10),
+              _buildModeCard(
+                id: 'hr_behavioral',
+                title: 'HR & Behavioral Round',
+                subtitle: '5 Questions • STAR framework, situational leadership, and Cranes career readiness.',
+                badge: 'HR / STAR',
+                icon: Icons.people_alt_rounded,
+                color: const Color(0xFF10B981),
+                qCount: 5,
+                cs: cs,
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Evaluation Matrix Banner
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.analytics_rounded, color: AppColors.primary, size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      'DATABASE EVALUATION MATRIX',
+                      style: AppTypography.codeMono.copyWith(
+                        color: AppColors.primary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Technical Depth 35% · Edge Cases 25% · Keywords 20% · Communication 20%',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: cs.onSurfaceVariant,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
           _buildSectionChip(Icons.bar_chart_rounded, 'CHALLENGE LEVEL', AppColors.primary),
           const SizedBox(height: 14),
 
@@ -1488,7 +1575,7 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Session configured for $_durationMinutesLabel mins ($_durationQRange) at $_difficultyLabel level.',
+                    'Configured for $_selectedModeTitle ($_targetQuestionCount Questions) at $_difficultyLabel level.',
                     style: AppTypography.bodySmall.copyWith(
                         color: cs.onSurfaceVariant, height: 1.4),
                   ),
@@ -1497,6 +1584,102 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildModeCard({
+    required String id,
+    required String title,
+    required String subtitle,
+    required String badge,
+    required IconData icon,
+    required Color color,
+    required int qCount,
+    required ColorScheme cs,
+  }) {
+    final isSelected = _selectedModeId == id;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedModeId = id;
+          _selectedModeTitle = title;
+        });
+        ref.read(interviewSetupProvider.notifier).updateConfig(
+          modeId: id,
+          modeDisplayName: title,
+          targetQuestionCount: qCount,
+        );
+      },
+      child: AnimatedContainer(
+        duration: AppConstants.animationFast,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withValues(alpha: 0.08) : cs.surfaceContainer,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? color : cs.outlineVariant,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: AppTypography.titleMedium.copyWith(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected ? color : cs.onSurface,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          badge,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2041,6 +2224,12 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
           _buildSummaryRow('TARGET ROLE', _roleLabel,
               Icons.work_rounded, AppColors.primary, cs),
           const SizedBox(height: 8),
+          _buildSummaryRow('INTERVIEW MODE', _selectedModeTitle,
+              Icons.tune_rounded, const Color(0xFF0284C7), cs),
+          const SizedBox(height: 8),
+          _buildSummaryRow('EVALUATION MATRIX', 'Technical 35% · Edge 25% · Keywords 20% · Comm 20%',
+              Icons.analytics_rounded, const Color(0xFF10B981), cs),
+          const SizedBox(height: 8),
           _buildSummaryRow('INTERVIEW TYPE', _typeLabel,
               Icons.psychology_rounded, AppColors.secondary, cs),
           const SizedBox(height: 8),
@@ -2092,6 +2281,8 @@ class _InterviewSetupScreenState extends ConsumerState<InterviewSetupScreen>
                 targetQuestionCount: currentSetup.targetQuestionCount > 0
                     ? currentSetup.targetQuestionCount
                     : (selectedBlock?.targetQuestionCount ?? _targetQuestionCount),
+                modeId: _selectedModeId,
+                modeDisplayName: _selectedModeTitle,
                 voicePersona: _selectedVoicePersona,
                 speechRate: _selectedSpeechRate,
                 resumePath: _resumeFileName,

@@ -28,6 +28,8 @@ class InterviewSetupConfig {
   final List<String> jobRequiredSkills;
   final InterviewTrack track;
   final String targetCompany;
+  final String modeId;
+  final String modeDisplayName;
 
   const InterviewSetupConfig({
     this.candidateName = '',
@@ -49,6 +51,8 @@ class InterviewSetupConfig {
     this.jobRequiredSkills = const [],
     this.track = InterviewTrack.roleMock,
     this.targetCompany = '',
+    this.modeId = 'comprehensive',
+    this.modeDisplayName = 'Comprehensive Technical Round',
   });
 
   InterviewSetupConfig copyWith({
@@ -71,6 +75,8 @@ class InterviewSetupConfig {
     List<String>? jobRequiredSkills,
     InterviewTrack? track,
     String? targetCompany,
+    String? modeId,
+    String? modeDisplayName,
   }) {
     return InterviewSetupConfig(
       candidateName: candidateName ?? this.candidateName,
@@ -92,6 +98,8 @@ class InterviewSetupConfig {
       jobRequiredSkills: jobRequiredSkills ?? this.jobRequiredSkills,
       track: track ?? this.track,
       targetCompany: targetCompany ?? this.targetCompany,
+      modeId: modeId ?? this.modeId,
+      modeDisplayName: modeDisplayName ?? this.modeDisplayName,
     );
   }
 }
@@ -119,6 +127,8 @@ class InterviewSetupNotifier extends StateNotifier<InterviewSetupConfig> {
     List<String>? jobRequiredSkills,
     InterviewTrack? track,
     String? targetCompany,
+    String? modeId,
+    String? modeDisplayName,
   }) {
     state = state.copyWith(
       candidateName: candidateName,
@@ -140,6 +150,8 @@ class InterviewSetupNotifier extends StateNotifier<InterviewSetupConfig> {
       jobRequiredSkills: jobRequiredSkills,
       track: track,
       targetCompany: targetCompany,
+      modeId: modeId,
+      modeDisplayName: modeDisplayName,
     );
   }
 

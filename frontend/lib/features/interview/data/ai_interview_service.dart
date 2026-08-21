@@ -10,10 +10,12 @@ import '../../../../core/config/app_config.dart';
 import '../../../../core/network/java_api_service.dart';
 import 'models/ai_interview_models.dart';
 import 'models/interview_block_model.dart';
+import 'models/interview_config_models.dart';
 
 // Re-export models for convenient imports across feature widgets
 export 'models/ai_interview_models.dart';
 export 'models/interview_block_model.dart';
+export 'models/interview_config_models.dart';
 
 /// Legacy alias for compatibility with existing riverpod bindings
 typedef AiInterviewSessionData = StartInterviewResponse;
@@ -1070,6 +1072,162 @@ Return ONLY a valid JSON object matching this exact schema:
       debugPrint('deleteInterviewBlock error: $e');
       return false;
     }
+  }
+
+  /// Fetches Job Description Profiles from Supabase with rich built-in defaults
+  Future<List<InterviewProfile>> fetchInterviewProfiles() async {
+    try {
+      final res = await Supabase.instance.client
+          .from('interview_profiles')
+          .select()
+          .order('title', ascending: true);
+      if (res.isNotEmpty) {
+        return res.map((item) => InterviewProfile.fromJson(Map<String, dynamic>.from(item))).toList();
+      }
+    } catch (e) {
+      debugPrint('Supabase interview_profiles fetch fallback: $e');
+    }
+
+    return const [
+      InterviewProfile(
+        id: 'embedded_systems',
+        title: 'Embedded Systems & IoT Engineer',
+        category: 'Core Engineering',
+        description: 'Microcontrollers (ARM Cortex-M), C/C++, FreeRTOS, I2C, SPI, UART, Memory constraints, and Device Drivers.',
+        requiredSkills: ['Embedded C', 'ARM Cortex-M', 'FreeRTOS', 'I2C/SPI/UART', 'Interrupts & Timers', 'Bare-metal C'],
+        defaultTurns: 5,
+        systemPromptContext: 'Candidate is applying as an Embedded Systems & Firmware Engineer at a top tier hardware/firmware company. Focus on pointer arithmetic, volatile keywords, interrupt latency, memory layout, register configuration, and peripheral drivers.',
+        sampleTopics: ['Volatile keyword in C', 'ISR design rules', 'I2C vs SPI trade-offs', 'RTOS task synchronization'],
+      ),
+      InterviewProfile(
+        id: 'java_fullstack',
+        title: 'Java Fullstack Cloud Developer',
+        category: 'Software Engineering',
+        description: 'Java 17+, Spring Boot, Microservices, REST APIs, PostgreSQL, Hibernate/JPA, Docker, and Kafka.',
+        requiredSkills: ['Java 17+', 'Spring Boot', 'Microservices', 'PostgreSQL', 'JPA/Hibernate', 'REST APIs'],
+        defaultTurns: 5,
+        systemPromptContext: 'Candidate is interviewing for a Java Fullstack Developer role. Emphasize multi-threading, Spring Bean lifecycle, JPA query optimization, ACID transactions, REST API contracts, and Microservices resilience patterns (Circuit Breaker, Saga).',
+        sampleTopics: ['Spring Security JWT filter chain', 'JVM Garbage Collection mechanics', 'Indexing & N+1 query problem in JPA', 'Concurrency & ExecutorService'],
+      ),
+      InterviewProfile(
+        id: 'vlsi_design',
+        title: 'VLSI & Silicon Verification Engineer',
+        category: 'Core Engineering',
+        description: 'Digital Design, Verilog, SystemVerilog, UVM, FPGA prototyping, Static Timing Analysis (STA), and RTL synthesis.',
+        requiredSkills: ['Verilog', 'SystemVerilog', 'UVM', 'Static Timing Analysis (STA)', 'FPGA', 'RTL Design'],
+        defaultTurns: 5,
+        systemPromptContext: 'Candidate is interviewing for a VLSI Design / Verification Engineer role. Focus on setup and hold time violations, clock domain crossing (CDC), FSM encoding, SystemVerilog OOP assertions, and UVM phase hierarchy.',
+        sampleTopics: ['Setup vs Hold time margins', 'Clock Domain Crossing synchronizers', 'Blocking vs Non-blocking assignments', 'UVM driver-sequencer handshake'],
+      ),
+      InterviewProfile(
+        id: 'automotive_embedded',
+        title: 'Automotive Embedded & AUTOSAR Engineer',
+        category: 'Core Engineering',
+        description: 'AUTOSAR Classic/Adaptive, CAN/CAN-FD, LIN, Diagnostics (UDS ISO 14229), MISRA-C, and ISO 26262 Functional Safety.',
+        requiredSkills: ['AUTOSAR', 'CAN / CAN-FD', 'UDS (ISO 14229)', 'MISRA-C', 'ISO 26262 ASIL', 'CAPL'],
+        defaultTurns: 5,
+        systemPromptContext: 'Candidate is interviewing for an Automotive Embedded Software Engineer role. Emphasize CAN protocol arbitration, UDS diagnostic services, BSW layer configuration in AUTOSAR, memory mapping, and safety mechanisms.',
+        sampleTopics: ['CAN bus bit stuffing and arbitration', 'UDS 0x22 vs 0x2E services', 'AUTOSAR RTE to BSW communication', 'MISRA-C memory management rules'],
+      ),
+      InterviewProfile(
+        id: 'python_ai_data',
+        title: 'Python, AI & Data Engineer',
+        category: 'Data & AI',
+        description: 'Python, FastAPI, Pandas, SQL, PyTorch, LangChain, RAG architectures, and Vector Databases.',
+        requiredSkills: ['Python', 'FastAPI', 'Pandas & NumPy', 'SQL', 'PyTorch / ML', 'RAG & Vector DBs'],
+        defaultTurns: 5,
+        systemPromptContext: 'Candidate is interviewing for a Python & Generative AI / Data Engineer role. Focus on async Python, GIL implications, SQL window functions, vector embeddings, chunking strategies in RAG, and API throughput optimization.',
+        sampleTopics: ['Python GIL and asyncio', 'SQL Window functions vs GROUP BY', 'Cosine similarity in vector search', 'FastAPI Pydantic validation'],
+      ),
+      InterviewProfile(
+        id: 'hr_behavioral',
+        title: 'Cranes Placement HR & Behavioral Round',
+        category: 'HR & Behavioral',
+        description: 'STAR methodology, cultural fit, conflict resolution, teamwork, project leadership, and career growth roadmap.',
+        requiredSkills: ['STAR Response Framework', 'Conflict Resolution', 'Communication', 'Adaptability', 'Career Motivation'],
+        defaultTurns: 5,
+        systemPromptContext: 'You are an executive HR Director at Cranes Varsity Campus Placements. Ask situational, behavioral, and leadership questions using the STAR framework (Situation, Task, Action, Result). Evaluate poise, confidence, ethics, and clarity.',
+        sampleTopics: ['Handling challenging project deadlines', 'Resolving technical disagreements in a team', 'Overcoming a major technical failure', '5-year career vision'],
+      ),
+    ];
+  }
+
+  /// Fetches Interview Modes from Supabase with built-in defaults
+  Future<List<InterviewMode>> fetchInterviewModes() async {
+    try {
+      final res = await Supabase.instance.client
+          .from('interview_modes')
+          .select()
+          .order('question_count', ascending: true);
+      if (res.isNotEmpty) {
+        return res.map((item) => InterviewMode.fromJson(Map<String, dynamic>.from(item))).toList();
+      }
+    } catch (e) {
+      debugPrint('Supabase interview_modes fetch fallback: $e');
+    }
+
+    return const [
+      InterviewMode(
+        id: 'comprehensive',
+        displayName: 'Comprehensive Round',
+        subtitle: '5 Questions • Balanced technical depth, system design, and coding trade-offs.',
+        questionCount: 5,
+        timeLimitSeconds: 90,
+        strictnessLevel: StrictnessLevel.balanced,
+        evalPromptInstructions: 'Evaluate candidate with balanced industry expectations. Look for sound conceptual understanding, practical hands-on examples, and clear communication.',
+        iconKey: 'layers',
+        badgeColorHex: 0xFF0284C7, // Cranes Cyan
+      ),
+      InterviewMode(
+        id: 'hard_mode',
+        displayName: 'Hard Mode (Senior Staff Probing)',
+        subtitle: '7 Questions • Deep edge-case probing, performance limits, and rigorous grading.',
+        questionCount: 7,
+        timeLimitSeconds: 120,
+        strictnessLevel: StrictnessLevel.strict,
+        evalPromptInstructions: 'Be a very demanding, rigorous senior technical interviewer. Scrutinize time/space complexity, race conditions, edge-case failure modes, and low-level mechanics. Grade strictly.',
+        iconKey: 'fire',
+        badgeColorHex: 0xFFEF4444, // Red / Fire
+      ),
+      InterviewMode(
+        id: 'rapid_fire',
+        displayName: 'Rapid Fire Mode',
+        subtitle: '3 Questions • Fast 60-second diagnostic sprint testing instant recall & fundamentals.',
+        questionCount: 3,
+        timeLimitSeconds: 60,
+        strictnessLevel: StrictnessLevel.balanced,
+        evalPromptInstructions: 'Ask direct, punchy core questions. Reward concise, accurate, and direct responses without fluff.',
+        iconKey: 'bolt',
+        badgeColorHex: 0xFFF59E0B, // Amber / Bolt
+      ),
+      InterviewMode(
+        id: 'hr_behavioral',
+        displayName: 'HR & Behavioral Round',
+        subtitle: '5 Questions • STAR format, leadership, conflict resolution, and cultural alignment.',
+        questionCount: 5,
+        timeLimitSeconds: 90,
+        strictnessLevel: StrictnessLevel.coaching,
+        evalPromptInstructions: 'Evaluate interpersonal communication, structured STAR responses, resilience, accountability, and enthusiasm.',
+        iconKey: 'people',
+        badgeColorHex: 0xFF10B981, // Emerald Green
+      ),
+    ];
+  }
+
+  /// Fetches Evaluation Matrix from Supabase with default rubrics
+  Future<EvaluationMatrix> fetchEvaluationMatrix() async {
+    try {
+      final res = await Supabase.instance.client
+          .from('evaluation_matrices')
+          .select()
+          .maybeSingle();
+      if (res != null) {
+        return EvaluationMatrix.fromJson(Map<String, dynamic>.from(res));
+      }
+    } catch (e) {
+      debugPrint('Supabase evaluation_matrices fetch fallback: $e');
+    }
+    return const EvaluationMatrix();
   }
 }
 
