@@ -12,6 +12,8 @@ frontend/.flutter-plugins-dependencies
 # IDE & Editor files
 .idea/
 .vscode/
+.agents/
+.agent/
 /nbproject/private/
 *.iml
 
