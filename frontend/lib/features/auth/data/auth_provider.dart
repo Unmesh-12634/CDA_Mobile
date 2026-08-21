@@ -577,15 +577,54 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
+      // 0. Dual-Table Verification: Check if account exists in public.users or public.user_auth
+      bool accountExists = false;
+      try {
+        final userRes = await _supabase
+            .from('users')
+            .select('id, email')
+            .eq('email', cleanEmail)
+            .maybeSingle();
+        if (userRes != null && userRes.isNotEmpty) {
+          accountExists = true;
+        }
+      } catch (dbErr) {
+        debugPrint('[Auth DB Check users note]: $dbErr');
+      }
+
+      if (!accountExists) {
+        try {
+          final authRes = await _supabase
+              .from('user_auth')
+              .select('id, email')
+              .eq('email', cleanEmail)
+              .maybeSingle();
+          if (authRes != null && authRes.isNotEmpty) {
+            accountExists = true;
+          }
+        } catch (authErr) {
+          debugPrint('[Auth DB Check user_auth note]: $authErr');
+        }
+      }
+
+      if (!accountExists) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: 'No Cranes account found with this email address. Please check your spelling or sign up.',
+        );
+        return false;
+      }
+
       // 1. Generate secure 6-digit OTP & 3-minute expiry
       final secureOtp = (100000 + Random().nextInt(900000)).toString();
       final expiresAt = DateTime.now().toUtc().add(const Duration(minutes: 3)).toIso8601String();
 
       try {
-        await _supabase.from('user_auth').update({
+        await _supabase.from('user_auth').upsert({
+          'email': cleanEmail,
           'password_reset_token': secureOtp,
           'password_reset_expires_at': expiresAt,
-        }).eq('email', cleanEmail);
+        }, onConflict: 'email');
       } catch (dbErr) {
         debugPrint('[Auth DB] OTP record note: $dbErr');
       }
